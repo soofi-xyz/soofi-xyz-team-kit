@@ -553,9 +553,13 @@ lists every app path. Keep these rules when changing it.
   default export may be a function or a `memo()` result.
 - **Data.** Since runtime 1.19.0 the page's data source reads and acts through
   Console's API; see [Data hooks implementation rules](#data-hooks-implementation-rules).
-- **Known limits.** The record's `roles` are not enforced, so any signed-in
-  viewer of the environment opens any published app: dev environments only
-  until `access-sign-in`. No delete route. Before runtime 1.20.0 the page
+- **Known limits.** The record's `roles` are names only. From runtime 1.26.0
+  ([Console pull request 43](https://github.com/prismteam-ai/console/pull/43),
+  on `main`) a deployment that signs in through Access opens an app only
+  for a person whose Access role is shared `use` on `console:app/<appId>`
+  ([rules](google-sign-in.md#access-sign-in-implementation-rules)); with
+  Google sign-in or the viewer password any signed-in viewer opens any
+  published app, so keep those to dev environments. No delete route. Before runtime 1.20.0 the page
   ignores the view's `theme`; since 1.20.0 the view carries only the theme
   choices the environment allows and the page sets them on the root. An app
   publish racing a design-system configuration publish in the same account can

@@ -110,13 +110,19 @@ check: ID, result, request identifier and the Console revision.
 
 The first step of `access-sign-in` is on
 [Console pull request 40](https://github.com/prismteam-ai/console/pull/40)
-(runtime 1.22.0), not yet merged. Keep these rules when changing it.
+(runtime 1.22.0) and authorization from Access roles on
+[Console pull request 43](https://github.com/prismteam-ai/console/pull/43)
+(runtime 1.26.0); both are on `main`. Keep these rules when changing them.
 
 - **One switch per deployment.** The String parameter `/console/sign-in`
   (`{"kind": "access", "application": "console", "accessUrl":
   "https://<shared domain>/access", "redirectUri":
-  "https://<shared domain>/console/viewer/auth/access/callback"}`, closed
-  schema, `https` only) turns a deployment to Access. Without it the
+  "https://<shared domain>/console/viewer/auth/access/callback",
+  "serviceSecretRef": "<ARN of the Secrets Manager secret console/<name>>"}`,
+  closed schema, `https` only) turns a deployment to Access. From runtime
+  1.26.0 `serviceSecretRef` is required: the Secrets Manager secret under
+  `console/` that holds Console's Access service identity as
+  `{"client_id", "client_secret"}`, never the secret itself. Without it the
   deployment signs in through Google and the viewer password, unchanged. With
   it Access is the only way in: the viewer password and Google start answer
   `404`, and a viewer token or Google session cookie answers `401`. A malformed
@@ -163,11 +169,46 @@ The first step of `access-sign-in` is on
 - **Identity.** The session's subject is the Access user identifier, never an
   email. `Principal.accessToken` is the current token, forwarded to products
   for a person's reads.
-- **Scopes until roles decide.** An Access session carries the fixed read
-  scopes a Google session has (`console:read`, `report:read`). Route, action
-  and per-app authorization from Access roles is not built (`CS-3`, `CS-10`,
-  `CS-17`); until it is, a session's Persist reads are refused for missing
-  `persist:read`.
+- **Roles decide, as Console's service identity.** Console asks Access as
+  itself (`POST /service-token` with the identity's secret, then
+  `POST /decisions/batch` with the person's token) at sign-in and at every
+  refresh, and keeps the answers in the sealed session's record, so a removed
+  role ends what it allowed within one access-token lifetime. Anything but
+  `allow` is a deny. Access unreachable refuses a sign-in and answers a refresh
+  `503`, keeping the session; never store a deny, or allow anything, for a
+  failure. Cache the service token until a minute before it expires, drop it
+  on a `401`, and never retry a refused token in a loop.
+- **Scopes through INTERIM stand-ins.** Console's scopes (`report:read`,
+  `model:review`, ...) belong to the products that own them, and none declares
+  them in Access yet. Until each does, Console declares one type-level
+  stand-in per scope, `console:scope:<scope with ":" as "-">` (such as
+  `console:scope:model-review`), in `src/domain/access-permissions.ts`
+  (`INTERIM_SCOPES`), and the session holds the scopes Access allows of them.
+  The list never holds `console:configure` or `console:publish`: configuring
+  and publishing stay with the environment key. When a product declares its
+  own permission, map its scope to that permission and drop the stand-in; when
+  every product has, remove the `scope` type. Mark every stand-in INTERIM in
+  code and text.
+- **Per-app roles.** Console declares `console:app` with the shareable action
+  `use`. Publishing or rolling back an app registers it with
+  `PUT /resources/console/app/<appId>` as environment-owned before selecting
+  it (Access unreachable: `503`, nothing selected; another owner: `409
+  CONFLICT`). An operator gives the app its role and shares `use` on it with
+  that role. A session opens an app, its files, bindings and actions only when
+  Access allows `use` (`403 FORBIDDEN` otherwise); the check is in
+  `AppService`, not the route. Ask about an app when the person first opens
+  it, keep the answer in the session, and ask again at each refresh. An
+  app's settings `roles` are names only: Console never shares, so name the
+  Access role after them.
+- **Refusals.** A dashboard binding or action the manifest declares but the
+  caller's scopes hide answers `403`; one it does not declare `404`. A session
+  runs a dashboard's or an app's declared action, same-origin JSON only, when
+  its roles give the action's scopes.
+- **The declaration is applied by an operator.** Console ships it as
+  `requirements/access-declaration.json`, generated from the code and checked
+  by a test. Console's service identity holds only `access:decision:read` and
+  `access:resource:manage`; never give it `access:declaration:manage` or
+  `access:resource:share`.
 - **Sign-in page.** On an Access deployment the page goes straight to Access;
   after a denial or an ended session it offers sign-in through Access only.
   Only a `401` from `GET /viewer/session` means signed out. A `403` is a person
@@ -187,13 +228,32 @@ The first step of `access-sign-in` is on
   `404` for a dashboard the environment never published.
 - **Code layout.** Session resolution and the sign-in routes live in
   `src/handlers/viewer-session.ts`, the adapter in
-  `src/adapters/access-sign-in.ts`, and a fake Access that keeps the real
-  one's code, refresh and sign-out rules in `test/support/fake-access.ts`
+  `src/adapters/access-sign-in.ts`, Console's calls as its service identity in
+  `src/adapters/access-authorization.ts`, the declaration and questions in
+  `src/domain/access-permissions.ts`, and a fake Access that keeps the real
+  one's code, refresh, sign-out, service-token, decision and resource rules
+  (decisions from the roles the person's token carries) in
+  `test/support/fake-access.ts`
   (the `installed-access` Playwright project serves it on the stand-in's
   origin).
+- **Operator setup in Access** (Doublade, with the environment key), once per
+  environment: register the application `console` with the exact callback
+  address; `PUT /access/declarations/console` with
+  `requirements/access-declaration.json`; `POST /access/service-identities`
+  `{"name": "console", "grants": ["access:decision:read",
+  "access:resource:manage"]}` and put the `201`'s `client_id` and
+  `client_secret` into `console/access-service`; create the roles (for the
+  test data: `member` granting `console:scope:console-read` and
+  `console:scope:persist-read`, `report-reader` granting
+  `console:scope:report-read`, `sample-app-viewer` and `sample-app-two-viewer`
+  with no grant) and assign them (`alice` and `bob`: `member`,
+  `report-reader`, `sample-app-viewer`); after each app's first publish,
+  share `use` on `console/app/<appId>` with its role. Apps published before
+  the switch are registered by publishing or rolling back once more.
 - **Open.** Console must be registered in Access as `console` with the exact
   callback address (an Access operator step; dev registers only
-  `/console/app/`). `CS-12` waits on Persist user-scoped reads and `CS-14` on
+  `/console/app/`). The INTERIM stand-ins stay until Report, Persist, Model and
+  System declare their own permissions. `CS-12` waits on Persist user-scoped reads and `CS-14` on
   a product action that records the person. Removing `google-oidc` (`CS-8`)
   waits on Access sign-in verified on a deployment. Access sign-out is not
   retried once Console's session is deleted (a failure is counted as
