@@ -27,10 +27,12 @@ every other dashboard part onto design-system components is a follow-up
 (`RS-4`). Component packs are split into three pull requests: building and
 checking a pack, and apps built against packs, are on
 [Console pull request 42](https://github.com/prismteam-ai/console/pull/42)
-(runtime 1.29.0, on `main`) by
-[their implementation rules](#component-packs-implementation-rules); pack
-storage, routes, pointers and activation (pull request B) and the pack gallery
-(pull request C) are not built; each takes the next free runtime version. Discover the target revision before relying
+(runtime 1.29.0, on `main`); pack install, activation through the
+design-system configuration and the generated pointers are on
+[Console pull request 49](https://github.com/prismteam-ai/console/pull/49)
+(runtime 1.30.0), both by
+[their implementation rules](#component-packs-implementation-rules); the pack
+gallery (pull request C) is not built and takes the next free runtime version. Discover the target revision before relying
 on any part, and settle names marked as placeholders in the Console repository.
 
 Read it with [the product contract](PRD.md) and [the app kit](app-kit.md).
@@ -150,8 +152,8 @@ contain the design system.
   (`jsx-runtime.js`) and the host's mount module (`mount.js`), and a
   `pointer.json` naming the build's major, version, digest and path. The Console
   stack writes the pointer on install, after the build it names, and never
-  prunes it, earlier builds or another major's pointer. There is no pointer API
-  for the base build. Component packs change this for packs only: Console
+  prunes it, earlier builds or another major's pointer. There is no API that
+  writes the base pointer. Component packs change this for packs only: Console
   generates each pack's pointer, and the environment's base pointer where a pack
   replaces a base component, per request from the active design-system
   configuration, so a pack is activated and rolled back without the stack.
@@ -600,9 +602,9 @@ section. Keep these rules when changing it.
   `surface.ts`) and the stylesheet answers each allowed value; anything else
   takes the environment's default.
 - **Packs.** Packs are modelled as `packs.<name>.{version, switchedOff}`;
-  `version` is how a pack is activated. Building packs and apps against them is
-  in [the component packs rules](#component-packs-implementation-rules);
-  nothing installs or loads one yet.
+  `version` is how a pack is activated; a revision activates only installed
+  pack versions this runtime can run. Installing, activating and loading packs
+  is in [the component packs rules](#component-packs-implementation-rules).
 - **Tests.** `DC-1` to `DC-6` at API level in
   `test/design-system-configuration.test.ts`; the browser halves of DC-1, DC-3,
   DC-4, DC-5 and DC-6 in `e2e/design-system-configuration.configuration.spec.ts`,
@@ -728,9 +730,48 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
   `test/component-packs.test.ts`; DC-3 uses the kit-built `pack-app`.
 - **Gallery.** Pack gallery screenshots run on Linux only; the baselines
   workflow regenerates them, and no macOS baselines are committed for them.
-- **Open gaps.** Until pull request B every app that declares a pack is refused with
-  `missing_pack`; `console-app dev` does not render pack components; delivery
-  as a `component-pack` bundle is story 9 (`tinkaton`, `corviknight`).
+- **Install (1.30.0).** `POST /accounts/{accountId}/packs/{pack}/versions`
+  (`console:configure`, `Idempotency-Key`, provenance kind `packVersion`) takes
+  `{ packRecord, files[{ path, contentBase64 }] }` from the pack's `dist/`,
+  verified byte for byte with app hosting's `fileIssues`. A version is
+  immutable: the same build replays `200`, another build under it is `409`
+  `CONFLICT`; another pack is `400`; another pointer or a range leaving the
+  runtime out is `422`. `GET .../packs/{pack}/versions/{version}` reads it
+  back. Metadata `ACCOUNT#<id>#PACK#<pack>` / `VERSION#<version>`; artifacts at
+  `accounts/<id>/packs/<pack>/<version>/<digest hex>/`. `PackService` in
+  `src/application/pack-service.ts`; the record schema in
+  `src/domain/pack-version.ts`. Installing activates nothing.
+- **Activation (decision 1a).** Only `packs.<pack>.version` in the published
+  design-system configuration activates a pack; a configuration rollback rolls
+  it back. A revision naming a version not installed (`pack_not_installed`),
+  not runnable here (`pack_incompatible`) or two packs replacing one base
+  component (`replacement_conflict`) is `422`; one taking from a published
+  app's active version its pack, its major or a component it renders is `409`
+  `CONFIGURATION_IN_USE` (`pack_in_use`, naming the app). `active` lists
+  `packs` with each version and digest. App publish checks the record's packs
+  against the active ones (`missing_pack`, `unknown_component`).
+- **Generated pointers (decision 2a).** Console's API generates, per request
+  from the active configuration, `/console/app/packs/<pack>/v<major>/index.js`
+  and the base pointer's `/console/app/ui/v<major>/index.js` (the stack's line,
+  then a sorted `export { <Base> } from` per active replacement), `no-cache`
+  with the digest as `ETag`; without packs the base pointer equals the stack's
+  byte for byte. Builds are served immutable at
+  `packs/<pack>/<version>/<digest hex>/<file>`, re-verified every read. In
+  gateway mode API Gateway routes `/app/packs/{proxy+}` and
+  `/app/ui/{major}/index.js` to the API function; both are in
+  `marketplace.shared-api.json` `public_routes` with cdk-nag suppressions. The
+  other `ui/` files still come from the bucket. An active pack a later runtime
+  cannot run is left out of the pointers and logged, never a `500`.
+- **Two-stand-in tests.** `test/component-pack-install.test.ts` (API, CP-1,
+  CP-2, CP-3, CP-6 and the refusals) and `e2e/component-packs.packs.spec.ts`
+  in the serial `packs` Playwright project on stand-ins 4180 (A, pack active)
+  and 4181 (B, never). The stand-in sends generated paths to the handler
+  (`generatedByApi` in `e2e/support/installed-console.ts`), except the base
+  pointer on the `sharing` stand-in, whose harness moves it.
+- **Open gaps.** `console-app dev` does not render pack components; the gallery
+  and `CP-5` are pull request C; delivery as a `component-pack` bundle is story
+  9 (`tinkaton`, `corviknight`, `regigigas`). The racing app/configuration
+  publish gap of design-system configuration applies to packs too.
 
 ## Kit maintenance
 
