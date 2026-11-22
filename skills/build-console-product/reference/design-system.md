@@ -764,8 +764,9 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
   cannot run is left out of the pointers and logged, never a `500`.
 - **Two-stand-in tests.** `test/component-pack-install.test.ts` (API, CP-1,
   CP-2, CP-3, CP-6 and the refusals) and `e2e/component-packs.packs.spec.ts`
-  in the serial `packs` Playwright project on stand-ins 4180 (A, pack active)
-  and 4181 (B, never). The stand-in sends generated paths to the handler
+  in the serial `packs` Playwright project on stand-ins 4191 (A, pack active)
+  and 4192 (B, never; 4180 and 4181 are `console-app dev` in
+  `app-kit.spec.ts`). The stand-in sends generated paths to the handler
   (`generatedByApi` in `e2e/support/installed-console.ts`), except the base
   pointer on the `sharing` stand-in, whose harness moves it.
 - **Open gaps.** `console-app dev` does not render pack components; the gallery
