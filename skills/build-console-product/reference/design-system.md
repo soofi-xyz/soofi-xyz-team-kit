@@ -30,7 +30,7 @@ checking a pack, and apps built against packs, are on
 (runtime 1.29.0, on `main`); pack install, activation through the
 design-system configuration and the generated pointers are on
 [Console pull request 49](https://github.com/prismteam-ai/console/pull/49)
-(runtime 1.30.0), both by
+(runtime 1.30.0, on `main`), both by
 [their implementation rules](#component-packs-implementation-rules); the pack
 gallery (pull request C) is not built and takes the next free runtime version. Discover the target revision before relying
 on any part, and settle names marked as placeholders in the Console repository.
