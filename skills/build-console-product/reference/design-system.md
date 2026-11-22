@@ -616,11 +616,9 @@ section. Keep these rules when changing it.
 - **Open gaps.** Record these before relying on the piece:
   - Per-component allowed variants and defaults, which the contract names, are
     not modelled; variants are closed types today.
-  - An app publish and a configuration publish racing in one account can both
-    commit: each checks the other's committed state, but no shared condition
-    guards the two transactions. Closing it needs a guard in both repository
-    publish transactions (the design-system selection's etag in the app
-    publish, or a per-account fence both bump).
+  - Closed in 1.30.0: an app publish and a configuration publish racing in
+    one account can no longer both commit (see the component packs rules'
+    publish guard).
   - Build's `console` `design-system` kind is on prismteam-ai/build#70 and
     Deploy's adapter on prismteam-ai/deploy#94 (neither merged), so do not set
     `ConfigurationProvenance` `Enabled` where a configuration is installed, and
@@ -757,10 +755,12 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
   with the digest as `ETag`; without packs the base pointer equals the stack's
   byte for byte. Builds are served immutable at
   `packs/<pack>/<version>/<digest hex>/<file>`, re-verified every read. In
-  gateway mode API Gateway routes `/app/packs/{proxy+}` and
-  `/app/ui/{major}/index.js` to the API function; both are in
-  `marketplace.shared-api.json` `public_routes` with cdk-nag suppressions. The
-  other `ui/` files still come from the bucket. An active pack a later runtime
+  gateway mode API Gateway routes `/app/packs/{proxy+}` and the runtime's own
+  `/app/ui/v<major>/index.js` (a literal major) to the API function, and passes
+  `/app/ui/{proxy+}` and `/app/ui/v<major>/{proxy+}` to the distribution:
+  API Gateway does not fall back from a resource to a sibling `{proxy+}`, so
+  without them `mount.js` and other majors' pointers would answer `403`. All are
+  in `marketplace.shared-api.json` `public_routes` with cdk-nag suppressions. An active pack a later runtime
   cannot run is left out of the pointers and logged, never a `500`.
 - **Two-stand-in tests.** `test/component-pack-install.test.ts` (API, CP-1,
   CP-2, CP-3, CP-6 and the refusals) and `e2e/component-packs.packs.spec.ts`
@@ -771,8 +771,14 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
   pointer on the `sharing` stand-in, whose harness moves it.
 - **Open gaps.** `console-app dev` does not render pack components; the gallery
   and `CP-5` are pull request C; delivery as a `component-pack` bundle is story
-  9 (`tinkaton`, `corviknight`, `regigigas`). The racing app/configuration
-  publish gap of design-system configuration applies to packs too.
+  9 (`tinkaton`, `corviknight`, `regigigas`).
+- **Publish guard (1.30.0).** An app publish and a configuration publish cannot
+  both succeed when one changes the other's input. An app publish commits only
+  while the design-system selection it read is unchanged and adds one to the
+  account's `APP_PUBLICATIONS` item without a condition; a configuration publish
+  or rollback commits only while that count is the one it read before checking
+  the published apps. The loser is `412`. Keep both guards in
+  `publishAppSelection` and `publishDesignSystemSelection`.
 
 ## Kit maintenance
 
