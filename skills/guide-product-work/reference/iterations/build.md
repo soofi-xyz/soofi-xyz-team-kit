@@ -50,8 +50,11 @@ feature evidence does not establish shared-provider support.
 
 `console-source-bundles`, build and check Console apps and component packs: the
 `design-system` and `app` kinds are on [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70) (not merged, not deployed, 2026-11-21) as
-`CONFIGURATION` kinds; `component-pack` and publishing the app kit into Build's registry
-are not built. It depends on source validation, assembly, provenance and Console's app
+`CONFIGURATION` kinds; the role Console's CI assumes to publish the app kit is on
+[prismteam-ai/build#71](https://github.com/prismteam-ai/build/pull/71) (stacked on #70,
+not merged) with Console's publish job on
+[prismteam-ai/console#44](https://github.com/prismteam-ai/console/pull/44);
+`component-pack` and publishing each pack's types package are not built. It depends on source validation, assembly, provenance and Console's app
 kit. Deliver the `console` kinds from
 [the Console app, component-pack and design-system payloads](../../../build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads):
 a build step in the isolated runner with the app kit's check as a publish gate, output

@@ -108,11 +108,25 @@ Marketplace and Deploy's Puller need no new bundle type. Keep these rules:
   pinned kit) and that `dist/` holds exactly the files it lists, UTF-8 and matching
   their digests. Pack only `dist/` (Console's `{ buildRecord, files }` upload body) and
   record `app.kit_version`, `app.kit_integrity` and `app.build` in the build manifest.
-  Comparing `kit_integrity` with the published release is open until the registry
-  publishing decision.
+- **Bind the kit to the published release** (`src/runner/kit-registry.ts`, before
+  install). Require the pinned version in Build's registry with origin `INTERNAL`,
+  status `Published` and exactly one tarball whose SHA-512 equals the lockfile's
+  integrity; fail closed when no registry is configured. Grant the runner only
+  `DescribePackageVersion` and `ListPackageVersionAssets` on the kit package.
 - **Registry.** The CodeArtifact package group `/npm/prism/*` blocks the public npm
-  upstream for `@prism` packages. Who may publish the kit into `build-<stage>` is
-  undecided; until it is published there an app build fails at install.
+  upstream for `@prism` packages. Resource policies on both repositories deny
+  `PublishPackageVersion` on `npm/prism/*` to everyone but `privatePackagePublishers`
+  and deny `CopyPackageVersions`. Until the kit is published an app build fails
+  before install.
+- **Publisher** (`lib/console-kit-publisher.ts`, `-c consoleKitPublisher=true`).
+  `Build-<stage>-ConsoleKitPublisher` trusts only the account's existing GitHub OIDC
+  provider with `aud` `sts.amazonaws.com` and `sub`
+  `repo:prismteam-ai/console:ref:refs/heads/main`. Reference the provider, never create
+  it: IAM allows one per issuer per account and other products share it. Grant publish
+  and read on `npm/prism/*` only, never delete, dispose, copy or status changes, and
+  leave it out of the Marketplace pack. Before the first publish, audit retained
+  `@prism/*` versions in both repositories and dispose of any whose origin cannot be
+  confirmed.
 - **Tests.** Add a fake-kit case for each new way a source could resolve the kit, and
   run the real path against a stand-in registry (Verdaccio), never AWS.
 

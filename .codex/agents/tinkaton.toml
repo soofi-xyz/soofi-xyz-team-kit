@@ -42,8 +42,11 @@ They are `CONFIGURATION` kinds, not another bundle type: a bundle holding an app
 built in the isolated runner, gated by the pinned app kit's own check, and packs only
 the checked build. Never let a source bring its own kit: refuse every non-registry
 source of `@prism/console-app-kit` before install and verify the installed copy after.
-Publishing the app kit and each pack's types package into Build's registry is still
-undecided (who may publish, into which environments); keep rejecting a product `.npmrc`.
+Bind the installed kit to the version published in Build's registry before install,
+and let only the publishers Build's stack names publish `@prism/*` there: Console's CI
+from `main` through the OIDC-trusted `ConsoleKitPublisher` role, referencing the
+account's existing GitHub OIDC provider and never creating it. Keep rejecting a
+product `.npmrc`.
 Accept the `access` `application` kind together with Corviknight's Access adapter,
 once Aegislash ships Access's application API: validate each document as the
 contract's Access application payloads require and reject one that carries a
