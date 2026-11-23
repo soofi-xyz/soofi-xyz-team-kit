@@ -122,6 +122,19 @@ leaves out because it never occurs).
 - Commit, then run `npm run check:metrics-catalog` and `npm run test:run` (the
   release builder needs a clean tree).
 
+### `voice_mail` family notes
+
+- Family path: `debt_has_voice_mail` → `voice_mail` → `voice_mail_status_changed`
+  (`EACH_EVENT` / `STATUS_EVENT_KEY`), GLOBAL like `text_message`.
+- Filter VoApps codes on
+  `voice_mail_status_changed.provider_result_code eq <N>` (status-edge
+  `EventProperty`), not via an `error` `item_links` path (that is SMS/Quiq).
+- `where` supports only `eq`, `not_in`, `present` — no `in`, no OR. For
+  undeliverable volume use restricted + four FAILED code defs (401–404); do not
+  encode the set with `not_in` over other FAILED codes.
+- No Athena export table for `voice_mail`; Persist backfill must stay
+  Neptune/`DEFINITION`-planned. Do not ask Conkeldurr for an Athena binding.
+
 ## Open the Lexicon pull request only when at least one is buildable
 
 When no metric is buildable and approved, open no pull request; return the lists.
