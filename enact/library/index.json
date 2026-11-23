@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.185.0",
+  "kit_version": "0.186.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -235,17 +235,17 @@
       "version": "1.0.0-sha256-ee91d9fd03681778"
     },
     "build-console-product": {
-      "bytes": 157882,
-      "digest": "sha256:0f89d7390ad58081927eb2d85f281bcd6a674ac7a465797892e12b606c34f23e",
-      "encoded_bytes": 163912,
+      "bytes": 162456,
+      "digest": "sha256:7bb6f62bc91b49c0e39e1888e95b716578366233ad3ba11c686f158adc00c2f2",
+      "encoded_bytes": 168682,
       "files": 6,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 161077,
+      "stored_bytes": 165738,
       "used_by": [
         "chandelure",
         "vivillon"
       ],
-      "version": "1.0.0-sha256-151c1011a994d4a0"
+      "version": "1.0.0-sha256-76744944ab6ca201"
     },
     "build-documentation-product": {
       "bytes": 24372,
@@ -638,17 +638,17 @@
       "version": "1.0.0-sha256-9b419ff3c4c0d09d"
     },
     "configure-console-product": {
-      "bytes": 11471,
-      "digest": "sha256:ceb60d8543e0870132cc3d04760cbd6501c7357ef6b44a58559ae0f56f58ea60",
-      "encoded_bytes": 12262,
+      "bytes": 11819,
+      "digest": "sha256:4042c39286f51fa5f1e93d4c479aa8e843fd98888035fa262e7907179447fe35",
+      "encoded_bytes": 12618,
       "files": 1,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 12049,
+      "stored_bytes": 12401,
       "used_by": [
         "chandelure",
         "vivillon"
       ],
-      "version": "1.0.0-sha256-7bb1caf22ad2190a"
+      "version": "1.0.0-sha256-78f0db95a3b6ba69"
     },
     "configure-deploy-product": {
       "bytes": 8757,
@@ -865,12 +865,12 @@
       "version": "1.0.0-sha256-2bf41e6b17c43a95"
     },
     "guide-product-work": {
-      "bytes": 283192,
-      "digest": "sha256:f1eb65f07f0b70b686f1df69a96986704832e834c4cf2d10ca1767746c4e7b87",
-      "encoded_bytes": 299003,
+      "bytes": 283623,
+      "digest": "sha256:9b487b53b22ca94df06873d1ee2222eb45c990cf37bcc87be310656e62ed03b8",
+      "encoded_bytes": 299434,
       "files": 25,
       "reason": "used by 41 packaged agents",
-      "stored_bytes": 290327,
+      "stored_bytes": 290758,
       "used_by": [
         "aegislash",
         "arceus",
@@ -914,7 +914,7 @@
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-e08a27021d6efaad"
+      "version": "1.0.0-sha256-6be94627afafacc3"
     },
     "integrate-ci-cd": {
       "bytes": 6805,

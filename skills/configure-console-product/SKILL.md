@@ -155,7 +155,11 @@ describes. Never ask the person for Figma access or a token.
    your own dev/test stack: verify the immutable digest and read back the active
    revision.
 4. Ask `doublade` to register the app's roles in Access, invite users and assign
-   them. Verify route, data and action authorization server-side.
+   them: from runtime 1.26.0 a role named as the app's settings `roles`, with
+   `use` shared on `console/app/<appId>` once the app is first published, and
+   roles granting the INTERIM `console:scope:<scope>` stand-ins its bindings and
+   actions need ([setup](../build-console-product/reference/google-sign-in.md#access-sign-in-implementation-rules)).
+   Verify route, data and action authorization server-side.
 5. Give the user one copyable invocation, the expected result and at most three
    steps to open the hosted app or dashboard, read back the selected digest and
    see it refuse a person without the role. Have them return redacted IDs and

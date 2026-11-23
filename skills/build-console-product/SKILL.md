@@ -38,9 +38,10 @@ the repository, with runtime sharing (runtime 1.16.0, pull request 34) and
 app hosting (runtime 1.17.0 for the API, pull request 35; 1.18.0 for the
 shell, pull request 36), data hooks (runtime 1.19.0, pull request 37) and
 design-system configuration (runtime 1.20.0, pull request 38); as of
-2026-11-21 the renderer reskin's first step (runtime 1.21.0) is on pull request
-39 and the first step of Access sign-in (runtime 1.22.0) is on pull request 40,
-neither merged yet, with the open gaps their implementation rules
+2026-11-21 the renderer reskin's first step (runtime 1.21.0, pull request 39)
+is on main, and Access sign-in (runtime 1.22.0, pull request 40) with
+authorization from Access roles (runtime 1.26.0, pull request 43) is on main
+as of 2026-11-22, with the open gaps their implementation rules
 ([renderer](reference/design-system.md#renderer-reskin-implementation-rules),
 [sign-in](reference/google-sign-in.md#access-sign-in-implementation-rules))
 list; everything else here is a requirement. An app can be uploaded, published,
