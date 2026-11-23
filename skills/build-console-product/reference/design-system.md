@@ -32,7 +32,9 @@ design-system configuration and the generated pointers are on
 [Console pull request 49](https://github.com/prismteam-ai/console/pull/49)
 (runtime 1.30.0, on `main`), both by
 [their implementation rules](#component-packs-implementation-rules); the pack
-gallery (pull request C) is not built and takes the next free runtime version. Discover the target revision before relying
+gallery and `CP-5` are on
+[Console pull request 52](https://github.com/prismteam-ai/console/pull/52)
+(runtime 1.33.0, on `main`, verified on soofi-safavi 2026-11-23). Discover the target revision before relying
 on any part, and settle names marked as placeholders in the Console repository.
 
 Read it with [the product contract](PRD.md) and [the app kit](app-kit.md).
