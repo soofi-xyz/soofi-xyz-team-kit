@@ -11,7 +11,7 @@
     },
     {
       "name": "build-console-product",
-      "version": "1.0.0-sha256-56cbb80d734b9a56"
+      "version": "1.0.0-sha256-70046b0de7814c83"
     },
     {
       "name": "build-marketplace-puller",
@@ -35,7 +35,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-47484d8df686c689"
+      "version": "1.0.0-sha256-1b504c93da8f5fad"
     },
     {
       "name": "operate-marketplace",
@@ -59,5 +59,5 @@
   "tools": [
     "figma"
   ],
-  "version": "1.189.1"
+  "version": "1.190.0"
 }
