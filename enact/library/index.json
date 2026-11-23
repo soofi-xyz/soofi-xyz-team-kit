@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.189.0",
+  "kit_version": "0.189.1",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -716,17 +716,17 @@
       "version": "1.0.0-sha256-6920d4384cc643db"
     },
     "configure-enact-product": {
-      "bytes": 11545,
-      "digest": "sha256:90279b774d064facac9e03e425668c122870fb8e63d8e50240ff7f297a25826b",
-      "encoded_bytes": 12492,
+      "bytes": 13509,
+      "digest": "sha256:b171f6f5e83441a22916ae3ee79dc5eec13d93f5b7c83c12a18d1304d9fa0f3b",
+      "encoded_bytes": 14510,
       "files": 1,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 12199,
+      "stored_bytes": 14189,
       "used_by": [
         "zoroark",
         "zorua"
       ],
-      "version": "1.0.0-sha256-8581dd5747849054"
+      "version": "1.0.0-sha256-9fd5d32dac25a11a"
     },
     "configure-environment-product": {
       "bytes": 6045,
@@ -865,12 +865,12 @@
       "version": "1.0.0-sha256-2bf41e6b17c43a95"
     },
     "guide-product-work": {
-      "bytes": 286097,
-      "digest": "sha256:83a981c790e3ec0b480596ea57aeea5b0a1f3484461b14b17a4dd931699ebdf5",
-      "encoded_bytes": 301916,
+      "bytes": 287869,
+      "digest": "sha256:db83986276ee4cf91cca90f3390ce2de67e03f6d947eecb0cdbe2cd123e5e4ae",
+      "encoded_bytes": 303688,
       "files": 25,
       "reason": "used by 41 packaged agents",
-      "stored_bytes": 293236,
+      "stored_bytes": 295008,
       "used_by": [
         "aegislash",
         "arceus",
@@ -914,7 +914,7 @@
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-d06994252aa945d0"
+      "version": "1.0.0-sha256-47484d8df686c689"
     },
     "integrate-ci-cd": {
       "bytes": 6805,
