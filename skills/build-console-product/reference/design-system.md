@@ -256,6 +256,14 @@ delivered set of components installed per environment.
   gallery entry for every component and the same accessibility bar. A pack
   ships no CSS: it styles only through token variables, and its check fails a
   CSS file or a `className`.
+- **Gallery entries.** A pack's `src/gallery.tsx` maps each of its components to
+  labelled examples; the pack's check fails a component without entries and a
+  replacement without an entry for each of the base component's variants. The
+  build's gallery module is served immutable beside its entry; no pointer names it
+  and no app may import it. Console's gallery reads the environment's active packs
+  through a signed-in, read-only route and draws each pack's sections in a React
+  root of their own, on the React the pack imports, so the base sections and their
+  baselines do not change.
 - **Gallery baselines.** Pack components' gallery screenshots are compared on
   Linux only; commit no macOS baselines for them.
 - **Component manifest.** Each pack build lists its components, their props,
@@ -450,13 +458,16 @@ checked by a test or a type check.
   spacing and text transform on their own descendants, so they look the same
   inside an application page as in the gallery.
 - **Session.** Mount the gallery after `App`'s session check, never as a separate
-  public HTML entry, so `CS-1` holds even though it reads no data.
+  public HTML entry, so `CS-1` holds even though it reads no data. Pack sections
+  (1.33.0) mount there too, after the base sections, only for a signed-in session;
+  see the [component packs rules](#component-packs-implementation-rules).
 - **Tests.** DS checks live in `e2e/design-system.spec.ts` (fixtures project) and
   `test/design-system.test.ts`, named by ID. Drive keyboard checks with keys
   that behave the same on macOS and Linux: ArrowRight (not End) to collapse a
   text selection, type-ahead (not ArrowDown) on a native select.
 - **Baselines.** Screenshots are per platform in
-  `e2e/design-system.spec.ts-snapshots/`. After an intended visual change,
+  `e2e/design-system.spec.ts-snapshots/`; pack sections' (`CP-5`) are Linux-only
+  in `e2e/component-packs.packs.spec.ts-snapshots/`. After an intended visual change,
   refresh `*-darwin.png` locally with `--update-snapshots` and `*-linux.png` from
   the **Design-system baselines** workflow artifact, and commit both. Never
   loosen a comparison threshold to make a baseline pass.
@@ -683,11 +694,11 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
 `main`). Keep them when changing how packs are built or how apps use them.
 
 - **Three pull requests.** A (1.29.0) builds and checks packs and builds apps
-  against them. B adds pack storage, the install, read-back and rollback
+  against them. B (1.30.0) adds pack storage, the install, read-back and rollback
   routes behind the provenance gate, the per-request pointers and activation
-  through `packs.<name>.version` (`CP-1`, `CP-2`, `CP-3`, `CP-6`). C adds the
-  pack gallery and `CP-5`. B and C take the next free runtime version on
-  `main`. A ships no pointer or route.
+  through `packs.<name>.version` (`CP-1`, `CP-2`, `CP-3`, `CP-6`). C (1.33.0,
+  [Console pull request 52](https://github.com/prismteam-ai/console/pull/52))
+  adds the pack gallery and `CP-5`. A ships no pointer or route.
 - **The pack tool is the app kit's.** `console-app pack check [--json]` and
   `pack build` (`app-kit/src/pack.ts`, `pack-rules.ts`) read `console-pack.json`
   (`pack`, `version`, `designSystem` range, `adds`, `replaces`), type-check
@@ -726,8 +737,71 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
   `Badge`) and `app-kit/fixtures/pack-app`; derive the 1.1.0 variant and
   `bad-pack` in `test/support/app-kit.ts`. Tests are in
   `test/component-packs.test.ts`; DC-3 uses the kit-built `pack-app`.
+- **Gallery entries (1.33.0, `gallery-entry`).** A pack ships `src/gallery.tsx`
+  exporting `gallery`, an object literal keyed by component whose values are
+  arrays of `{ label, render }` literals. `pack check` fails, as `gallery-entry`,
+  a missing module, a gallery that is not such a literal, a key that is not an
+  exported component, a label that is not a non-empty string literal or repeats
+  within its component, a component without entries and a replacement without an
+  entry labelled with each string literal of the base component's `variant` prop
+  (read from the kit's types). It builds the module as a second entry,
+  `dist/gallery.js` (a component both entries use is one shared chunk, so the
+  gallery draws exactly what apps load), records `gallery: { module, entries:
+  [{ component, labels }] }` in `pack-record.json` and leaves it out of the
+  types package. Console's record schema takes `gallery` as optional, so records
+  from earlier kits still read, and refuses one whose module is the entry or not
+  among the files. `sample-pack` and its 1.1.0 variant have entries; derive
+  `gallery-gap-pack` (fails with exactly `gallery-entry`) in
+  `test/support/app-kit.ts`, and give every derived pack that changes a
+  component's props or exports a matching gallery edit.
+- **Gallery kept from apps.** No pointer names `gallery.js` (the pack pointer
+  serves `index.js` only, a `404` otherwise); an app version importing it, by
+  build path or pointer path, is `422` `foreign_import`; the kit refuses an app
+  import of anything of `@prism/console-pack-<pack>` but its entry
+  (`foreign-dependency`).
+- **Viewer packs route (1.33.0).** `GET /viewer/accounts/{accountId}/design-system/packs`
+  (`PackService.galleryPacks`, `console:read`, a session only): each pack the
+  active configuration activates and this runtime runs, sorted by pack, with
+  `version`, `versionDigest`, `components` (`name`, `replaces`), `entries` and
+  `gallery`, the build's immutable `/console/app/packs/<pack>/<version>/<digest
+  hex>/gallery.js` (absent for an earlier kit's build); `{ "packs": [] }` when none
+  is active; `private, no-store`; `401` without a session, `403` for another
+  account. Every other `/viewer/.../design-system` route stays `403`. The
+  existing `GET /viewer/{proxy+}` resource, `public_routes` entry and cdk-nag
+  suppression cover it; add it to `requirements/swagger.yml` (`GalleryPacks`) and
+  `scripts/verify-openapi.ts`.
+- **Separate React roots (1.33.0).** The gallery mounts after the session check
+  and, with a signed-in context, renders `PackGalleries`
+  (`ui/src/design-system-gallery-packs.tsx`) after the base sections: per pack an
+  empty `data-ds-pack-root` element, into which it imports the page pointer's
+  `mount.js` (its own runtime version's major) and the pack's `gallery.js` and
+  calls `mountPackGallery(pack, entries, module, element)`. That function lives in
+  `ui/src/app-runtime/mount.tsx`, so it renders on the runtime's React, the React
+  the pack imports; it draws one section per component headed `<pack>/<Component>`
+  (`data-ds-pack-gallery`, unique against the base sections' `data-ds-gallery`,
+  whose count `expectGalleryReady` checks), one `data-ds-variant` sample per label
+  in the record's order, each in its own error boundary, and a stop line when the
+  module does not hold the record's labels. The base sections stay on the
+  renderer's React and the fixtures project loads no pack, so the DS-1 baselines
+  do not change.
+- **`CP-5` (1.33.0).** In `e2e/component-packs.packs.spec.ts` on stand-in A,
+  signed in through `/console/viewer/auth/google/start?return=/console/app/?gallery`:
+  DS-1 at phone, tablet and desktop checks every entry of the pack record and
+  compares each `sample-pack` section with
+  `e2e/component-packs.packs.spec.ts-snapshots/cp-5-sample-pack-<component>-<width>-packs-linux.png`,
+  skipping the comparison (not the checks before it) off Linux; DS-2 walks each
+  pack section with `expectSectionKeyboardWalk` (Sparkline and the replacement
+  Badge take no input, so the walk asserts zero stops and that Tab passes
+  through) and scans the gallery with axe under both token sets. The Design-system
+  baselines workflow runs `pnpm app-kit:build` and `--project packs --grep CP-5
+  --update-snapshots` after DS-1 and RS-3 and uploads the pack snapshots with
+  theirs.
 - **Gallery.** Pack gallery screenshots run on Linux only; the baselines
   workflow regenerates them, and no macOS baselines are committed for them.
+- **Rolling back past 1.33.0.** 1.32.0's strict record schema has no `gallery`:
+  it refuses a pack built with kit 1.33.0 and cannot read one already installed.
+  Before rolling Console back, publish a configuration that activates no such
+  pack version.
 - **Install (1.30.0).** `POST /accounts/{accountId}/packs/{pack}/versions`
   (`console:configure`, `Idempotency-Key`, provenance kind `packVersion`) takes
   `{ packRecord, files[{ path, contentBase64 }] }` from the pack's `dist/`,
@@ -769,9 +843,11 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
   `app-kit.spec.ts`). The stand-in sends generated paths to the handler
   (`generatedByApi` in `e2e/support/installed-console.ts`), except the base
   pointer on the `sharing` stand-in, whose harness moves it.
-- **Open gaps.** `console-app dev` does not render pack components; the gallery
-  and `CP-5` are pull request C; delivery as a `component-pack` bundle is story
-  9 (`tinkaton`, `corviknight`, `regigigas`).
+- **Open gaps.** `console-app dev` does not render pack components; delivery as
+  a `component-pack` bundle is story 9 (`tinkaton`, `corviknight`, `regigigas`);
+  `CP-7` needs an agent run on Enact. A pack installed before 1.33.0 shows in the
+  gallery as having no gallery module until a version built with kit 1.33.0 is
+  installed and activated.
 - **Publish guard (1.30.0).** An app publish and a configuration publish cannot
   both succeed when one changes the other's input. An app publish commits only
   while the design-system selection it read is unchanged and adds one to the
