@@ -77,9 +77,10 @@ product accepts but Build refuses is a defect.
 
 ## Console apps and design-system configuration
 
-`console` `design-system` and `app` are `CONFIGURATION` kinds (prismteam-ai/build#70,
-`configuration-bundle-check.v5`, `assembly-runner.v10`); keep them that way so
-Marketplace and Deploy's Puller need no new bundle type. Keep these rules:
+`console` `design-system` and `app` (prismteam-ai/build#70) and `component-pack`
+(prismteam-ai/build#76) are `CONFIGURATION` kinds (`configuration-bundle-check.v6`,
+`assembly-runner.v11`); keep them that way so Marketplace and Deploy's Puller need no
+new bundle type. Keep these rules:
 
 - **`design-system`.** One JSON file checked against Console's closed
   `DesignSystemConfiguration` (`src/configuration/console-design-system.ts`) after
@@ -108,6 +109,29 @@ Marketplace and Deploy's Puller need no new bundle type. Keep these rules:
   pinned kit) and that `dist/` holds exactly the files it lists, UTF-8 and matching
   their digests. Pack only `dist/` (Console's `{ buildRecord, files }` upload body) and
   record `app.kit_version`, `app.kit_integrity` and `app.build` in the build manifest.
+- **`component-pack`** (`src/configuration/console-pack.ts`, `console-app.ts`,
+  `src/runner/run-configuration.ts`). A directory with `console-pack.json` (`pack`
+  matching Console's `AppIdentifier`, an exact `version`), `package.json` and
+  `pnpm-lock.yaml`, routed to the runner like an app and under the same kit gate,
+  registry binding, install and installed-kit check (the pack tool is in kit 1.29.0 and
+  later). Also refuse a committed `package/`, where the check writes the types package,
+  and any `{{parameter:…}}` or `{{secret:…}}`. Named by `pack`, versioned by `version`.
+  Gate with `console-app pack check --json` only: it is the gate and the build, writing
+  `dist/` and `dist/pack-record.json` only when every rule passes. Never run
+  `pack build`: with the real kit it empties `dist/`, deletes `pack-record.json` and
+  applies no rules. A failing pack fails at `BUILDING` with `ConfigurationBundleInvalid`
+  naming each rule, file and line, and stages nothing (`AD-7`). Check
+  `dist/pack-record.json` against Build's copy of Console's closed pack-record schema
+  (`gallery` optional, for kits before 1.33.0) and against this pack, its `version`, the
+  pinned kit and the types package `@prism/console-pack-<pack>` at that version; require
+  `index.js`, only flat `.js` files Console hosts (at most 50) and `dist/` holding exactly
+  the listed files, UTF-8, digest and size matching. The artifact is
+  `dist/pack-record.json` plus exactly those files, Console's `installPackVersion` body
+  `{ packRecord, files: [{ path, contentBase64 }] }`; record `version`,
+  `pack.kit_version`, `pack.kit_integrity` and `pack.build`. When Console's pack-record
+  schema changes, change Build's copy with it. Publishing the types package is
+  Console's CI (`published-packs.json`, prismteam-ai/console#53) and installing is
+  Deploy's.
 - **Bind the kit to the published release** (`src/runner/kit-registry.ts`, before
   install). Require the pinned version in Build's registry with origin `INTERNAL`,
   status `Published` and exactly one tarball whose SHA-512 equals the lockfile's
@@ -121,7 +145,17 @@ Marketplace and Deploy's Puller need no new bundle type. Keep these rules:
 - **Publisher** (`lib/console-kit-publisher.ts`, `-c consoleKitPublisher=true`).
   `Build-<stage>-ConsoleKitPublisher` trusts only the account's existing GitHub OIDC
   provider with `aud` `sts.amazonaws.com` and `sub`
-  `repo:prismteam-ai/console:ref:refs/heads/main`. Reference the provider, never create
+  `repo:prismteam-ai@275408031/console@1408014148:ref:refs/heads/main`
+  (prismteam-ai/build#74). prismteam-ai repositories use GitHub's immutable subject
+  (owner and repository ids); a role trusting `repo:prismteam-ai/console:…` refuses
+  Console's CI at `AssumeRoleWithWebIdentity`. Read a repository's subject form (its
+  OIDC customization's `use_immutable_subject`) before writing any trust policy. A Build
+  installed through Deploy creates no such role: its registry policies exempt
+  `<BuildWorkflow stack>-ConsoleKitPublisher` by name, and an administrator deploys the
+  `BuildConsoleKitPublisher` stack (`bin/console-kit-publisher.ts`, prismteam-ai/build#73)
+  where Console publishes. In prism-marketplace (848665034107) that role is
+  `BuildWorkflow-ConsoleKitPublisher`, and Console's CI uses it for the app kit and each
+  listed pack's types package. Reference the provider, never create
   it: IAM allows one per issuer per account and other products share it. Grant publish
   and read on `npm/prism/*` only, never delete, dispose, copy or status changes, and
   leave it out of the Marketplace pack. Before the first publish, audit retained

@@ -228,7 +228,9 @@ delivered set of components installed per environment.
   `console-pack.json` and is built and checked by the app kit's
   `console-app pack check|build`. Build builds and checks it, Marketplace
   reviews and publishes it and Deploy installs it through Console's API, as a
-  `console` `component-pack` bundle (a target kind). Console stores the build
+  `console` `component-pack` bundle (Build's kind in prismteam-ai/build#76, Deploy's
+  adapter in prismteam-ai/deploy#95, both on `main`; not yet verified on a deployed
+  environment). Console stores the build
   at an immutable path and activates it by pointer. Pack code is reviewed
   JavaScript on the shared domain, like an app.
 - **Activation.** The design-system configuration's `packs.<name>.version`
@@ -630,10 +632,13 @@ section. Keep these rules when changing it.
   - Closed in 1.30.0: an app publish and a configuration publish racing in
     one account can no longer both commit (see the component packs rules'
     publish guard).
-  - Build's `console` `design-system` kind is on prismteam-ai/build#70 and
-    Deploy's adapter on prismteam-ai/deploy#94 (neither merged), so do not set
-    `ConfigurationProvenance` `Enabled` where a configuration is installed, and
-    do not install one by hand in a shared environment.
+  - Build's `console` `design-system` kind (prismteam-ai/build#70) and Deploy's
+    adapter (prismteam-ai/deploy#94) are on `main`, and `AD-4` installed a
+    configuration through them on soofi-safavi (2026-11-23). Install a
+    configuration through them; do not install one by hand in a shared
+    environment. Do not set `ConfigurationProvenance` `Enabled` where a
+    configuration is installed until you have confirmed that environment's
+    installed Deploy signs its Console writes.
 
 ## Renderer reskin implementation rules
 
@@ -707,7 +712,9 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
   (components, props, what each replaces, the least design system and pointer,
   imports and file digests) and the types package `@prism/console-pack-<pack>`
   in `package/`. A failing pack leaves no build. Build's `component-pack` kind
-  (story 9) runs this check as its gate and packs `dist/`.
+  (prismteam-ai/build#76) runs `pack check --json` as its gate and packs `dist/`; it
+  never runs `pack build`, which with the real kit empties `dist/` and deletes the
+  pack record.
 - **Pack rules.** `css-file` and `class-name` (no CSS), `off-scale-value` (a
   hex or color function, a length with a unit or a bare number in `style`; use
   `var(--ds-*)`; a pack's own constant named in a style is checked for the
@@ -844,7 +851,12 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
   (`generatedByApi` in `e2e/support/installed-console.ts`), except the base
   pointer on the `sharing` stand-in, whose harness moves it.
 - **Open gaps.** `console-app dev` does not render pack components; delivery as
-  a `component-pack` bundle is story 9 (`tinkaton`, `corviknight`, `regigigas`);
+  a `component-pack` bundle is on Build's and Deploy's `main`
+  (prismteam-ai/build#76, prismteam-ai/deploy#95) and Console's CI publishes each
+  pack `published-packs.json` lists as `@prism/console-pack-<pack>`
+  (prismteam-ai/console#53), but none of it is verified on a deployed environment
+  (`CP-1`, `CP-2`, `CP-3` and `CP-6` again through delivery, and `AD-7`); Deploy
+  does not order an app after a pack it uses;
   `CP-7` needs an agent run on Enact. A pack installed before 1.33.0 shows in the
   gallery as having no gallery module until a version built with kit 1.33.0 is
   installed and activated.

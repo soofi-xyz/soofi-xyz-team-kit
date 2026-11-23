@@ -209,14 +209,19 @@ Paths below are relative to `/console`.
 
 ## Console app, component-pack and design-system payloads
 
-As of 2026-11-21 Build's `design-system` and `app` kinds are on [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70) (not
-merged); Deploy's `app` and `design-system` adapters are on
-[prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94) (not merged);
-the role that publishes the app kit into Build's registry is on
-[prismteam-ai/build#71](https://github.com/prismteam-ai/build/pull/71) and Console's
-publish job on [prismteam-ai/console#44](https://github.com/prismteam-ai/console/pull/44)
-(neither merged); `component-pack` is not built. Console has the app routes (runtime 1.17.0) and the
-design-system configuration routes (1.20.0). All three are `CONFIGURATION` kinds, not
+As of 2026-11-23 all three kinds are on Build's and Deploy's `main`: `design-system` and
+`app` in [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70) and
+[prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94),
+`component-pack` in [prismteam-ai/build#76](https://github.com/prismteam-ai/build/pull/76)
+and [prismteam-ai/deploy#95](https://github.com/prismteam-ai/deploy/pull/95). The role that
+publishes into Build's registry ([build#71](https://github.com/prismteam-ai/build/pull/71),
+[#73](https://github.com/prismteam-ai/build/pull/73),
+[#74](https://github.com/prismteam-ai/build/pull/74)) and Console's publish jobs for the app
+kit ([console#44](https://github.com/prismteam-ai/console/pull/44)) and pack types packages
+([console#53](https://github.com/prismteam-ai/console/pull/53)) are merged. `app` and
+`design-system` passed `AD-1` to `AD-5` on soofi-safavi; `component-pack` is not yet
+verified on a deployed environment. Console has the app routes (runtime 1.17.0), the
+design-system configuration routes (1.20.0) and pack install (1.30.0). All three are `CONFIGURATION` kinds, not
 another bundle type: the artifact stays a `CONFIGURATION_BUNDLE`. Follow Console's
 `requirements/swagger.yml` for the routes. Console's side is in
 [the design system contract](../../build-console-product/reference/design-system.md)
@@ -226,7 +231,7 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
 | --- | --- | --- | --- |
 | `design-system` | One design-system configuration JSON document: tokens, switched-on components, per-component allowed variants and defaults, active pack versions and the theme choices apps may make | Validates and hashes it without calling Console; runs no code | Submits it as an immutable revision, publishes it and reads it back |
 | `app` | An app's source, written against the app kit | Installs, runs the app kit's check, builds and verifies the output | Uploads the built files, publishes the version and reads it back |
-| `component-pack` | A component pack's source | Installs, runs the pack's check, builds and verifies the output | Uploads the built files, activates the pack version and reads it back |
+| `component-pack` | A component pack's source (`console-pack.json`, `package.json`, `pnpm-lock.yaml`) | Installs, runs `console-app pack check --json` (never `pack build`), verifies the pack record and output | Installs the immutable pack version and reads it back; activation is the `design-system` entry's `packs.<pack>.version` |
 
 - **Build step and gate:** a bundle holding an `app` (or `component-pack`) goes
   to the isolated runner, which installs it and runs the pinned app kit's check as
@@ -234,7 +239,12 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   Build refuses any source of the kit other than Build's registry at an exact
   version (`pnpm-lock.yaml` required; it names no registry). Keep the runner's
   rules: Build-owned commands only, no lifecycle scripts, no product `.npmrc` and
-  no network beyond Build's package registry.
+  no network beyond Build's package registry. A pack's gate is
+  `console-app pack check --json` alone, which also writes `dist/`: never run
+  `pack build`, which with the real kit empties `dist/`, deletes
+  `pack-record.json` and applies no rules. A failing pack fails at `BUILDING` with
+  `ConfigurationBundleInvalid` naming the rule and stages nothing (`AD-7`). A pack
+  source also refuses a committed `dist/` or `package/`.
 - **Artifact shape (Build → Deploy):** `design-system` ships its JSON file, named
   `design-system`, once per bundle. `app` ships only its checked build,
   `bundle/<source>/dist/build-record.json` and the files it lists, named by its
@@ -242,7 +252,18 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   sends `{ buildRecord, files: [{ path, contentBase64 }] }` from those files to
   `POST …/apps/{appId}/versions` and reads `versionId` and `versionDigest` back;
   it submits the design-system file unchanged to
-  `POST …/design-system/revisions`.
+  `POST …/design-system/revisions`. `component-pack` ships only
+  `bundle/<source>/dist/pack-record.json` and exactly the files it lists, named by
+  its `pack` and versioned by its `version`; Build checks the record against its copy
+  of Console's closed pack-record schema and records `version`, `pack.kit_version`,
+  `pack.kit_integrity` and `pack.build`. Deploy sends exactly
+  `{ packRecord, files: [{ path, contentBase64 }] }` to
+  `POST …/packs/{pack}/versions` with
+  `Idempotency-Key: deploy-pack-version-<sha256 of the canonical record>`, after
+  checking before any write that the one record names the entry's pack, has
+  `check.passed`, lists 1 to 50 files each matching its `sha256` digest and bytes with
+  no unlisted file, and has a version Console names builds by (`MAJOR.MINOR.PATCH`
+  with an optional prerelease, at most 64 characters).
 - **Output verification:** read the bundler's input list and fail unless every
   input is the app's own source: no file from an installed package, no bundled
   design system or React, and no CSS file. Fail a pack whose replacement of a
@@ -262,12 +283,19 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   and saves nothing on a mismatch, and publish or activation uses optimistic
   concurrency: a stale marker is a conflict to surface, not to retry blindly.
   Order a pack before the design-system configuration that activates it and the
-  apps that use it, through `dependsOn`.
+  apps that use it, through `dependsOn`. Deploy's `withPackDependencies` (`plan.ts`)
+  orders every `design-system` entry after every `component-pack` entry it names in
+  `packs`; apps that use a pack are not yet ordered after it (a known gap), so
+  install the pack and its activating configuration before such an app. Installing a
+  pack activates nothing.
 - **Refusals:** Console refuses an app that needs a newer design system, a
   switched-off component or a pack the environment lacks. Fail the install with
   Console's reason; never work around it.
 - **Read back:** require Console to show the installed version and digest as
-  active; report both in the run result, and `UNCHANGED` when it already was.
+  active; report both in the run result, and `UNCHANGED` when it already was. A pack
+  version is not activated by its install: read back
+  `GET …/packs/{pack}/versions/{version}` and require the pack, version, the
+  `versionDigest` Console answered and each listed file entry's shape.
 - **Retire or restore:** rollback is an explicit restore intent that re-points
   to an earlier published version; a failed install does not trigger one. Report
   retirement as unsupported unless Console's API provides removal.
@@ -282,8 +310,9 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   ([prismteam-ai/marketplace#33](https://github.com/prismteam-ai/marketplace/pull/33) takes
   Build's artifact for each kind through publish, review and rollback). A review fails
   with Deploy's `unknown Console kind` until a Deploy with
-  [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94) is in the review
-  account.
+  [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94) (and, for
+  `component-pack`, [#95](https://github.com/prismteam-ai/deploy/pull/95)) is in the
+  review account.
 - **Deploy result:** `version` is the active `versionId` or `revisionId`; `digest` is the
   `versionDigest` or `revisionDigest` Console answered and read back (Console digests the
   validated record, which can differ from the record sent). A replay reports `UNCHANGED`
@@ -291,7 +320,12 @@ and [the app kit contract](../../build-console-product/reference/app-kit.md#deli
   CONFIGURATION_IN_USE`) fail the run with its reason and leave the active selection
   unchanged; an app, version or revision created before a refused publish stays and is reused. Neither kind is
   releasable: Console has no delete for them. The `503` with `Retry-After` on app create
-  fails the run like any `5xx`; Deploy does not retry it.
+  fails the run like any `5xx`; Deploy does not retry it. A component pack reports its
+  `version` and the `versionDigest` as `digest`: `201` is `CREATED`, `200` replayed is
+  `UNCHANGED`, `409` (another build under that version) fails as a conflict naming
+  the pack and version, and `400` or `422` fail with Console's reason and install
+  nothing. After a `201`, any verification failure says Console stored the version,
+  which stays.
 - **Acceptance:** `AD-1` to `AD-7` in
   [the app kit tests](../../build-console-product/reference/app-kit.md#tests) and
   the `CP` checks in

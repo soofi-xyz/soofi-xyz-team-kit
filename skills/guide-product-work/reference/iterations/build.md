@@ -49,12 +49,18 @@ consistently from request to artifact/provenance. Verify this coverage in the ta
 feature evidence does not establish shared-provider support.
 
 `console-source-bundles`, build and check Console apps and component packs: the
-`design-system` and `app` kinds are on [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70) (not merged, not deployed, 2026-11-21) as
-`CONFIGURATION` kinds; the role Console's CI assumes to publish the app kit is on
-[prismteam-ai/build#71](https://github.com/prismteam-ai/build/pull/71) (stacked on #70,
-not merged) with Console's publish job on
-[prismteam-ai/console#44](https://github.com/prismteam-ai/console/pull/44);
-`component-pack` and publishing each pack's types package are not built. It depends on source validation, assembly, provenance and Console's app
+`design-system` and `app` kinds ([prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70))
+and the `component-pack` kind ([prismteam-ai/build#76](https://github.com/prismteam-ai/build/pull/76),
+2026-11-23, gated by `console-app pack check --json` only) are `CONFIGURATION` kinds on
+`main`; `app` and `design-system` passed `AD-1` to `AD-4` on soofi-safavi, and
+`component-pack` is not yet verified on a deployed environment. The publisher role
+([build#71](https://github.com/prismteam-ai/build/pull/71),
+[#73](https://github.com/prismteam-ai/build/pull/73),
+[#74](https://github.com/prismteam-ai/build/pull/74)) is deployed in prism-marketplace as
+`BuildWorkflow-ConsoleKitPublisher` (stack `BuildConsoleKitPublisher`), trusting
+Console's immutable OIDC subject; Console's CI publishes the app kit
+([console#44](https://github.com/prismteam-ai/console/pull/44)) and each listed pack's
+types package ([console#53](https://github.com/prismteam-ai/console/pull/53)). It depends on source validation, assembly, provenance and Console's app
 kit. Deliver the `console` kinds from
 [the Console app, component-pack and design-system payloads](../../../build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads):
 a build step in the isolated runner with the app kit's check as a publish gate, output
