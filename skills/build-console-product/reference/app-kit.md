@@ -391,7 +391,7 @@ Level: deployed, on a dev environment with Build's and Deploy's changes.
 
 | ID | Do | Expect |
 | --- | --- | --- |
-| AD-1 | Merge a bundle holding `sample-app` and let it run through Build, Marketplace and Deploy | The app opens in the environment; Console's active digest equals the digest Deploy reported |
+| AD-1 | Merge a bundle holding `delivery-app` (Console's installable fixture; `sample-app` declares actions no product registers, so a real Console refuses it) pinned to a kit version in Build's registry, and let it run through Build, Marketplace and Deploy | The app opens in the environment for a person whose Access role shares `use` on `console:app/<appId>`; Console's active digest equals the digest Deploy reported |
 | AD-2 | Install the same bundle again | Deploy reports no change and Console's active selection is the same version |
 | AD-3 | Push a bundle holding `violation-raw-element` | It stops at Build with the `raw-element` finding; nothing reaches Marketplace or Console |
 | AD-4 | Install a design-system configuration bundle carrying `tokens-b` | The environment's apps and dashboards take the new look on reload; no app version changed |
