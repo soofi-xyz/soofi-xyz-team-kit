@@ -38,7 +38,8 @@ running an agent some other way and calling it Enact.
    If it is unset, stop and ask the user to set it in their own terminal. Never read it
    from AWS, print it or ask for it in chat.
 2. Get the shared domain from the user or their environment (`PRISM_DOMAIN`); never from
-   SSM or stack outputs. Confirm the key with a read-only call that prints only the status
+   SSM or stack outputs. Run on Enact, `PRISM_DOMAIN` may be unset: take the domain from
+   the request, and ask for it in the reply when the request does not name it. Confirm the key with a read-only call that prints only the status
    code:
 
    ```bash
@@ -75,7 +76,10 @@ rm <value>.json
 1. **The App.** Each environment has one Enact GitHub App with **Contents** and **Pull
    requests** read and write. The person who administers the GitHub organization creates
    it and installs it only on the repositories agents may use; a missing installation is
-   a request to them, not something to work around.
+   a request to them, not something to work around. Creating an App owned by the
+   organization and installing it need an organization owner. Give each environment its
+   own App, named `prism-enact-<environment>`, with no webhook and no other permission;
+   never reuse another environment's App or key.
 2. **Its key.** The person writes `{"app_id": "<id>", "private_key": "<PEM>"}` into the
    `GitHubAppKeySecretArn` output's secret. The worker reads it within five minutes; no
    deploy is needed.
@@ -83,7 +87,10 @@ rm <value>.json
    `PUT /enact/repositories`. An agent can name only repositories on it, and every turn
    checks it again.
 4. **Check.** Run an agent that names one allowed repository. A run that fails with
-   `REPOSITORY_ERROR` means the key or the installation is missing.
+   `REPOSITORY_ERROR` means the key or the installation is missing: the message "no
+   GitHub App key yet" is the empty secret, which the install leaves until someone writes
+   it, so check it on every environment, not only dev. No route reads the secret or the
+   installation; the run is the check.
 
 ### Asana
 
@@ -128,13 +135,15 @@ Enact's `docs/agent-contract.md` defines every manifest field and allowed path, 
 6. **Who may run it.** Decide the roles or people. Grants are set through Access; hand
    them to `doublade`.
 
-## Agents that work from Figma designs
+## Agents that author Console apps and components
 
-Console has no authoring runtime. Work that starts from a Figma design is done by kit
-agents run on Enact or in an editor, and what they need is Enact agent configuration:
+Console has no authoring runtime. Apps and components, including work that starts from a
+Figma design, are made by kit agents run on Enact or in an editor, and what they need is
+Enact agent configuration:
 
 | Agent | Makes | Opens pull requests in |
 | --- | --- | --- |
+| `vivillon` | Console apps from the app kit | An app repository per app |
 | `chandelure` | Design-system components and component packs | The Console repository and component pack repositories |
 | `wigglytuff` | Email template bodies | None: Jigglypuff's MCP server opens the template pull request |
 
@@ -151,10 +160,25 @@ agents run on Enact or in an editor, and what they need is Enact agent configura
    Figma MCP server is the `mcp-sign-in` gap for `zoroark` and is not needed for these
    reads. Never reuse an editor's Figma credentials or a shared token on Enact.
 3. **Repositories.** List only the repositories in the table, each on the environment's
-   allowed list. The run opens a pull request and never merges.
+   allowed list. The run opens a pull request and never merges. Both agents take the
+   repository in `run_repositories` (up to five), so name it on the run rather than in
+   the manifest. Until the app kit is in Build's package registry (`AD-6`), also allow
+   and name `prismteam-ai/console`: the run builds the kit from Console's `main`
+   (`pnpm install --frozen-lockfile`, `pnpm app-kit:build`, `pnpm pack` in `app-kit/`),
+   installs the tarball in its working copy only and commits no `file:` dependency,
+   tarball, `.npmrc` or lockfile.
 4. **Limits and who may run it.** Set a turn limit and a cost ceiling, start low, and
-   hand grants to `doublade`.
-5. **Output.** A pull request with the evidence that agent's own instructions require
+   hand grants to `doublade`. A role that grants `enact:agent:run` lets its holders see
+   and run agents; add `enact:agent:manage` only for people who save agent versions.
+   Prove the refusal with a person's own token: without the role, `list_agents` is empty
+   and a start is `403 AGENT_NOT_GRANTED` with no run written. The environment key is an
+   administrator-level caller and cannot show a refusal.
+5. **Screenshots.** The sandbox has no browser or system libraries for one and runs
+   without root. A run that must screenshot a component installs a headless Chromium
+   and extracts the libraries and fonts it lacks into a local directory, or asks for
+   `browser` under `manifest.tools`. Pack gallery baselines are Linux-only, which the
+   sandbox is.
+6. **Output.** A pull request with the evidence that agent's own instructions require
    (gallery screenshots for a component, the app check's result for an app). A run
    installs nothing: components and apps reach an environment only after the merge,
    through Build, Marketplace and Deploy.

@@ -27,11 +27,11 @@
     },
     {
       "name": "configure-enact-product",
-      "version": "1.0.0-sha256-8581dd5747849054"
+      "version": "1.0.0-sha256-9fd5d32dac25a11a"
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-d06994252aa945d0"
+      "version": "1.0.0-sha256-47484d8df686c689"
     },
     {
       "name": "operate-marketplace",
@@ -55,5 +55,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.189.0"
+  "version": "1.189.1"
 }
