@@ -476,7 +476,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 865191,
+      "library_pinned_bytes": 867605,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -539,7 +539,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 865191,
+      "library_pinned_bytes": 867605,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -766,7 +766,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 18035,
+      "bytes": 18686,
       "files": 1,
       "flag_counts": {
         "aws-profile": 2,
@@ -777,7 +777,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 758728,
+      "library_pinned_bytes": 761142,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -911,7 +911,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 657674,
+      "library_pinned_bytes": 658404,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1401,7 +1401,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 657674,
+      "library_pinned_bytes": 658404,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1518,7 +1518,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 1150535,
+      "library_pinned_bytes": 1153679,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -2650,7 +2650,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 2183825,
+      "library_pinned_bytes": 2186969,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -3193,7 +3193,7 @@
       },
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 839339,
+      "library_pinned_bytes": 841753,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-marketplace-puller",
@@ -3945,15 +3945,15 @@
       ]
     },
     "build-persist-service": {
-      "bytes": 254768,
+      "bytes": 257151,
       "files": 9,
       "flags": {
         "aws-profile": [
           "skills/build-persist-service/reference/PRD.md:1375"
         ],
         "curl": [
-          "skills/build-persist-service/reference/metrics-catalog.md:432",
-          "skills/build-persist-service/reference/metrics-catalog.md:447"
+          "skills/build-persist-service/reference/metrics-catalog.md:463",
+          "skills/build-persist-service/reference/metrics-catalog.md:478"
         ]
       },
       "omitted": [],
@@ -4285,7 +4285,7 @@
       ]
     },
     "configure-model-product": {
-      "bytes": 83734,
+      "bytes": 84451,
       "files": 5,
       "flags": {},
       "omitted": [],

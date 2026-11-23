@@ -143,9 +143,39 @@ five of them (no `meeting_action` and no `*_invited` families).
 | Scope | Families today | Items | Shape |
 | --- | --- | --- | --- |
 | `DEBT` | `payment` and its status families | payments on one debt | `EXCLUDE_ALL`, `scope_link`, status events and election, GLOBAL rollup |
+| `DEBT` | `text_message` (Lexicon #912), `voice_mail` (Lexicon voice_mail metrics) | messages / voice mails on one debt | `EXCLUDE_ALL`, `debt_has_*` scope path, `STATUS_EVENT_KEY` + `EACH_EVENT`, GLOBAL rollup via `company_represents_debt` `ANY_EDGE`. See [Communication DEBT families](#communication-debt-families-text_message-and-voice_mail). |
 | `MEETING` | `meeting` (self scope, `path_from_scope: []`), `meeting_media`, `meeting_utterance` (meeting → media → utterance), `meeting_action` | the meeting, its media, utterances and actions | `EXCLUDE_ALL`, no scope link or status events, business time `meeting.started_at` |
 | `MEETING` | `meeting_person`, `meeting_person_invited` | people who attended or were invited | `ALLOW_SHARED` (one person sits in many meetings), `NON_MERGEABLE`, no rollup |
 | `PERSON` | `person_meeting`, `person_meeting_invited` | meetings a person attended or was invited to | `ALLOW_SHARED`, `NON_MERGEABLE`, no rollup |
+
+### Communication DEBT families (`text_message` and `voice_mail`)
+
+Both count status-event edges under a debt, with company-wide `GLOBAL` rollup
+matching payment/`text_message` (`company_represents_debt`, `ANY_EDGE`, 16
+shards). Lexicon short definitions own the catalog; a new definition inside
+these families is Uxie/Jirachi configuration, not Persist engine work.
+
+| | `text_message` | `voice_mail` |
+| --- | --- | --- |
+| Scope path | `debt` → `debt_has_text_message` → `text_message` | `debt` → `debt_has_voice_mail` → `voice_mail` |
+| Status edge | `text_message_status_changed` | `voice_mail_status_changed` |
+| Provider codes | On linked `error.provider_result_code` via family `item_links.provider_error` (Quiq) | On the status edge itself: `voice_mail_status_changed.provider_result_code` (VoApps) |
+| Athena export | Filtered / not used for unfiltered debt-linked backfill | **None — do not add.** Backfill plans from Neptune only (`DEFINITION` runs; `athenaBindingFor` must keep refusing) |
+| Phone attempt edges | N/A for this family | Phone `voice_mail` self-loops stay for Filter rules; metrics count only the debt-linked path |
+
+**Short-definition `where` operators** (Lexicon generator): only `eq`, `not_in`,
+and `present`. There is no `in` and no OR across condition groups. For VoApps
+“undeliverable” (RESTRICTED ∪ FAILED codes 401–404), ship
+`voice_mail.status.restricted.event_count` plus four
+`voice_mail.status.failed.code_{401,402,403,404}.event_count` definitions;
+Deliverable = Submitted − restricted − Σ(401..404). Do not invent a single
+undeliverable definition with `not_in` over the remaining FAILED codes, and do
+not add Persist `in`/OR predicates without an explicit engine request.
+
+**Producers:** debt-linked `voice_mail` / `debt_has_voice_mail` /
+`voice_mail_status_changed` are written by `voapps-transform` (hourly mark +
+postback) alongside the unchanged phone self-loops. A metric family that only
+sees phone edges counts zero.
 
 What compiles today, in `compiler.ts`:
 
@@ -154,7 +184,8 @@ What compiles today, in `compiler.ts`:
   `ElectedEventProperty`) or a constant. Business time is `ItemProperty` or
   `ScopeProperty` for `BUSINESS_KEY` identity, and `EventProperty` for
   `STATUS_EVENT_KEY`.
-- Predicates are `PRESENT` and `EQ` on those selectors. There is no predicate
+- Predicates are `PRESENT` and `EQ` on those selectors (Lexicon short form also
+  emits `not_in`). There is no predicate
   on a vertex in the middle of the path, and no edge-absence predicate.
 - An item is linked to its scope by one `path_from_scope` chain. There is no
   second, parallel edge requirement and no alternative (OR) edge.
