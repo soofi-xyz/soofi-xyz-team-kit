@@ -44,7 +44,10 @@ authorization from Access roles (runtime 1.26.0, pull request 43) is on main
 as of 2026-11-22, with the open gaps their implementation rules
 ([renderer](reference/design-system.md#renderer-reskin-implementation-rules),
 [sign-in](reference/google-sign-in.md#access-sign-in-implementation-rules))
-list; everything else here is a requirement. An app can be uploaded, published,
+list. Component packs are built (pull request 42), installed and activated
+(pull request 49) on main; their gallery, the viewer packs route and `CP-5`
+(runtime 1.33.0, pull request 52) are open, not merged
+([rules](reference/design-system.md#component-packs-implementation-rules)); everything else here is a requirement. An app can be uploaded, published,
 opened by address and rolled back with the environment key, and reads Report
 data through Console's API; on `main` no session carries an Access token yet,
 and an Access session has no `persist:read` until roles decide, so its
