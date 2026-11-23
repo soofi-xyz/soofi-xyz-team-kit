@@ -63,6 +63,16 @@ visibility only through the activation pointer, and
 shadow materializer, contribution vertices or stream fences. Model owns metric
 definitions; route definition and catalog-schema changes to Dialga.
 
+`text_message` and `voice_mail` are supported DEBT communication families
+(Lexicon short definitions). For `voice_mail`: count only the debt-linked path
+(`debt_has_voice_mail` / `voice_mail_status_changed`); leave phone `voice_mail`
+self-loops alone for Filter; never add an Athena export or Athena backfill
+binding; VoApps code filters are status-edge `provider_result_code` `eq` values
+(no short-format `in` / OR — see the metrics reference's communication-family
+section). A request for a single “undeliverable” predicate that needs `in` or
+OR is a catalog-shape question first, not an engine change unless the user
+explicitly asks for one.
+
 For meeting and person metrics, select `metrics-graph-shapes` and follow the
 reference's capability sections. Before coding, explain each requested
 capability (business time off the scope path, three-hop paths, two edges to
