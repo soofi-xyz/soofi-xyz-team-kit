@@ -86,6 +86,29 @@ the source.
   existing `--background`, `--surface` and `--accent`. Add the demo's channel
   washes as tokens when a component needs them. Do not invent a second palette
   in a component or an app.
+- **Prism style guide.** The Prism style guide is the palette in
+  [`tokens.json`](../../prism-asset-pipeline/art-direction/tokens.json) (Figma
+  Prism-Visual-ID-Exploration, Option 10) and the live prismteam.ai site. Keep
+  Console on it:
+
+  | Style guide | Console token | Rule |
+  | --- | --- | --- |
+  | TASA Orbiter | `--ds-font` | the only typeface; Inter and system fonts are fallbacks only |
+  | eclipse `#161616` | `ink`, `go` | text and geometry |
+  | solar `#FDE692` | `highlight`, `wait-soft`, `solar` | highlight |
+  | yellow/red graphic `#F4480A` | `stop-fill` | alert fill |
+  | sky, violet, mint, flare, ember, solar | `--ds-<name>` | pale light washes behind content, never text |
+  | graphic colors `#787AEE`, `#6CAE25`, `#F4480A`, `#64B8C7` | `--ds-graphic-*` | lines, outlines and small filled marks |
+  | 8px grid | spacing steps | prefer even steps (8px multiples); 4px steps only inside a control |
+  | rounded squares, flat, no gloss | radii, hairlines | no shadows, no gradients on crisp shapes |
+
+  Take Prism colors only from these tokens; an app or campaign that needs a
+  Prism color uses the token, never a hex value. `paper` (`#f8f8f6`) and
+  `iris` (`#4845d2`) follow the live site, not `tokens.json` (whose ground is
+  mist `#F0EEE9` and which has no iris); change either only when the design
+  owner decides, since it changes every page. When `tokens.json` changes, add
+  or update the matching token in every token set and the configuration
+  defaults in the same pull request.
 - **Token sets.** Ship at least two complete token sets (`tokens-a` and
   `tokens-b`) that define the same tokens. Switch the active set at runtime by
   changing which token stylesheet the shell loads; never rebuild components or
