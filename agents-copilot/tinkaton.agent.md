@@ -37,18 +37,23 @@ Accept the `console` `application` kind together with Corviknight's Console adap
 validating each manifest as the contract's Console application payloads require:
 allow every top-level field Console's schema declares, including action `forms`,
 and refuse any other.
-Keep the `console` kinds `design-system` and `app` (and add `component-pack` the same
-way) by [the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads)
+Keep the `console` kinds `design-system`, `app` and `component-pack` (all on Build's
+`main`; `component-pack` since prismteam-ai/build#76) by
+[the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads)
 and [Build's Console kind rules](../skills/build-build-service/SKILL.md#console-apps-and-design-system-configuration).
-They are `CONFIGURATION` kinds, not another bundle type: a bundle holding an app is
-built in the isolated runner, gated by the pinned app kit's own check, and packs only
-the checked build. Never let a source bring its own kit: refuse every non-registry
-source of `@prism/console-app-kit` before install and verify the installed copy after.
-Bind the installed kit to the version published in Build's registry before install,
-and let only the publishers Build's stack names publish `@prism/*` there: Console's CI
-from `main` through the OIDC-trusted `ConsoleKitPublisher` role, referencing the
-account's existing GitHub OIDC provider and never creating it. Keep rejecting a
-product `.npmrc`.
+They are `CONFIGURATION` kinds, not another bundle type: a bundle holding an app or a
+component pack is built in the isolated runner, gated by the pinned app kit's own check,
+and packs only the checked build. Gate a pack with `console-app pack check --json` alone,
+never `pack build`: with the real kit `pack build` empties `dist/`, deletes
+`pack-record.json` and applies no rules. Never let a source bring its own kit: refuse
+every non-registry source of `@prism/console-app-kit` before install and verify the
+installed copy after. Bind the installed kit to the version published in Build's
+registry before install, and let only the publishers Build's stack names publish
+`@prism/*` there: Console's CI from `main` through the OIDC-trusted
+`ConsoleKitPublisher` role, referencing the account's existing GitHub OIDC provider and
+never creating it. prismteam-ai repositories send GitHub's immutable OIDC subject
+(`repo:<owner>@<owner id>/<repo>@<repo id>:ref:…`), so trust that form, not
+`repo:<owner>/<repo>:…`, which AWS then refuses. Keep rejecting a product `.npmrc`.
 Accept the `access` `application` kind together with Corviknight's Access adapter,
 once Aegislash ships Access's application API: validate each document as the
 contract's Access application payloads require and reject one that carries a

@@ -28,13 +28,12 @@ Use `CONFIGURATION` in bundle validation and subscription metadata; migrate lega
 type handling with Build and Marketplace. Build the shared configuration-bundle
 installer as a Deploy component with typed Transform, Connect, System, Report and Schedule API adapters.
 Keep the Console adapter (merged as of 2026-11-18) compatible with the contract's
-Console application payloads. Add adapters for the target `console` kinds
-`design-system`, `app` and `component-pack` by
-[the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads),
-once Chandelure ships Console's API for them and Tinkaton the kinds: install only
-through that API with idempotent upload, digest verification, publish with optimistic
-concurrency and read-back. Build no Console-side primitive and never write Console's
-storage or its pointer. The `app` and `design-system` adapters
+Console application payloads. Keep the adapters for the `console` kinds
+`design-system`, `app` and `component-pack` (all on Deploy's `main`) by
+[the contract's Console app, component-pack and design-system payloads](../skills/build-product-deployer/reference/configuration-bundles.md#console-app-component-pack-and-design-system-payloads):
+install only through Console's API with idempotent upload, digest verification, publish
+with optimistic concurrency and read-back. Build no Console-side primitive and never
+write Console's storage or its pointer. The `app` and `design-system` adapters
 (`lambda/services/configuration/console-adapter.ts`, prismteam-ai/deploy#94) consume
 Console's contract exactly: check an app's build (`dist/build-record.json` and exactly
 the files it lists, by digest and size) before any write; send `Idempotency-Key`s derived
@@ -44,7 +43,25 @@ report the `versionDigest` or `revisionDigest` Console answers and reads back, n
 Deploy computes; and fail with Console's reason and issues on `400`, `422
 INCOMPATIBLE_VERSION` and `409 CONFIGURATION_IN_USE`, leaving the active selection
 unchanged, with `412` a conflict never retried. Require the read-back to name the active
-id, not only the digest. Test new Console kinds with Build's own artifact through
+id, not only the digest. The `component-pack` adapter (same file, prismteam-ai/deploy#95)
+checks Build's pack build before any write: exactly one `pack-record.json` naming the
+entry's pack, `check.passed`, 1 to 50 files each matching the record's `sha256` digest
+and bytes, no unlisted file, and a `version` Console names builds by
+(`MAJOR.MINOR.PATCH[-pre]`, at most 64 characters). It `POST`s exactly
+`{ packRecord, files: [{ path, contentBase64 }] }` to
+`/accounts/{id}/packs/{pack}/versions`, provenance-signed, with
+`Idempotency-Key: deploy-pack-version-<sha256 of the canonical record>`, then reads
+`GET …/versions/{version}` back (pack, version, `versionDigest` and each listed file's
+shape). `201` is `CREATED`, `200` replayed is `UNCHANGED`, `409` is a conflict naming
+pack and version (a version never changes: give the build a new one), and `400` or `422`
+fail with Console's reason. After a `201`, any verification failure says Console stored
+the version. Installing activates nothing; the design-system configuration's
+`packs.<pack>.version` does, and `plan.ts` `withPackDependencies` orders every
+`design-system` entry after every `component-pack` entry it names in `packs`. Known
+gap: an `app` that uses a pack is not ordered after it, so its publish can meet
+Console's `missing_pack`; until that ordering exists, install the pack and the
+design-system configuration that activates it before the app. Test new Console
+kinds with Build's own artifact through
 `installConfigurationBundle`, the real product API and signer and a Console fake that
 follows Console's services. Record a missing Console capability as a gap; do not work
 round it. Add the Access

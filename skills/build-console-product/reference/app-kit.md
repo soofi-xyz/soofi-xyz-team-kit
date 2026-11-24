@@ -8,8 +8,10 @@ development, delivery and the reference app. It is the target design. As of
 the package, the guardrails, local development on sample data and `AK-1` to
 `AK-11`. Pull request 34 (runtime 1.16.0, on `main`) builds apps against the
 design-system pointer of the kit's own major
-([runtime sharing](design-system.md#runtime-sharing)). App hosting, the data
-hooks through Console's API, delivery and the reference app are not built.
+([runtime sharing](design-system.md#runtime-sharing)). App hosting and the data
+hooks are on Console's `main`; delivery of apps, design-system configuration and
+component packs is on Build's and Deploy's `main` ([Delivery](#delivery)); the
+reference app is not built.
 Discover the target revision before relying on any part, and settle names
 still marked as placeholders in the Console repository.
 
@@ -262,26 +264,44 @@ Deploy. Console receives only delivered, reviewed output.
   registry. Console's CI publishes the kit from `main` after `verify`
   (`publish-app-kit` job, `scripts/publish-app-kit.ts`,
   [prismteam-ai/console#44](https://github.com/prismteam-ai/console/pull/44),
-  not merged): it assumes Build's publisher role through GitHub's OIDC, skips
+  merged; 1.32.0 and 1.33.0 published with origin `INTERNAL`): it assumes Build's
+  publisher role through GitHub's OIDC, skips
   until the repository variable `BUILD_KIT_PUBLISHER_ROLE_ARN` is set, accepts
   only a CodeArtifact endpoint, never overwrites a published version and moves
   `latest` only forward (an older version goes under `earlier`). The
   role is Build's (`tinkaton`,
-  [prismteam-ai/build#71](https://github.com/prismteam-ai/build/pull/71), not
-  merged). Publishing each pack's types package is story 9.
+  [prismteam-ai/build#71](https://github.com/prismteam-ai/build/pull/71),
+  [#73](https://github.com/prismteam-ai/build/pull/73) and
+  [#74](https://github.com/prismteam-ai/build/pull/74), merged): in
+  prism-marketplace (848665034107) it is `BuildWorkflow-ConsoleKitPublisher` in the
+  hand-deployed `BuildConsoleKitPublisher` stack, trusting Console's immutable OIDC
+  subject `repo:prismteam-ai@275408031/console@1408014148:ref:refs/heads/main`. The
+  same job then publishes each pack `published-packs.json` lists as
+  `@prism/console-pack-<pack>` at its `console-pack.json` version, through the same
+  guards (`scripts/publish-pack-types.ts`,
+  [prismteam-ai/console#53](https://github.com/prismteam-ai/console/pull/53), merged);
+  today only `app-kit/fixtures/sample-pack` is listed.
 - **Bundle kinds, product `console`.**
 
-  | Kind | Carries | State as of 2026-11-21 |
+  | Kind | Carries | State as of 2026-11-23 |
   | --- | --- | --- |
   | `application` | dashboard manifest | on Build's and Deploy's main; installation in an environment not verified |
-  | `design-system` | design-system configuration | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); neither merged |
-  | `app` | app source that Build builds and checks | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); neither merged |
-  | `component-pack` | pack source that Build builds and checks | target; the pack check and build it runs are on [prismteam-ai/console#42](https://github.com/prismteam-ai/console/pull/42) |
+  | `design-system` | design-system configuration | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); on `main`, `AD-4` passed on soofi-safavi |
+  | `app` | app source that Build builds and checks | Build: [prismteam-ai/build#70](https://github.com/prismteam-ai/build/pull/70), Deploy: [prismteam-ai/deploy#94](https://github.com/prismteam-ai/deploy/pull/94); on `main`, `AD-1` to `AD-3` passed on soofi-safavi |
+  | `component-pack` | pack source that Build builds with `console-app pack check` | Build: [prismteam-ai/build#76](https://github.com/prismteam-ai/build/pull/76), Deploy: [prismteam-ai/deploy#95](https://github.com/prismteam-ai/deploy/pull/95); on `main`, not yet verified on a deployed environment |
 
-  All are `CONFIGURATION` kinds. Build runs a bundle holding an `app` in its
-  isolated runner with the kit's check as the gate and packs only the checked
-  `dist/`. An app needs `pnpm-lock.yaml` and an exact kit version in
-  `dependencies`. `corviknight` builds the adapters.
+  All are `CONFIGURATION` kinds. Build runs a bundle holding an `app` or a
+  `component-pack` in its isolated runner with the kit's check (`console-app check`,
+  or `console-app pack check` for a pack, never `pack build`) as the gate and packs
+  only the checked `dist/`. Both need `pnpm-lock.yaml` and an exact kit version in
+  `dependencies`. `corviknight` builds the adapters. Deploy installs a pack version
+  without activating it and orders a `design-system` entry after the packs its
+  `packs` names; it does not yet order an app after a pack it uses.
+- **`AD-7` status.** Build's tests prove a failing pack (`bad-pack`'s
+  `replacement-props`) fails at `BUILDING` naming the rule and stages nothing, and
+  Deploy's tests install `sample-pack`'s build through a Console fake. The deployed
+  check, `sample-pack` delivered and loading in an environment and `bad-pack` stopping
+  at Build there, waits for the dev run.
 - **An app's path.** A merged pull request; Build installs, checks and builds;
   Marketplace reviews and publishes; Deploy creates the app if missing, submits
   the version, publishes it and reads back the active digest, all through
