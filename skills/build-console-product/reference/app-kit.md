@@ -575,7 +575,7 @@ lists every app path. Keep these rules when changing it.
   session, reads the view, refuses a `pointer` other than the page's own
   major's, imports `mount.js` through that pointer and then the entry by
   address, so the page holds one React. Never bundle the mount module into the
-  page. Only a Google cookie session opens an app, because `import()` cannot
+  page. Only a cookie session opens an app, because `import()` cannot
   send a header. Only a `401` means signed out; any other failed or malformed
   session answer shows "Your session could not be checked". A failed import of
   the page's own code shows a reload instruction, never a blank page. An app's
@@ -584,25 +584,23 @@ lists every app path. Keep these rules when changing it.
   Console's API; see [Data hooks implementation rules](#data-hooks-implementation-rules).
 - **Known limits.** The record's `roles` are names only. From runtime 1.26.0
   ([Console pull request 43](https://github.com/prismteam-ai/console/pull/43),
-  on `main`) a deployment that signs in through Access opens an app only
+  on `main`) Console opens an app only
   for a person whose Access role is shared `use` on `console:app/<appId>`
-  ([rules](google-sign-in.md#access-sign-in-implementation-rules)); with
-  Google sign-in or the viewer password any signed-in viewer opens any
-  published app, so keep those to dev environments. No delete route. Before runtime 1.20.0 the page
+  ([rules](google-sign-in.md#access-sign-in-implementation-rules)). No delete route. Before runtime 1.20.0 the page
   ignores the view's `theme`; since 1.20.0 the view carries only the theme
   choices the environment allows and the page sets them on the root. An app
   publish racing a design-system configuration publish in the same account can
-  both commit (no shared guard yet). A denied Google sign-in returns to Console's home, not to the app.
+  both commit (no shared guard yet).
   Whether the gateway passes an app file through as JavaScript and the session
   cookie on the shared domain are only visible on a deployed environment.
 - **Tests.** `AH-3`, `AH-5`, `AH-6`, `AH-7` and the API half of `AH-4` run in
   `test/app-hosting.test.ts` against the real handler over in-memory stores;
   the page's loader in `test/app-page.test.ts` with fakes. `AH-1`, `AH-2` and
-  the reload half of `AH-4` run in `e2e/app-hosting.google.spec.ts` (the
-  `installed-google` project, signed in through the fake Google issuer):
+  the reload half of `AH-4` run in `e2e/app-hosting.access.spec.ts` (the
+  `installed-access` project, signed in as `alice` through the fake Access):
   `sample-app` and `app-kit/fixtures/sample-app-two` are built with
-  `console-app check`, published with the environment key and opened by
-  address. Build fixtures with the kit; never hand-write a build record.
+  `console-app check`, published with the environment key, shared with
+  `alice`'s role and opened by address. Build fixtures with the kit; never hand-write a build record.
 
 ## Data hooks implementation rules
 
@@ -662,9 +660,8 @@ step with the handlers. Keep these rules when changing it.
   interval after each answer, never overlapping, and only while mounted.
 - **Kit settings.** Report's operation takes `datasetId`, not `dataset`; the
   template and fixtures use it.
-- **Known limits.** No session carries an Access token until
-  `access-sign-in`: Google and viewer-password sessions hold `console:read` and
-  `report:read`, so Report bindings work and every Persist binding is denied.
+- **Known limits.** Sessions are Access sessions and carry the person's Access
+  token; Report bindings work for a person whose roles allow them.
   Persist's user-scoped access is not built and its GraphQL still requires the
   environment key ([the Persist contract](../../build-persist-service/reference/user-scoped-access.md));
   send that gap to `conkeldurr`. No production action is registered: Persist
@@ -676,7 +673,7 @@ step with the handlers. Keep these rules when changing it.
   it is sent and a fake owning product for the action; a test principal
   carries a token through the `x-test-access-token` header, read only by the
   `fake` auth adapter. `DH-1`, `DH-4` and `DH-6` also run in
-  `e2e/data-hooks.google.spec.ts`; the stand-in's `sample-report` has a dataset
+  `e2e/data-hooks.access.spec.ts` (the `installed-access` project); the stand-in's `sample-report` has a dataset
   per test that changes it (`refreshing`, `slow`), so parallel tests do not
   see each other's refreshes.
 

@@ -39,7 +39,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-46773d7ca9fc2947"
+      "version": "1.0.0-sha256-1290cc24c9712b4d"
     },
     {
       "name": "manage-channel-templates",
@@ -72,5 +72,5 @@
       "pull_requests": "read"
     }
   },
-  "version": "1.191.0"
+  "version": "1.191.1"
 }

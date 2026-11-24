@@ -24,8 +24,9 @@ to build an app or configure an existing Console deployment.
 - [The sign-in contract](reference/google-sign-in.md): read it before any
   change to pages, components, routes, the shell, app hosting or the web
   runtime, and run its sign-in and route-inventory tests with every such
-  change. Sign people in through Access; Console's own `google-oidc` policy is
-  existing behavior to migrate away from, not to extend.
+  change. Sign people in through Access only; Console's own `google-oidc`
+  policy and viewer password were removed in runtime 1.34.0 and must not come
+  back.
 - [Synthetic test data and dependency fakes](reference/test-data.md).
 
 Discover the target repository and revision, its supported schema and API, the
@@ -41,18 +42,18 @@ design-system configuration (runtime 1.20.0, pull request 38); as of
 2026-11-21 the renderer reskin's first step (runtime 1.21.0, pull request 39)
 is on main, and Access sign-in (runtime 1.22.0, pull request 40) with
 authorization from Access roles (runtime 1.26.0, pull request 43) is on main
-as of 2026-11-22, with the open gaps their implementation rules
+as of 2026-11-22 and verified on soofi-safavi on 2026-11-24; Console's own
+Google sign-in and viewer password were removed (runtime 1.34.0, pull request
+71), and `CS-8` passes there on 1.34.0, with the open gaps their implementation rules
 ([renderer](reference/design-system.md#renderer-reskin-implementation-rules),
 [sign-in](reference/google-sign-in.md#access-sign-in-implementation-rules))
 list. Component packs are built (pull request 42), installed and activated
 (pull request 49) on main; their gallery, the viewer packs route and `CP-5`
-(runtime 1.33.0, pull request 52) are open, not merged
-([rules](reference/design-system.md#component-packs-implementation-rules)); everything else here is a requirement. An app can be uploaded, published,
-opened by address and rolled back with the environment key, and reads Report
-data through Console's API; on `main` no session carries an Access token yet,
-and an Access session has no `persist:read` until roles decide, so its
-Persist reads are denied; its roles are not enforced and nothing delivers it
-through Build, Marketplace or Deploy yet.
+(runtime 1.33.0, pull request 52) are on main
+([rules](reference/design-system.md#component-packs-implementation-rules)); everything else here is a requirement. An app can be uploaded, published
+and rolled back with the environment key, opened by address by a person whose
+Access roles allow it, and reads Report data through Console's API; its
+Persist reads as the signed-in person wait on Persist user-scoped reads.
 
 ## Scope
 

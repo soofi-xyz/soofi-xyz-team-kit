@@ -794,7 +794,7 @@ These rules describe the build half of `component-packs` in runtime 1.29.0
   renderer's React and the fixtures project loads no pack, so the DS-1 baselines
   do not change.
 - **`CP-5` (1.33.0).** In `e2e/component-packs.packs.spec.ts` on stand-in A,
-  signed in through `/console/viewer/auth/google/start?return=/console/app/?gallery`:
+  signed in through Access (`/console/viewer/auth/access/start`, the fake Access):
   DS-1 at phone, tablet and desktop checks every entry of the pack record and
   compares each `sample-pack` section with
   `e2e/component-packs.packs.spec.ts-snapshots/cp-5-sample-pack-<component>-<width>-packs-linux.png`,
