@@ -235,17 +235,17 @@
       "version": "1.0.0-sha256-ee91d9fd03681778"
     },
     "build-console-product": {
-      "bytes": 180786,
-      "digest": "sha256:f844afe3931b30847cf0eee4510afdd0c575b082ae9680d36055e3522d91d434",
-      "encoded_bytes": 187514,
+      "bytes": 182299,
+      "digest": "sha256:23e3ed73d88af8b908cfb061e7cd108c290cd5084dd4dee2f07cdacc065efbe7",
+      "encoded_bytes": 189073,
       "files": 6,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 184318,
+      "stored_bytes": 185854,
       "used_by": [
         "chandelure",
         "vivillon"
       ],
-      "version": "1.0.0-sha256-cf88856b4fc3ee3f"
+      "version": "1.0.0-sha256-c0d1c2d2d267779a"
     },
     "build-documentation-product": {
       "bytes": 24372,

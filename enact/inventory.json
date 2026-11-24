@@ -678,7 +678,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 20696,
+      "bytes": 20888,
       "files": 1,
       "flag_counts": {
         "aws-profile": 1,
@@ -689,7 +689,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 704527,
+      "library_pinned_bytes": 706063,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3253,7 +3253,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 704527,
+      "library_pinned_bytes": 706063,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3844,7 +3844,7 @@
       ]
     },
     "build-console-product": {
-      "bytes": 180786,
+      "bytes": 182299,
       "files": 6,
       "flags": {},
       "omitted": [],
