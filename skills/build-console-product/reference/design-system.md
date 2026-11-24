@@ -128,7 +128,24 @@ the source.
   - data: the dashboard renderer's table, chart, KPI, bar list, funnel,
     heatmap, county map, form and job-status components, restyled;
   - drawing parts for custom visuals: bars, segments, grid cells and axes, so
-    most new visuals need no new component and no raw SVG.
+    most new visuals need no new component and no raw SVG;
+  - messages ([pull request 66](https://github.com/prismteam-ai/console/pull/66),
+    runtime 1.34.0, not yet merged), each replacing a part of the debt-collection
+    demo: `FilledText` (message text with highlighted, linked and missing
+    variables, the demo's `Filled`), `SmsPreview` (`.content-phone`),
+    `EmailPreview` (`.content-mail`), `Inbox` (`.responses-inbox`),
+    `ConversationThread` (`.responses-thread` with its facts) and `FactsList`
+    (`dl.responses-facts`, `dl.ms-facts`, Mayo's `dl.my-def`). The message bubble
+    is shadcn's `Bubble`;
+  - content ([pull request 67](https://github.com/prismteam-ai/console/pull/67),
+    runtime 1.35.0, not yet merged): `CodeBlock` (the demo's `pre.code`, plus a
+    copy button; shadcn's code-block), a step bar on `Carousel` (`.mt-stepbar`),
+    `SectionDots` and `SkipLink` (`.nav-dots`, `.skip-link`), `RuleCard`
+    (`article.lx-term` in the Rules draft), `RatingReasons` (`.inference-dot`
+    and `ul.inference-reasons`), `PersonChip` (`Avatar` with a name; no photos),
+    `LogoRow` (`.brand-logos`, `.mt-logos`, `.mt-case-logos`), `CaseCard`
+    (`ul.mt-cases`) and `SlideSection` (`section.mt-section` with its next
+    button). The demo's team diagram is `OrgChart`; there is no people group.
 - **Public props.** Give no component a `className`, a `style` or a DOM
   reference. Offer variants as a closed, typed list: an unknown variant
   fails compilation, with no free-string names and no silent fall-through to a
@@ -488,16 +505,33 @@ checked by a test or a type check.
   public HTML entry, so `CS-1` holds even though it reads no data. Pack sections
   (1.33.0) mount there too, after the base sections, only for a signed-in session;
   see the [component packs rules](#component-packs-implementation-rules).
+- **Origin names.** Before recording a component as "Console's own", look for
+  its name in shadcn's registry at the pinned revision; `DS-5` refuses a name
+  shadcn has (`message`, `bubble` and `code-block` are taken). Start from that
+  shadcn item instead, or pick a name it lacks.
 - **Tests.** DS checks live in `e2e/design-system.spec.ts` (fixtures project) and
   `test/design-system.test.ts`, named by ID. Drive keyboard checks with keys
   that behave the same on macOS and Linux: ArrowRight (not End) to collapse a
-  text selection, type-ahead (not ArrowDown) on a native select.
+  text selection, type-ahead (not ArrowDown) on a native select. Locally,
+  `pnpm test:e2e` reuses a server already listening on ports 4173–4192; when
+  several checkouts run at once, run a component's checks from a temporary
+  Playwright config on a free port and leave the full suite to CI.
 - **Baselines.** Screenshots are per platform in
   `e2e/design-system.spec.ts-snapshots/`; pack sections' (`CP-5`) are Linux-only
   in `e2e/component-packs.packs.spec.ts-snapshots/`. After an intended visual change,
   refresh `*-darwin.png` locally with `--update-snapshots` and `*-linux.png` from
   the **Design-system baselines** workflow artifact, and commit both. Never
   loosen a comparison threshold to make a baseline pass.
+- **Isolated screenshots.** Each gallery screenshot (`DS-1`, open overlays in
+  `DS-6`, the cumulative scenario and `CP-5`) is taken with its section alone on
+  the page, through `inIsolation` in `e2e/support/design-system.ts`
+  ([pull request 69](https://github.com/prismteam-ai/console/pull/69), not yet
+  merged). Before it, a section that was not a whole number of pixels tall moved
+  every later section by a fraction of a pixel and broke their baselines. A new
+  component commits only its own baselines; if a baselines run changes another
+  component's file, fix the cause and do not commit the refresh. A mask or
+  filter that creates a compositing layer can still change neighbours' text
+  rendering on Linux; draw fades as an overlay instead.
 
 Applications cannot choose a token set from their manifest. An environment's
 tokens are chosen by its [design-system configuration](#design-system-configuration-implementation-rules)
