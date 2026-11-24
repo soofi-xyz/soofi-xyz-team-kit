@@ -1,23 +1,24 @@
 # Console sign-in contract
 
 Use this contract for who may open what on a Console deployment: every app and
-every dashboard. The target is sign-in through Access. The `google-oidc` access
-policy (Google Workspace sign-in run by Console itself) is the existing
-behavior to migrate away from. Read this before any change to Console pages,
+every dashboard. People sign in through Access. Console's own `google-oidc`
+access policy (Google Workspace sign-in run by Console itself) and the viewer
+password were removed in runtime 1.34.0
+([Console pull request 71](https://github.com/prismteam-ai/console/pull/71));
+see [Retired: Console's own sign-in](#retired-consoles-own-sign-in). Read this before any change to Console pages,
 components, routes, the shell, app hosting, the API dispatcher or the web
 runtime. A change that weakens a guarantee below is a defect, even when the
 change was about something else.
 
 ## Target: sign-in through Access
 
-Console integrates with Access instead of running its own sign-in. The
-`google-oidc` policy described in the rest of this contract is the existing
-behavior. It stays in force only until Access sign-in is verified on a
-deployment; add no capability to it.
+Console integrates with Access instead of running its own sign-in. Never bring
+back a Console-run sign-in, password or browser-held key; a missing Access
+capability is a gap for `aegislash`.
 
 - Register Console as an Access application with its exact callback and
   sign-out addresses. Access holds the Google client; Console holds no Google
-  client ID or secret after migration.
+  client ID or secret.
 - Send an unauthenticated visitor to Access. On return, verify the Access token
   with Access's shared verifier (signature, issuer, audience, expiry, token
   type) and issue the Console read session from it. Fail closed on any
@@ -28,8 +29,7 @@ deployment; add no capability to it.
   roles from each refreshed token, so a disabled person or a removed role takes
   effect within one access-token lifetime.
 - How long a person stays signed in overall is Access's refresh lifetime, not a
-  Console setting. After migration Console has no `sessionSeconds`; that value
-  belongs to the `/console/access-policy` parameter, which is removed.
+  Console setting. Console has no `sessionSeconds`.
 - Take who may sign in from Access (its allowed Google domains and its users)
   and who may open a route or run an action from Access roles. Move
   `allowedDomains`, `allowedUsers` and `allowedGroups` to Access; do not keep a
@@ -47,31 +47,15 @@ deployment; add no capability to it.
   person's Access token to the owning product. Give each app its own required
   roles in Access, so a role for one app opens no other. The route inventory
   lists every published app and every dashboard route.
-- Carry these invariants from the rest of this contract over unchanged: deny by
-  default with a fixed, tested public list (1), server-side enforcement (2),
-  pages are configuration (4) and no credentials outside the secret store (6).
-  The route inventory tests stay.
-- Change these three for a migrated deployment:
-  - **Renderer gate (3).** The sign-in page offers sign-in through Access only.
-    Remove the secondary API-key link: the environment key is never typed into
-    a browser. Operators who need the application sign in through Access with
-    a role; the key stays for tools and automation.
-  - **Expiry (5).** A session ends when its Access token cannot be refreshed,
-    as described above, not at `sessionSeconds`.
-  - **Operator access (7).** A session's permissions are the person's Access
-    roles, including the actions those roles allow. Configuration and publish
-    operations stay behind the environment key and Account's service
-    authorization, called from tools and never from the browser session.
-- The migrated public list is: health, sign-in options, sign-in start and the
-  sign-in callback. Sign-out and every viewer route need the Console session.
-  They are Console's declared keyless methods under
+- Hold [the invariants that keep sign-in working](#invariants-that-keep-sign-in-working)
+  on every change, and keep the route inventory tests.
+- The public list is: health, sign-in options, sign-in start and the sign-in
+  callback, plus sign-out, which needs no session to clear a cookie. Every
+  viewer route needs the Console session. They are Console's declared keyless
+  methods under
   [the publish readiness gate](../../guide-product-work/reference/shared-api-domain.md#publish-readiness-gate).
-- Migrate one deployment at a time: verify Access sign-in for the same users,
-  then remove `/console/access-policy`, the Google client secret and the
-  viewer password. Do not run both sign-ins as a permanent state.
 - Access (`aegislash`) owns sign-in, tokens and roles. Console (`chandelure`)
-  owns this integration. A missing Access capability is a gap to report, not a
-  reason to extend `google-oidc`.
+  owns this integration.
 
 ### Definition of done for `access-sign-in`
 
@@ -94,14 +78,14 @@ check: ID, result, request identifier and the Console revision.
 | CS-5 | Disable `dave` in Access, then advance past his access token's expiry | His next request triggers a refresh that fails; the session ends, he is sent to sign in and is refused there |
 | CS-6 | Sign out, then press back and request a protected route | No protected content served |
 | CS-7 | Run the route inventory, add one page, change another, run it again | Every route requires a session in both runs |
-| CS-8 | After migration, inspect the deployment | No `/console/access-policy` parameter, no Google client secret, the viewer password route answers not found, and Console's role cannot read a Google client secret |
+| CS-8 | Inspect the deployment | No `/console/access-policy` or `/console/viewer-access` parameter, no Google client secret, the three retired sign-in routes answer not found, and Console's role cannot read any `console/` secret but `console/access-service` |
 | CS-9 | Search the run's logs, responses, static assets and bundles for every token issued | None found |
 | CS-10 | Remove the role that lets `alice` open a route, then advance past her access token's expiry | After the refresh her next request to that route is `403`; routes her remaining roles allow still work |
 | CS-11 | Keep `alice` active across three access-token lifetimes, inspecting her session each time | She is not asked to sign in again; at every moment the session's expiry is no later than that of the Access token it currently holds |
 | CS-12 | `alice`, connected to `scope-a`, and `bob`, connected to nothing, open the same page whose binding lists items from Persist | `alice` sees `item-a1` and `item-a2`; `bob` sees none |
 | CS-13 | Inspect the outbound calls Console made for `CS-12` and for an action a role allows | Each carries that person's Access token and no shared key |
 | CS-14 | A user holding the role for an action runs it | It runs, and the product it calls records that person as the caller |
-| CS-15 | Open the sign-in page after migration | It offers sign-in through Access only; there is no field or link for an API key |
+| CS-15 | Open the sign-in page | It offers sign-in through Access only; there is no field or link for an API key |
 | CS-15b | Sign in as `dave`, who holds no role, then sign out | One sign-in round trip, then the no-access page with the request ID and no further redirect; Sign out shows the signed-out page without starting a sign-in |
 | CS-16 | Run the route inventory with `sample-app` and `sample-app-two` published, publish a third app, run it again, and request each app's files and bindings with no session | Every published app is listed in both runs, and each is refused without a session: no app code or data is served |
 | CS-17 | `alice`, who holds the role for `sample-app` only, opens `sample-app`, then opens `sample-app-two` and calls one of its bindings directly | `sample-app` renders; `sample-app-two` and its binding answer `403` from the server |
@@ -112,28 +96,41 @@ The first step of `access-sign-in` is on
 [Console pull request 40](https://github.com/prismteam-ai/console/pull/40)
 (runtime 1.22.0) and authorization from Access roles on
 [Console pull request 43](https://github.com/prismteam-ai/console/pull/43)
-(runtime 1.26.0); both are on `main`. Keep these rules when changing them.
+(runtime 1.26.0); both are on `main`. Console's own sign-in was removed on
+[Console pull request 71](https://github.com/prismteam-ai/console/pull/71)
+(runtime 1.34.0). Keep these rules when changing them.
 
 - **One switch per deployment.** The String parameter `/console/sign-in`
   (`{"kind": "access", "application": "console", "accessUrl":
   "https://<shared domain>/access", "redirectUri":
   "https://<shared domain>/console/viewer/auth/access/callback",
-  "serviceSecretRef": "<ARN of the Secrets Manager secret console/<name>>"}`,
-  closed schema, `https` only) turns a deployment to Access. From runtime
-  1.26.0 `serviceSecretRef` is required: the Secrets Manager secret under
-  `console/` that holds Console's Access service identity as
-  `{"client_id", "client_secret"}`, never the secret itself. Without it the
-  deployment signs in through Google and the viewer password, unchanged. With
-  it Access is the only way in: the viewer password and Google start answer
-  `404`, and a viewer token or Google session cookie answers `401`. A malformed
-  or unreadable parameter fails closed.
+  "serviceSecretRef": "<ARN of the Secrets Manager secret console/access-service>"}`,
+  closed schema, `https` only) is the only way in. Without it nobody signs in
+  in a browser: viewer routes answer `401` `access_not_configured`, the Access
+  start and callback `404`, `sign-in-options` `{"access": false}`, and the page
+  says sign-in is not set up and never redirects. A malformed or unreadable
+  parameter fails closed.
+- **One secret.** `serviceSecretRef` names the Secrets Manager secret
+  `console/access-service`, which holds Console's Access service identity as
+  `{"client_id", "client_secret"}`, never the secret itself. From runtime
+  1.34.0 it must be that secret's ARN in Console's own partition, region and
+  account (the stack passes it as `CONSOLE_ACCESS_SERVICE_SECRET_ARN`),
+  exactly or followed by `-` and Secrets Manager's six letters or digits; any
+  other value fails closed as `UPSTREAM_CONTRACT_INVALID` (`502`). Console's
+  role may read only `console/access-service-??????`; never widen it back to
+  `console/*`, which would let it read any other client secret under
+  `console/`.
 - **Routes.** `GET /viewer/auth/access/start` and
-  `GET /viewer/auth/access/callback` are public and answer `404` while the
-  switch is off. The callback takes only the one-time code and the state; any
-  failure redirects to `/console/app/?signin=denied&reason=<code>` with no
-  cookie. `POST /viewer/signout` also ends the Access session, for every
-  application. `GET /viewer/sign-in-options` answers `access` beside `google`
-  and `password`.
+  `GET /viewer/auth/access/callback` are public. The callback takes only the
+  one-time code and the state; any failure redirects to
+  `/console/app/?signin=denied&reason=<code>` with no cookie.
+  `POST /viewer/signout` also ends the Access session, for every application.
+  `GET /viewer/sign-in-options` answers `{"access": <boolean>}` only. The
+  retired `GET /viewer/auth/google/start`, `GET /viewer/auth/google/callback`
+  and `POST /viewer/session` (`RETIRED_SIGN_IN_ROUTES`) answer `404`
+  `NOT_FOUND` before any session is resolved; any other unknown `/viewer/`
+  path answers `401`. `POST /viewer/session` stays at the gateway so the API,
+  not API Gateway, answers it.
 - **Server-side exchange, in the browser that started.** Each start sets its
   own ten-minute cookie, `console_access_login_<digest of the state>`
   (`HttpOnly`, `Secure`, `SameSite=Lax`, path `/console/viewer/auth/access`),
@@ -250,94 +247,37 @@ The first step of `access-sign-in` is on
   `report-reader`, `sample-app-viewer`); after each app's first publish,
   share `use` on `console/app/<appId>` with its role. Apps published before
   the switch are registered by publishing or rolling back once more.
-- **Open.** Console must be registered in Access as `console` with the exact
-  callback address (an Access operator step; dev registers only
-  `/console/app/`). The INTERIM stand-ins stay until Report, Persist, Model and
-  System declare their own permissions. `CS-12` waits on Persist user-scoped reads and `CS-14` on
-  a product action that records the person. Removing `google-oidc` (`CS-8`)
-  waits on Access sign-in verified on a deployment. Access sign-out is not
-  retried once Console's session is deleted (a failure is counted as
-  `AccessSignOutFailed`), and CloudFront standard logs record the callback
-  query, as they do Google's. Nothing here has run against a deployed Access.
+- **Open.** Verified on soofi-safavi on 2026-11-24: every check passes except
+  `CS-12`, `CS-13` and `CS-14` (Console 1.33.0; `CS-8` on 1.34.0 after the
+  operator cleanup). `CS-13` waits with `CS-12` and `CS-14`, since it inspects
+  their calls. The INTERIM stand-ins stay until Report, Persist, Model and
+  System declare their own permissions. `CS-12` waits on Persist user-scoped
+  reads and `CS-14` on a product action that records the person. Access
+  sign-out is not retried once Console's session is deleted (a failure is
+  counted as `AccessSignOutFailed`), and CloudFront standard logs record the
+  callback query.
 
-## Ownership
+## Retired: Console's own sign-in
 
-This section and those after it describe a deployment that has not yet migrated
-to Access. Google is the identity provider. Console owns the policy that decides who may
-open its applications: it verifies Google ID tokens, applies the configured
-domain/user/group rules and issues its own read session. Account still owns API
-keys, operator credentials and product scopes; do not move them into Console and
-do not issue scopes beyond what the viewer session already grants
-(`console:read`, `report:read`). Vivillon configures the policy for an
-environment; Chandelure builds and maintains it.
+Runtime 1.34.0 removed Console's own sign-in. Do not rebuild any of it:
 
-## Policy settings
+- the `google-oidc` policy in the SSM parameter `/console/access-policy`, its
+  Google OAuth client secret (`console/google-oauth`) and
+  `GET /viewer/auth/google/start` and `/callback`;
+- the viewer password in `/console/viewer-access`, `POST /viewer/session`,
+  viewer tokens and `scripts/set-viewer-password.ts`;
+- the sign-in page's Google, password and environment-key screens. The browser
+  holds no key or token and reads only through `/viewer` with its Access
+  session cookie.
 
-Keep the policy per environment, outside code and outside application manifests,
-so it applies to every application and route on that deployment. Store the
-non-secret settings in an SSM parameter and the OAuth client in a secret store:
-
-```json
-{
-  "kind": "google-oidc",
-  "clientSecretRef": "<ARN of the Secrets Manager secret console/<name>>",
-  "redirectUri": "https://<shared domain>/console/viewer/auth/google/callback",
-  "allowedDomains": ["example.com"],
-  "allowedUsers": [],
-  "allowedGroups": [],
-  "sessionSeconds": 43200,
-  "passwordSignIn": "disabled"
-}
-```
-
-- `clientSecretRef` names a Secrets Manager secret holding
-  `{"client_id": "...", "client_secret": "..."}`. Read it at runtime with
-  `secretsmanager:GetSecretValue`, granted only on secrets under `console/`;
-  cache it briefly in memory. Never accept the client ID or secret as a literal
-  anywhere.
-- `redirectUri` is the environment's callback on its console domain. It is
-  `https` and its path is exactly `/console/viewer/auth/google/callback`.
-- `allowedDomains` is required and non-empty. Match it against the ID token's
-  `hd` claim, never the email suffix alone.
-- `allowedUsers` (emails) and `allowedGroups` (Workspace group emails) narrow
-  access further when present. Group membership needs a Directory or Cloud
-  Identity lookup; fail closed when it is configured but unreadable.
-- `sessionSeconds` bounds a session from sign-in; refuse values outside
-  15 minutes to 24 hours.
-- `passwordSignIn` is `disabled` or `enabled`. `enabled` keeps the viewer
-  password next to Google sign-in during migration. `disabled` makes
-  `POST /viewer/session` answer `NOT_FOUND` even if `/console/viewer-access`
-  still exists.
-- The parameter is `/console/access-policy`. A missing policy parameter means
-  Google sign-in is off. A malformed or
-  unreadable one fails closed: no sign-in, no viewer reads.
-
-## Sign-in flow
-
-Use the authorization code flow with PKCE, run on the server. The routes sit
-under the API's `/viewer` prefix, so on the shared domain they are
-`/console/viewer/...`:
-
-1. `GET /viewer/auth/google/start` creates single-use `state`, `nonce` and PKCE
-   verifier, stores them server-side with a short TTL and redirects to Google
-   with `hd` set to the first allowed domain and `prompt=select_account`.
-2. `GET /viewer/auth/google/callback` rejects a missing, reused or mismatched `state`,
-   exchanges the code with the client secret, and verifies the ID token:
-   signature against Google's JWKS, `iss`, `aud` equal to the client ID, `exp`,
-   `nonce`, `email_verified`, then `hd`, users and groups. Any failure redirects
-   to `/console/app/?signin=denied&reason=<code>`, never a token or claim dump.
-3. On success create a server-side session record (subject email, policy
-   revision, expiry) and set an `HttpOnly`, `Secure`, `SameSite=Lax` cookie
-   scoped to the Console path on the shared domain. Verify that the renderer and
-   API share that origin before relying on the cookie; if they do not, return a
-   short-lived bearer token held only in memory, as the viewer flow does.
-4. `POST /viewer/signout` deletes the session record and clears the cookie. The
-   next request is refused and the renderer shows sign-in again.
-
-`GET /viewer/sign-in-options` tells the renderer which methods are on
-(`{"google": bool, "password": bool}`). Take the redirect URI from the policy for
-the environment's console domain. Never build it from the `Host` header, a query parameter or
-configuration supplied by an application.
+The environment key keeps working for operators, Deploy and checks calling the
+API directly. `CS-8` checks the removal on a deployment: no
+`/console/access-policy` or `/console/viewer-access` parameter, no Google
+client secret, the three retired routes answer `404`, and Console's role
+cannot read any `console/` secret but `console/access-service`. The two
+parameters and the secret are not stack resources: an operator deletes them
+after 1.34.0 is verified (save `/console/access-policy`'s value first, and
+schedule the secret's deletion with a recovery window).
 
 ## Invariants that keep sign-in working
 
@@ -345,57 +285,58 @@ Hold all of these on every change:
 
 1. **Deny by default.** The API dispatcher authorizes every route before any
    handler runs. Only a fixed, tested list (`PUBLIC_ROUTES` in
-   `src/handlers/api.ts`) is public: `GET /health`, `GET /viewer/sign-in-options`,
-   `GET /viewer/auth/google/start`, `GET /viewer/auth/google/callback`,
-   `POST /viewer/signout`, and `POST /viewer/session`, which answers `NOT_FOUND`
-   unless the policy keeps the password. Every public route is marked
-   `security: []` in the OpenAPI contract, and the route-inventory test requires
-   the two lists to match. A new route is protected without any per-route code. Never add a route that skips
-   the shared guard.
+   `src/handlers/api.ts`) is public: `GET /health`, the sign-in routes in
+   `VIEWER_SIGN_IN_ROUTES` (`GET /viewer/sign-in-options`,
+   `GET /viewer/auth/access/start`, `GET /viewer/auth/access/callback`,
+   `POST /viewer/signout`) and the design-system stylesheet. Every public route
+   is marked `security: []` in the OpenAPI contract, and the route-inventory
+   test requires the two lists to match. A new route is protected without any
+   per-route code. Never add a route that skips the shared guard.
 2. **Server-side enforcement.** Hiding a page or button in the renderer is not
-   access control. Every data, report and configuration read checks the session
-   in the API.
+   access control. Every data, report, app and action read checks the session
+   and its Access decisions in the API.
 3. **Renderer gate.** The shell checks the session before rendering any
    dashboard route or loading any app, including deep links. Without one it
-   shows a sign-in page and loads no configuration, app code or data. When Google sign-in is on, that page opens
-   on "Sign in with Google", which links to `/console/viewer/auth/google/start`
-   with a return path limited to `/console/app/`. The API key stays available
-   behind a secondary link for operators. Page and
-   component code fetches only through the shared authenticated API client.
+   sends the person to Access and loads no configuration, app code or data.
+   There is no field or link for an API key: the environment key is never
+   typed into a browser. Page and component code fetches only through the
+   shared authenticated API client.
 4. **Pages are configuration or app code.** Adding or changing a dashboard page
    changes the manifest or registry; adding or changing an app changes its
    delivered version. Neither touches the guard. If a change seems to need its
-   own auth handling, stop and treat it as a policy change.
-5. **Expiry and sign-out are server-side.** Reject a session past
-   `sessionSeconds` or after sign-out even if the browser still holds it.
-6. **No credentials outside the secret store.** The client secret, codes, ID
-   tokens, access tokens and session cookies never appear in source, manifests,
-   configuration bundles, static assets, URLs, browser storage or logs. Log the
-   decision, the domain, the reason code and a request ID only.
-7. **Operator access stays separate.** The environment API key keeps working for
-   operators and automation; Google sessions never gain write, publish or action
-   scopes.
+   own auth handling, stop and treat it as a sign-in change.
+5. **Expiry and sign-out are server-side.** A session ends when its Access
+   token cannot be refreshed, or at sign-out, even if the browser still holds
+   the cookie.
+6. **No credentials outside the secret store.** Codes, access and refresh
+   tokens, the service identity's secret and session cookies never appear in
+   source, manifests, configuration bundles, static assets, URLs, browser
+   storage or logs. Log the decision, the reason code and a request ID only.
+7. **Operator access stays separate.** A session's permissions are the
+   person's Access roles, including the actions those roles allow.
+   Configuration and publish operations stay behind the environment key and
+   Account's service authorization, called from tools and never from the
+   browser session.
 
 ## Required tests
 
-Keep these in the default test run so every change exercises them. Use one
-fake Google issuer module (local JWKS, signed test ID tokens), shared by the unit
-tests and the browser harness; never call Google from CI. Tie each issued token
-to its one-time code, because parallel browser sign-ins otherwise swap tokens.
+Keep these in the default test run so every change exercises them. Use the
+fake Access in `test/support/fake-access.ts`, shared by the unit tests and the
+`installed-access` Playwright project; never call a real Access from CI.
 
-| Case | Expected |
-| --- | --- |
-| Allowed-domain user completes callback | Session created; application and report reads succeed |
-| User from another Google domain | Denied; no session record; reason `domain_not_allowed` |
-| Personal account (no `hd` claim) | Denied; reason `domain_not_allowed` |
-| Request with no session | API `UNAUTHORIZED`; renderer shows Google sign-in and loads no data |
-| Sign-out | Session record gone; next request is refused and sign-in shows again |
-| Session past `sessionSeconds` | Rejected; sign-in shows again |
-| Reused or mismatched `state`, wrong `aud`, bad signature, wrong `nonce` | Denied |
-| `passwordSignIn: disabled` | `POST /viewer/session` returns `NOT_FOUND`; older viewer tokens are rejected; the renderer opens on Google sign-in |
-| API route inventory | Every OpenAPI operation outside the public list rejects a request without credentials, directly and under `/viewer` |
-| Renderer route inventory | For each manifest route and each published app, every binding it reads rejects a request without a session and succeeds with an allowed one; renderer routes are hash routes the server never sees, so they are covered through their bindings |
-| Secret scan | No client secret, token or private key in tracked files or built assets |
+- The `CS-` checks that run in the repository, named by their IDs, including
+  `CS-4b` and `test/cs-8.test.ts` (retired routes, template and the
+  `console/access-service` grant).
+- The API route inventory: every OpenAPI operation outside the public list
+  rejects a request without credentials, directly and under `/viewer`.
+- The renderer route inventory: for each manifest route and each published
+  app, every binding it reads rejects a request without a session and succeeds
+  with an allowed one. Renderer routes are hash routes the server never sees,
+  so they are covered through their bindings.
+- The browser credential check: the `api` project's specs fail if the browser
+  sends `x-api-key` or `Authorization` (`e2e/support/browser-credentials.ts`).
+- The secret scan: no client secret, token or private key in tracked files or
+  built assets.
 
 The route-inventory tests are what make later page work safe: they fail when a
 new route or page bypasses the guard, without anyone remembering to add a test.
@@ -405,25 +346,25 @@ new route or page bypasses the guard, without anyone remembering to add a test.
 For any change to Console pages, components, routes, app hosting or the runtime:
 
 1. Keep pages and components in configuration, the registry or a delivered app
-   version; do not touch the guard unless the task is a policy change.
+   version; do not touch the guard unless the task is a sign-in change.
 2. Run the sign-in suite and the route-inventory test; both must pass.
 3. For a new route, show in a browser that opening its deep link without a
-   session shows Google sign-in and no data, and that it renders with an allowed
-   session. Locally, use the `installed-google` Playwright project
-   (`GOOGLE_SIGN_IN=fake`), which runs the real handler against the fake issuer;
-   browsers accept the `Secure` session cookie on `http://127.0.0.1`. Then
-   confirm once in the hosted runtime when the change is installed.
+   session sends the person to Access and serves no data, and that it renders
+   with an allowed session. Locally, use the `installed-access` Playwright
+   project, which runs the real handler against the fake Access; browsers
+   accept the `Secure` session cookie on `http://127.0.0.1`. Then confirm once
+   in the hosted runtime when the change is installed.
 4. Report the sign-in evidence with the change. Never report unrun sign-in
    checks as passing.
 
 ## Rollback
 
-Keep each environment's policy as a file in its configuration repository, because
-deleting the SSM parameter also deletes its history. Roll back by deleting
-`/console/access-policy`, which ends every Google session and brings back the
-viewer password if `/console/viewer-access` still exists; restore by writing the
-file back. Each change reaches every instance within the 5-minute policy cache,
-so wait until `/console/viewer/sign-in-options` shows it several times in a row. If the OAuth
-client may be exposed, rotate the client secret in Google Cloud and update the
-secret value, or delete the client to stop all Google sign-ins. Existing
-sessions end when their records are deleted.
+Roll back sign-in by installing an earlier Console version, never by bringing
+back a Console-run sign-in. Going back to 1.33.0 restores Google sign-in and
+the viewer password only on a deployment without `/console/sign-in` and only
+while `/console/access-policy`, `/console/viewer-access` and
+`console/google-oauth` still exist; with `/console/sign-in`, 1.33.0 signs in
+through Access as 1.34.0 does, but reads any `console/` secret again. To stop
+all browser sign-ins on a deployment, delete `/console/sign-in`. Existing
+sessions end when their Access tokens can no longer be refreshed or their
+records are deleted.

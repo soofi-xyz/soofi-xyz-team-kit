@@ -159,28 +159,20 @@ fixtures for the reskin (RS-1 to RS-3). Their manifests do not change.
 | Unauthorized route | `model-reader` opens review | Server-side `FORBIDDEN`; no upstream review call |
 | Cross-account application | Caller account differs from application account | Server-side `FORBIDDEN` |
 
-## Google sign-in fixtures
+## Access sign-in fixtures
 
-Use a fake issuer with a local JWKS and signed test ID tokens. Never call Google
-from automated tests. Policy: `allowedDomains: [allowed.example]`,
-`sessionSeconds: 900`, `passwordSignIn: disabled`.
+Sign in through the fake Access in Console's `test/support/fake-access.ts`,
+shared by the unit tests and the `installed-access` Playwright project. Never
+call a real Access or Google from automated tests. Its people follow
+[the Access test data](../../build-access-product/reference/test-data.md):
+`alice` and `bob` hold `member` and the role for `sample-app`, and `dave`
+holds no role. The sign-in checks and what each expects are `CS-1` to `CS-17`
+in [the sign-in contract](google-sign-in.md#definition-of-done-for-access-sign-in).
 
-| Fixture | Claims or action | Expected |
-| --- | --- | --- |
-| Allowed user | `email: ana@allowed.example`, `hd: allowed.example`, verified | Session; application and report reads succeed |
-| Other domain | `email: bo@other.example`, `hd: other.example` | Denied, `domain_not_allowed`, no session record |
-| Personal account | `email: cy@gmail.com`, no `hd` | Denied, `domain_not_allowed` |
-| Unverified email | Allowed `hd`, `email_verified: false` | Denied |
-| Replayed callback | Same `state` used twice | Second callback denied |
-| No session | Any application route or API read | API `UNAUTHORIZED`; renderer shows Google sign-in and loads no data |
-| Sign-out | `POST /viewer/signout`, then a read | Read rejected; renderer shows sign-in again |
-| Expiry | Read at 901 seconds | Rejected; sign-in shows again |
-| Password disabled | `POST /viewer/session` | `NOT_FOUND` |
-
-**Builder change test:** with the policy on, add one new page to a fixture
-application and change an existing page's layout. Both routes must redirect
-without a session and render with the allowed user, and the sign-in suite and
-route inventory must pass without editing the guard.
+**Builder change test:** with Access sign-in on, add one new page to a fixture
+application and change an existing page's layout. Both routes must send a
+visitor without a session to Access and render for `alice`, and the sign-in
+suite and route inventory must pass without editing the guard.
 
 ## Upstream failure fixtures
 
