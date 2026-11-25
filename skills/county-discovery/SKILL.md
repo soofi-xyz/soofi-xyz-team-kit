@@ -19,7 +19,9 @@ Write findings to `skills/use-oracle/runtime/docs/<county>-county-findings.md`. 
 
 1. **Appraiser portal** — base URL, per-parcel detail URL pattern, search mechanism,
    access mode per artifact (plain fetch / modified request replaying a hidden API /
-   real browser), CAPTCHA/Cloudflare posture.
+   real browser), CAPTCHA/Cloudflare posture classified with
+   [`source-access.md`](../use-oracle/reference/source-access.md#1-classify-what-you-see),
+   the egress it needs, and the vendor recipe used.
 2. **Parcel identifier** — official name (STRAP, PCN, folio…), format, punctuation,
    numeric-only variants, how it appears on appraiser vs permit portals (often different).
 3. **Permit portal** — vendor (Accela, Tyler, ePZB, custom), search-by-parcel support,
@@ -47,7 +49,12 @@ Write findings to `skills/use-oracle/runtime/docs/<county>-county-findings.md`. 
    total record/page/request estimate, probe timings, safe concurrency, failure rate,
    estimated full-download time, and recommended mode: bulk artifact download, query-DB
    ingestion, or runtime retrieval.
-8. **Risks** — geo-blocking, bot challenges, throttling expectations.
+8. **Source comparison** — for overlapping sources (county GIS layer, appraiser site,
+   tax roll, permit portals), list what each one adds that the others lack, so a blocked
+   source is judged by what is actually lost (for example: the GIS layer gives the parcel
+   list and geometry; the appraiser site adds sales, buildings, value history, permits).
+9. **Risks** — firewall refusals, geo-blocking, bot challenges, throttling expectations,
+   each with the classification row from `source-access.md`.
 
 When the profile is complete, commit it and push a copy to
 `github.com/elephant-xyz/Counties-trasform-scripts` under `<county>/docs/` on a branch,
@@ -58,6 +65,10 @@ their `data/artifacts/...` path or `downloads/` location.
 ## Workflow
 
 1. Check prior art first:
+   - [`skills/use-oracle/reference/cookbooks/`](../use-oracle/reference/cookbooks/README.md)
+     for the vendor of every source you find (qPublic, Accela, …). A recipe gives the URL
+     pattern, access route, session rule, readiness condition and measured throughput; use
+     it instead of re-probing, and update it with what this county teaches.
    - `skills/use-oracle/runtime/docs/` for existing findings docs and sources catalogs (Lee is
      the reference).
    - `skills/use-oracle/runtime/transforms/<county>/` and the county folder in
@@ -75,13 +86,20 @@ their `data/artifacts/...` path or `downloads/` location.
    verify each linked site is the current official one.
 3. Probe each source with a real parcel id (get a few from the county GIS/open data).
    Always explore with Playwright, even when `curl` works — see "Exploring with
-   Playwright" below. Record per source: curl-only / curl-partial / browser-required,
-   and the full inventory of data the browser reveals.
+   Playwright" below — and launch it with the approved browser profile from
+   [`source-access.md`](../use-oracle/reference/source-access.md#3-approved-browser-profile),
+   never Playwright's default (its `HeadlessChrome` user agent fails challenges that the
+   profile passes). Record per source: curl-only / curl-partial / browser-required,
+   and the full inventory of data the browser reveals. When the report URL of a parcel
+   is hard to reach through search, ask the operator to paste one from their browser.
 4. Benchmark each source before recommending a full scrape:
    - Measure a small representative probe (for example 10-25 records/pages) and record
      p50/p95 latency, retries, failures, session/bootstrap cost, and bytes/artifacts.
-   - Test cautious concurrency levels (1, 2, 4; higher only if the source stays healthy)
-     and record the highest safe concurrency. Use portal errors, throttles, timeouts,
+   - Follow the ladder in
+     [`source-access.md`](../use-oracle/reference/source-access.md#5-measure-throughput):
+     1 record, 20 back to back, 20 at 4 workers, then a sustained run. Do not invent
+     delays; measure first. Test cautious concurrency levels (1, 2, 4; higher only if the
+     source stays healthy) and record the highest safe concurrency. Use portal errors, throttles, timeouts,
      CAPTCHA/challenge frequency, and page completeness as health signals.
    - Estimate total work from parcel count, result pages, permit/detail counts, or the
      source's published record count. Compute estimated elapsed time using measured
@@ -118,13 +136,16 @@ Never conclude a source's data inventory from `curl` output alone. A `curl` prob
   appraiser cost cards are examples — the richest data sat behind expanders.
 - **Hidden APIs** — the page is driven by JSON endpoints that curl CAN fetch, but only
   with the right headers/cookies/POST body discovered from browser traffic.
-- **Geo-blocking** — many county/state portals serve 403s, "Access Denied", or blank
-  block pages to non-US IPs, in both curl AND a real browser. Before concluding a source
-  is bot-protected or broken, verify the current egress IP is in the US
-  (`curl -s ipinfo.io/country`). If it isn't, have the operator switch to a US VPN/proxy
-  exit and re-probe; tell them explicitly that a US IP is required for this source.
-  Distinguish geo-blocks from bot challenges in the findings — they need different
-  mitigations (egress location vs browser automation).
+- **Egress blocks** — classify every failure with the table in
+  [`source-access.md`](../use-oracle/reference/source-access.md#1-classify-what-you-see)
+  before you conclude anything. A fast TCP refusal (~50 ms, 443 and 80) is a firewall
+  refusing a hosting/datacenter egress, even from a US IP; retry through an alternate
+  egress (WARP proxy first, then Mullvad; see
+  [`operating-in-vm.md`](../use-oracle/reference/operating-in-vm.md)) with operator
+  approval. A 403 with `Just a moment…` is a Cloudflare challenge; use the approved browser
+  profile. A 403 only from non-US egress is a geo-block; use US egress. Follow redirects:
+  a refused county host may redirect to a vendor host that answers. Record the class and
+  the working egress per source in the sources catalog.
 
 For every page type (search results, detail page, each tab):
 

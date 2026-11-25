@@ -61,14 +61,19 @@ Public category pages are a different source (`bbb-public-browser` or equivalent
 claim API coverage for a site scrape.
 
 **Cloudflare vs operator laptop.** Plain HTTP from a cloud IP often gets 403. Run the
-existing headless-browser harvester on approved **AWS-managed remote compute** with US
-egress; never open or drive the browser on the operator's machine. The execution target can
-be a job, container, or other approved AWS runner and does not need to be a VM. It is not
-an official API and not a completeness proof.
+existing headless-browser harvester on approved remote compute with US egress (an AWS job
+or container, or an approved cloud VM — see `reference/operating-in-vm.md`); never open or
+drive the browser on the operator's own machine. A site scrape is not an official API and
+not a completeness proof.
 
-**Do not operationalize anti-bot evasion** (navigator.webdriver spoofing, challenge
-solvers). Wait/reload on a real browser session is the existing harvester contract; stop
-if the challenge never clears.
+**Approved browser profile only.** For a public page behind a non-interactive challenge,
+use the Elephant CLI browser profile in `reference/source-access.md` (headless-shell
+Chromium, Chrome user agent, `navigator.webdriver` unset, heavy resources blocked) — the
+profile `elephant-cli prepare` itself launches — and let the challenge clear in that
+session. Start a fresh session when the source re-challenges. Add nothing beyond that
+profile: no CAPTCHA or Turnstile solving, no solver services, no fingerprint-spoofing
+browsers, no residential-proxy rotation without written operator approval. Stop if the
+challenge needs interaction or never clears.
 
 **Category office ≠ county.** A Fort Lauderdale (or other bureau) category mixes in-county
 and out-of-county addresses. Report in-county vs other separately. Do not set county

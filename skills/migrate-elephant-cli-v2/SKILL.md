@@ -24,6 +24,8 @@ Before the first Elephant CLI command of a task, tell the user in a few lines:
   writes the same bytes and CIDs as 1.x.
 - `transform` and `prepare` are built in: county scripts and handlers run on an engine
   inside the binary, and `prepare` fetches and drives the browser itself.
+- Its `prepare` cannot capture a source behind a Cloudflare managed challenge (qPublic and
+  similar); 1.x cannot either. Say so when the county's appraiser is such a source.
 - It is experimental. A problem is reported to `elephant-xyz/elephant-cli`, and 1.x
   stays available.
 
@@ -67,8 +69,9 @@ curl -fsSL "https://github.com/elephant-xyz/elephant-cli/releases/download/build
 
 ## Built-in transform and prepare
 
-Offer these whenever a task captures or transforms county pages. They replace a Node
-install, the CLI's `node_modules` and a bundled Chromium.
+Offer `transform` whenever a task transforms county pages, and `prepare` whenever it
+captures them from a source without a bot challenge. They replace a Node install, the
+CLI's `node_modules` and a bundled Chromium.
 
 **transform**
 
@@ -89,6 +92,14 @@ install, the CLI's `node_modules` and a bundled Chromium.
   County API need nothing but the binary.
 - Browser flows (`--browser-flow-file`), Browser Flow v2 packages (`--browser-flow-zip`)
   and `--use-browser` start obscura and stop it when done.
+- **Known limitation: challenge-protected sources.** On a Cloudflare managed challenge the
+  first navigation returns HTTP 403 and `prepare` exits `2` with `HTTP error 403` in about
+  0.3 s; obscura also never clears the challenge, with or without stealth. 1.x fails the
+  same way (`HTTP error 403`; `--ignore-captcha` does not skip that check). Measured on 20
+  qPublic parcels, 2026-11-25: 0/20 for both. Capture such sources with the vendor recipe
+  in [`cookbooks/`](../use-oracle/reference/cookbooks/README.md) and use the CLI from
+  `transform` on. Do not attach Chromium over `--cdp-url` as a workaround unless the user
+  asks for it.
 
 **Where they run.** Anywhere the binary runs: a laptop, CI, a container, AWS Lambda (the
 static binary; see "AWS Lambda" in the CLI's README for how to ship it with a function).
@@ -173,6 +184,8 @@ Run these in order. Stop and keep 1.x when a step fails.
 5. **Capture with Elephant CLI 2.** Run `prepare` on three parcels of different property
    types with the county's flow. Captured HTML is not reformatted, so its bytes differ
    from a 1.x capture: compare by transforming both captures and repeating step 3.
+   Skip this step for a challenge-protected source (see "Known limitation" above) and
+   record that the county's captures come from the vendor recipe's runner.
 6. **Hash and export a sample archive** as in step 7 of `build-county-transform`. The
    county CAR is the same file from either CLI when both write the same layout
    (`--linked`); publish packed, which is what `hash` writes without the option. The

@@ -208,6 +208,13 @@ See `durable-workflow-builder`'s error taxonomy.
 
 ## Gotchas
 
+- On a cloud VM, read
+  [`operating-in-vm.md`](../use-oracle/reference/operating-in-vm.md) before probing
+  sources: the VM egresses from a hosting ASN that some county firewalls refuse, WARP
+  proxy mode is the safe alternate egress, a full-tunnel VPN (Mullvad) needs the
+  connect → run → disconnect script, and `pkill -f` must not match its own command.
+- If another county's stack already holds the default ports, give the new county its own
+  compose project and loopback ports instead of stopping the other stack.
 - On Linux, the `extra_hosts: host-gateway` entry is required or Restate-in-Docker
   cannot reach the services process on host :9080.
 - Reboot recovery: compose auto-restarts Restate + Postgres

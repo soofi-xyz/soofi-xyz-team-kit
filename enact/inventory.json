@@ -3700,8 +3700,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.195.0",
-  "kit_version": "0.195.0",
+  "enact_version": "1.196.0",
+  "kit_version": "0.196.0",
   "mcp_allow_list": [
     "enact",
     "browser",

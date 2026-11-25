@@ -15,9 +15,37 @@ Before the first Elephant CLI command of a task, load
 the user: one native binary, no Node or npm install, the same publication commands, with
 `transform` and `prepare` built in. Its `hash` packs each data group of a property into
 one block by default; `--linked` writes the layout and CIDs of 1.x. Offer its built-in
-`prepare` and `transform` whenever a task captures or transforms county pages. Use it
-when the user accepts and 1.x when they decline. Report which CLI and build commit ran
-with every gate.
+`transform` whenever a task transforms county pages, and its `prepare` whenever it captures
+pages from a source without a bot challenge. Neither CLI's `prepare` captures a source
+behind a Cloudflare managed challenge (qPublic and similar): capture those with the vendor
+recipe in `skills/use-oracle/reference/cookbooks/` and use the CLI from `transform` on.
+Use Elephant CLI 2 when the user accepts and 1.x when they decline. Report which CLI and
+build commit ran with every gate.
+
+## Source access
+
+Before probing any source, read `skills/use-oracle/reference/source-access.md` and the
+vendor recipe in `skills/use-oracle/reference/cookbooks/`. On a cloud VM or runner, also
+read `skills/use-oracle/reference/operating-in-vm.md`.
+
+- Classify every failure with the table in `source-access.md` before you name it. A fast
+  TCP refusal from a US hosting IP is a firewall refusing that egress, not "down" and not
+  a geo-block.
+- Probe with the approved browser profile, never Playwright's default launch.
+- Before you report a source blocked, finish the checklist in `source-access.md` and name
+  the remaining unblock options (alternate egress, proxy rotation, access agreement,
+  records request, purchase) in the hand-back. Ask the operator for approval of an
+  alternate egress instead of stopping at the refusal.
+- Measure throughput with the ladder in `source-access.md`; never choose delays without a
+  measurement. Prove the readiness condition on saved pages before scaling.
+
+## Working in parallel
+
+- Start independent tracks (appraiser, GIS, permits per jurisdiction, registries) as
+  parallel sub-agents and keep working on your own track. Do not wait for a sub-agent in
+  `sleep`/`until` polling loops; collect its result when it reports back.
+- Give each sub-agent the vendor recipe and `source-access.md` so it does not rediscover a
+  solved source.
 
 ## Completion contract
 
@@ -152,12 +180,16 @@ separate, and stop. Do not continue into the pipeline below.
 - A raw single-property request is capture only: exactly one seed row, official
   adapter, byte-preserved body, separate receipt, and no transform, reconciliation,
   Query DB load, hash, export, Atlas registration, or publication.
-- Never solve or bypass CAPTCHA. Never commit captures, CARs, Parquet, secrets, or
-  database URLs.
+- Never solve or bypass CAPTCHA. Use only the approved browser profile on challenge-
+  protected sources (`reference/failure-modes.md`). Never commit captures, CARs, Parquet,
+  secrets, or database URLs.
 
 ## Routing
 
 - New county or full re-ingest: `onboard-county`, then this pipeline.
+- Refused, challenged, or slow source, or a known vendor (qPublic, Accela, …):
+  `use-oracle/reference/source-access.md` and `use-oracle/reference/cookbooks/`.
+  Running on a cloud VM: `use-oracle/reference/operating-in-vm.md`.
 - Full/direct web output for one property with no transformation:
   `use-oracle/reference/raw-property-capture.md`; return the raw body and stop.
 - Printed permit license or Sunbiz company detail: `dbpr-license-ingest` and

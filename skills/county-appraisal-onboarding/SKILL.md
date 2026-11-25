@@ -22,6 +22,16 @@ Chromium. What differs for flows: only `{{=it.<name>}}` is filled, the flow is p
 gets a listed part of Puppeteer's `page`, and there is no headed mode. Use 1.x when the
 user declines or a flow needs what Elephant CLI 2 leaves out.
 
+**Challenge-protected appraisers (Cloudflare managed challenge, e.g. qPublic): `prepare`
+does not work yet, in either CLI.** The challenge's first response is HTTP 403 and
+`prepare --use-browser` throws on it before the challenge can clear (`--ignore-captcha`
+does not skip that check); Elephant CLI 2's obscura browser never clears the challenge at
+all. Check [`cookbooks/`](../use-oracle/reference/cookbooks/README.md) for the vendor:
+capture with the recipe's runner (approved browser profile, session rule, readiness
+condition from [`source-access.md`](../use-oracle/reference/source-access.md)) into the
+capture layout `transform` expects, and use the CLI from `transform` on. Report the gap on
+`elephant-xyz/elephant-cli` rather than patching around it per county.
+
 1. Per-county flows live in `skills/use-oracle/runtime/flows/<County>.json`. Check for an existing
    one; otherwise use another county's flow as a template.
 2. Author the flow: navigate → fill the parcel search input (selector from discovery) →
@@ -192,9 +202,16 @@ code — see `durable-workflow-builder` authoring rule 2.
   (`graceful-fs` cannot patch `fs.promises`). For heavy counties, also semaphore-wrap the
   `fs.promises` fan-out (~128 in-flight) in the fetcher/CLI usage — at prepare
   concurrency ~50 with 400-file parcels, even 4096 fds can exhaust.
-- Geo-blocking: some county portals block datacenter IPs; proxy rotation is supported via
-  `PROXY_FILE`/proxy config on the fetcher and was needed intermittently for Lee. Check
-  `curl -s ipinfo.io/country` returns `US` before debugging any scrape failure.
+- Egress: some county portals refuse datacenter/hosting IPs at TCP level even from the US;
+  classify the failure with
+  [`source-access.md`](../use-oracle/reference/source-access.md#1-classify-what-you-see)
+  (fast refusal vs challenge vs geo-block) before debugging the scrape. Proxy rotation is
+  supported via `PROXY_FILE`/proxy config on the fetcher and was needed intermittently for
+  Lee; WARP proxy mode and Mullvad setup are in
+  [`operating-in-vm.md`](../use-oracle/reference/operating-in-vm.md).
+- A killed first run of Elephant CLI 1.x on Linux can leave a truncated `/tmp/chromium`
+  (`@sparticuz/chromium`); every later `prepare --use-browser` then fails with
+  `Failed to launch the browser process`. Delete the file and rerun.
 - A transform-script county-name mismatch can silently produce wrong-county labels in
   output (the "Columbia county" incident) — verify `county_jurisdiction` in transformed
   output equals the expected county.

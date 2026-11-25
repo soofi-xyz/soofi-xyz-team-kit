@@ -69,7 +69,14 @@ process on :9080 (`npm run dev`), registered via
 4. Verify a permit-less parcel completes cleanly and a residential parcel stops after
    archive with `eligibility.json` showing `eligible: false` and no permit artifacts.
 5. Record pilot timings per source: observed latency, safe concurrency, retry/failure
-   rate, projected full-county duration.
+   rate, projected full-county duration. For browser-captured sources, measure with the
+   ladder in
+   [`source-access.md`](../use-oracle/reference/source-access.md#5-measure-throughput)
+   (1 → 20 back to back → 20 at 4 workers → sustained), apply the vendor recipe's session
+   rule, and count captures complete only when the recipe's readiness condition holds and
+   the file clears its size floor. Do not add delays that were not measured as needed. If
+   every record fails the same way, re-test one known-good record with a known-good probe
+   before blaming the source.
 
 ## 2. Feasibility gate before full run
 

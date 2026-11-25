@@ -19,7 +19,9 @@ publication commands below are the same in both. From Elephant CLI 2 build `94db
 [`reference/car-publication.md`](reference/car-publication.md) before the first packed
 publication. Use it when the user accepts and 1.x when they decline. Hash, export, upload
 and register one data group with one CLI: the data CIDs of a packed archive and the
-tables root of `export-tables` differ between them.
+tables root of `export-tables` differ between them. Neither CLI's `prepare` captures a
+source behind a Cloudflare managed challenge (qPublic and similar); capture those with the
+vendor recipe in [`reference/cookbooks/`](reference/cookbooks/README.md).
 
 ## Public boundary
 
@@ -53,6 +55,11 @@ product checks. Atlas archives and CLI-exported tables are the MCP/public source
 8. [`reference/raw-property-capture.md`](./reference/raw-property-capture.md)
 9. [`reference/failure-modes.md`](./reference/failure-modes.md)
 10. [`reference/durable-orchestration.md`](./reference/durable-orchestration.md)
+11. [`reference/source-access.md`](./reference/source-access.md) and the vendor recipes in
+    [`reference/cookbooks/`](./reference/cookbooks/README.md), before probing or sizing any
+    source
+12. [`reference/operating-in-vm.md`](./reference/operating-in-vm.md) when running on a
+    cloud VM or runner
 
 ## Choose the ingestion stack
 
