@@ -119,8 +119,10 @@ that ran fails.
 
 ## Recording the Slowking reference run (T4)
 
-`golden/slowking.json` has two T4 tasks whose `reference_run` is a `TO_RECORD`
-placeholder. To record one:
+`golden/slowking.json` has two T4 tasks. `slowking-t4-roofing-crm` is recorded: Slowking in
+Cursor scored Roofing CRM PR #22 at 59/100 (soofi-xyz/wow-website#191), and the first Enact run
+scored 64/100 with every dimension within 5 points. `slowking-t4-oracle-property-intelligence` is
+still a `TO_RECORD` placeholder. To record one:
 
 1. Pick a real, already-submitted candidate assignment of the named type: a PR to the
    designated assignment repository, a hosted runtime, a demo, and the assignment-sent time.
