@@ -1,6 +1,6 @@
 ---
 name: operate-sms-campaigns
-description: Prepares, certifies, and starts SOCAPITAL SMS campaigns through the mandatory standard or payfail Filter contract, live Interprose SMS cleanup (including SLDBCK, worklist 1151, and SMS opt-out/STOP history), PRIMARY ZIP validation, operator opt-out suppression lists with Quiq opt-outs after the list cut-off, same-day provider dedupe, final-build DNT recount, template checks, reservation, and SMS orchestration. Use for bulk SMS, trigger SMS, credit-reporting sets, portfolio SMS, payfail SMS, suppression-list scrubs, workflow payloads, or SMS send readiness.
+description: Prepares, certifies, and starts SOCAPITAL SMS campaigns through the mandatory standard or payfail Filter contract, live Interprose SMS cleanup (including person-level bankruptcy, SLDBCK, worklist 1151, and SMS opt-out/STOP history), PRIMARY ZIP validation, operator opt-out suppression lists with Quiq opt-outs after the list cut-off, same-day provider dedupe, final-build DNT recount, template checks, reservation, and SMS orchestration. Use for bulk SMS, trigger SMS, credit-reporting sets, portfolio SMS, payfail SMS, suppression-list scrubs, workflow payloads, or SMS send readiness.
 ---
 
 # Operate SMS campaigns
@@ -10,7 +10,7 @@ Prepare every SMS campaign as:
 ```text
 source membership
   -> mandatory SMS Filter contract
-  -> live Interprose SMS scrub (incl. SLDBCK, worklist 1151, opt-out/STOP)
+  -> live Interprose SMS scrub (incl. person bankruptcy, SLDBCK, worklist 1151, opt-out/STOP)
   -> live PRIMARY ZIP gate
   -> opt-out suppression list + Quiq after list cut-off (when a list is supplied)
   -> operator-requested debt removals
@@ -279,23 +279,9 @@ and the merged totals to reconcile to the full source.
 ## Run live Interprose SMS scrub
 
 Run after Filter through production PrivateLink in one read-only
-`REPEATABLE READ` transaction.
-
-### Connect to Interprose
-
-1. Run from a SOC-network workstation or approved compute connected to a
-   SOCAPITAL VPC, such as an SSM-managed EC2 worker.
-2. Fetch secret `prod/interprose/endpoint/privatelink` from Secrets Manager in
-   `us-east-2` using the selected AWS profile.
-3. Read `host`, `port` (default `5432`), `database`, `username`, and
-   `password` at runtime; never print or persist them.
-4. Connect with PostgreSQL `sslmode=require`.
-5. Start `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY`.
-6. Restrict queries to the campaign debt IDs and required `spring.*` columns.
-7. Capture transaction snapshot/isolation/read-only evidence, then commit.
-
-Never write to Interprose through SQL. If PrivateLink is unreachable, use
-approved VPC-connected compute; do not expose the database publicly.
+`REPEATABLE READ` transaction. Connect as described in
+[reference/interprose-sms-scrub.md](reference/interprose-sms-scrub.md#connect-to-interprose).
+Never write to Interprose through SQL.
 
 Retain a debt only when:
 
@@ -304,6 +290,8 @@ Retain a debt only when:
 - the debt is not on sell-back worklist `1151`: check both
   `spring.account.worklist_id` and `spring.worklist_debt`, because either can
   be set without the other;
+- no SPRING debt of the same person (same `bundle_id` or PRIMARY
+  `national_id_hash`), in or outside the campaign, has an active bankruptcy;
 - account `active=true`, `debt_status_code=ACT`, `currentbal>0`;
 - `do_not_txt` and `do_not_call` are not true;
 - at least one supplied phone same-debt matches current
@@ -317,10 +305,14 @@ Retain a debt only when:
 - `spring.txt_msg_log` holds no STOP-style reply or opt-out result for that
   debt and phone.
 
-Apply the SLDBCK and worklist 1151 checks to every SMS campaign, standard or
-payfail, even when Filter's `not_sold_back` rule already passed. Report their
-hit counts separately from the other account reasons so they stay visible when
-a debt would fail another gate anyway.
+Apply the person-bankruptcy, SLDBCK and worklist 1151 checks to every SMS
+campaign, standard or payfail, even when Filter's `not_in_bankruptcy`,
+`in_bankruptcy` and `not_sold_back` rules passed. Interprose records bankruptcy
+on one debt and Filter checks only that debt, so a bankrupt person's other
+debts pass Filter; keep this gate until Lexicon blocks bankruptcy per person.
+Report their hit counts separately from the other account reasons (bankruptcy
+split by `same_debt`, `same_bundle`, `same_ssn_hash_only`) so they stay
+visible when a debt would fail another gate anyway.
 
 Remove unsafe phones and drop debts left with no safe SMS phone. Publish
 account/phone exclusion evidence, counts, hashes, and transaction proof. See
@@ -493,7 +485,8 @@ changes, unless the operator explicitly waives it.
 ## Report
 
 Return source, Filter pass/reject/not-loaded (and any part retry), Interprose
-exclusions including SLDBCK and worklist 1151 counts, safe phones, ZIP
+exclusions including person-bankruptcy (same debt, same bundle, same SSN
+hash), SLDBCK and worklist 1151 counts, safe phones, ZIP
 exclusions, suppression-list and Quiq removals, operator removals, provider
 debt/phone overlaps, account DNT recount, final debt/phone counts, rule
 contract name/count, execution links, final/audit/reservation URIs, payload,
