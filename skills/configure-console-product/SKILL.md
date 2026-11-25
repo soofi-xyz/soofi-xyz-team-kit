@@ -259,7 +259,8 @@ not do those steps by hand.
 2. Install the app's dependencies as its lockfile pins them. When the app pins
    `@prism/console-app-kit` before 1.44.0 and the environment's registry answers 404
    for it, run `node scripts/edit-turn.mjs bump-kit --kit-version <kit_version>`
-   with the version the prompt's `@prism (prism)` line names, as
+   with the version the prompt's line `- @prism (prism): the latest
+   @prism/console-app-kit published here is <kit_version>` names, as
    [the kit bump](reference/edit-mode.md#bump-the-app-kit-when-the-registry-lacks-its-version)
    describes; a different major version is refused, so end the turn as `FAILED`.
    Bump only to recover from that 404: when the frozen install succeeds, go on

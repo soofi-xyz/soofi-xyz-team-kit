@@ -27,7 +27,7 @@
     },
     {
       "name": "configure-console-product",
-      "version": "1.0.0-sha256-65dd1793af62e6c2"
+      "version": "1.0.0-sha256-a5495129271b9aa0"
     },
     {
       "name": "configure-deploy-product",
@@ -35,7 +35,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-1e337880b71c068e"
+      "version": "1.0.0-sha256-9ede80ff0eec5441"
     },
     {
       "name": "operate-marketplace",

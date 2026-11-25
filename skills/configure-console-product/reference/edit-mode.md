@@ -85,8 +85,13 @@ so nothing installs and the gate refuses every push. The run's prompt names the
 registry's newest kit in a line such as:
 
 ```text
-- @prism (prism): the latest kit version published here is 1.44.0
+- @prism (prism): the latest @prism/console-app-kit published here is 1.44.0
 ```
+
+followed by a rule to use that app kit version when you add or upgrade the kit, unless
+the repository pins another on purpose. The version is the text after
+`published here is`; the registry's other packages, such as packs, are versioned on
+their own and never take it.
 
 This step is only for recovering from that 404. When `pnpm install --frozen-lockfile`
 succeeds, the app's kit is in the registry: make no bump, whatever the prompt says,
@@ -95,10 +100,12 @@ and go on with the turn as usual.
 Only when the app's `package.json` pins `@prism/console-app-kit` to an exact version
 before 1.44.0 **and** `pnpm install --frozen-lockfile` failed with 404 for it, take
 `<kit_version>` from that prompt line, never guessed. When the prompt has no
-`- @prism (prism)` line, or has one without `: the latest kit version published here
-is <kit_version>` (the registry has no kit yet), there is no kit to bump to: end the
-turn as `FAILED`, with a `message` saying the environment's registry has no app kit
-for this app. Otherwise run in the clone:
+`- @prism (prism)` line, or has one that does not name `@prism/console-app-kit` and a
+version (a bare `- @prism (prism)`: the registry has no kit yet, and then no line of the
+prompt mentions the app kit), there is no kit to bump to: end the turn as `FAILED`,
+with a `message` saying the environment's registry has no app kit for this app. An
+installed commit pinning a kit before 1.44.0 is never a pin "on purpose" in this
+sense: the registry cannot install it. Otherwise run in the clone:
 
 ```bash
 node <skill>/scripts/edit-turn.mjs bump-kit --kit-version <kit_version>
