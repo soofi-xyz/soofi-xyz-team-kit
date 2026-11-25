@@ -23,7 +23,9 @@ Record the following in `docs/<county>-sources.yaml`:
 - Source snapshot and verification times
 - Required history boundary
 - Current jurisdictions and required predecessor systems
-- Canonical assessed-property source and count
+- Canonical assessed-property source and count (an assessor-maintained layer on the
+  county's own ArcGIS server qualifies; record the layer URL, `returnCountOnly` result,
+  snapshot time and the egress used to reach it)
 - Tax-roll year and preliminary/final/certified status
 - Geometry source and feature count
 - Parcel identifier formats and exact join keys

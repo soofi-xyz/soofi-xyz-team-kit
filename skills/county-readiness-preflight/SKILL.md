@@ -26,6 +26,10 @@ failure modes, not a list of special counties:
    exception says otherwise. A material gap (default 2%) blocks GIS-only seeding. If GIS
    is below assessed, record `separately_assessed_without_geometry` (`acknowledged` or
    `none`) so condos and other units without unique polygons are not dropped.
+   An assessor-maintained layer on the county's own ArcGIS server (for example a
+   `tax/…assessor…` MapServer carrying owner and assessed values) is an official
+   assessed-property source: take its count with `query?where=1=1&returnCountOnly=true`
+   and record the layer URL and snapshot time. A staff copy on ArcGIS Online is not.
 2. **Permits are per jurisdiction.** Enumerate unincorporated, every municipality,
    delegated authorities, and required predecessor systems. Catalog count must match
    expected count. No row may remain `needs-review`. A matching parcel roll does not
@@ -94,6 +98,13 @@ Fixtures are named by **failure mode**. They must keep passing
 ## After a BLOCKED report
 
 Do not call seed or ingest. Name the blocked gate, the evidence, the owner, and the next
-permissible automated action. Automatically continue source enumeration, bounded adapter
+permissible automated action.
+
+Separate "the official source is unreachable from this egress" from "no official source
+exists". For the first, the next action is the checklist in
+[`source-access.md`](../use-oracle/reference/source-access.md#6-before-you-report-a-source-blocked)
+(classify, follow redirects, approved browser profile, alternate egress with operator
+approval), not a records request. File a records request only when the data is not
+published or every route is exhausted. Automatically continue source enumeration, bounded adapter
 work, access remediation, request preparation, and publication-readiness checks from
 `next_automated_actions`; do not wait for another user message.

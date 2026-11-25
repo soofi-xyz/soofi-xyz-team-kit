@@ -65,8 +65,11 @@ node skills/use-oracle/runtime/bin/elephant-county.mjs capture-raw \
 Write no capture when:
 
 - the seed has zero or more than one property;
-- the HTTP response is unsuccessful;
-- the page is empty, blocked, challenged, or contains CAPTCHA;
+- the final page is unsuccessful. A first response of 403 from a non-interactive challenge
+  that clears to the requested record in the same browser session is not a failure; record
+  both statuses in the receipt (`reference/source-access.md`);
+- the final page is empty, blocked, still challenged, fails the vendor's readiness
+  condition, or contains CAPTCHA;
 - the official parcel identifier in the response differs from the request;
 - the output path is trackable source/fixture storage.
 
