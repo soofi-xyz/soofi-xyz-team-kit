@@ -16,6 +16,57 @@ Three kinds of work use this skill: building an **app**, authoring an environmen
 **design-system configuration**, and keeping an existing **dashboard** working. Build
 new business apps as apps. Do not start a new one as a dashboard manifest.
 
+## Walk a new person through it
+
+When the person has not built a Console app before, or asks how it works, take
+them through three stages in plain words, one stage at a time, and wait for them
+before the next. Items marked "to confirm" are not confirmed: say so, and never
+present a guess as the answer.
+
+1. **Create.**
+   - They reach you through Enact in their Claude: the Enact address is
+     `https://<shared domain>/enact/mcp`, and they link their own Claude plan once
+     on Anthropic's site (where that step is: to confirm; how to start Vivillon
+     from Claude: to confirm).
+   - The app lives in its own repository in the prismteam-ai organization. Enact
+     cannot yet create a repository or install the app kit in its sandbox; a
+     separate Enact change is in progress. Say so plainly, and until then ask
+     them to create the repository from prismteam-ai/configuration-bundle-template
+     (**Use this template**) and an owner of the organization to add it to the
+     Enact GitHub app and Enact's allowed list (who adds it to that list: to
+     confirm). Never say you created it or ran a check you could not run.
+   - Agree on the pages (section 2), then build and show one page at a time
+     (section 3). Open one pull request in their repository and never merge it.
+     Its description says what was added, the check's result line, that the
+     numbers match the prototype where there is one, that nothing overflows at
+     phone, tablet and desktop widths, and the known gaps, as
+     [prismteam-ai/debt-collection-usecase#25](https://github.com/prismteam-ai/debt-collection-usecase/pull/25)
+     does.
+   - To change the app, they ask you in plain words, for example "show each rule
+     as an on/off switch with a bar for how many accounts it holds back"; each
+     change comes back as a new pull request.
+2. **Review in Console's edit mode**, on an app already on Console.
+   - Apps open in view mode. A person whose role allows editing sees an **Edit
+     mode** switch above the app (which role the team gets: to confirm).
+   - They pin sticky notes on the exact spot they mean, draw markup with the pen
+     (mouse, finger or Apple Pencil), change or delete them (they survive a
+     reload), then click **Run fixes** to send the whole batch.
+   - You review the batch and open a fix pull request (section 7). Its status goes
+     "submitted", "reviewing", then "pr-open", or "needs-info" when you ask a
+     question (whether review is switched on in their environment and where they
+     see the status: to confirm).
+3. **Deliver.**
+   - Merging the pull request delivers the app: Build checks it, Marketplace
+     publishes it, Deploy installs it. Nothing reaches Console before that. The
+     first delivery needs the one-time setup in
+     [delivery](../build-console-product/reference/app-kit.md#delivery); ask an
+     operator for it, and `doublade` for the role.
+   - Have the app's viewer role, such as `mayo-clinic-viewer`, given to the people
+     who should open it; people without it cannot.
+   - They open it at `https://<shared domain>/console/app/?appId=<appId>`, for
+     example `?appId=agent-usage`. The two reference apps are not merged yet and
+     still need their delivery setup before a merge publishes them (to confirm).
+
 ## 1. Discover the Console
 
 1. Call `https://<shared domain>/console` with the shared `x-api-key`: `GET /information`
@@ -24,14 +75,16 @@ new business apps as apps. Do not start a new one as a dashboard manifest.
    `soofi-safavi.account.prismteam.ai`); use no AWS profile or credentials and do
    not read SSM or stack outputs.
 2. Separate required, implemented and observed capabilities. Do not guess routes,
-   components or operations. As of 2026-11-21 the Console repository's `main` (runtime
-   1.20.0) hosts apps (upload, publish, roll back, open by address), has
-   design-system configuration, and its one registered data operation is
+   components or operations. As of 2026-11-25 the Console repository's `main`
+   (runtime 1.42.0) hosts apps (upload, publish, roll back, open by address), has
+   design-system configuration and edit mode, and its one registered data operation is
    `report` `read-dataset`. Dashboards follow the configuration from runtime
    1.21.0 ([Console pull request 39](https://github.com/prismteam-ai/console/pull/39),
-   not yet merged). Delivery through Build, Marketplace and Deploy and component
-   packs are requirements, so an app or a configuration reaches only your own
-   dev/test stack yet.
+   not yet merged). A merged app reaches an environment through Build,
+   Marketplace and Deploy ([delivery](../build-console-product/reference/app-kit.md#delivery));
+   prismteam-ai/agent-usage-app and prismteam-ai/console-pack-app were delivered
+   that way. The kit's components, with props and an example each, are in its
+   `dist/CATALOG.md`.
 3. Where the capability a request needs is absent, say so, show the person what you
    would build, hand the gap to `chandelure` and stop. Do not build a bespoke app
    outside Console, run a local generator or fork the renderer as a substitute.
@@ -45,7 +98,11 @@ The person understands the business, not software. Use plain words.
 2. Write the answer back as a short list of pages: what each shows and what a
    person can change on it. Wait for a yes.
 3. Map each page to existing design-system components and to registered data
-   operations before writing code. When rebuilding an existing page or
+   operations before writing code. Read
+   [the reference apps](../build-console-product/reference/app-kit.md#reference-apps)
+   and copy their patterns: prototype logic copied byte for byte, a store for
+   settings that carry across pages, one section at a time with `SectionDots`,
+   and `Switch` rows for on/off rules. When rebuilding an existing page or
    prototype, use the matching component listed under
    [Console's own components](../build-console-product/reference/design-system.md#design-system)
    instead of copying its HTML. List what is missing; send each missing item as a request (step 3.6) and tell
@@ -150,10 +207,10 @@ describes. Never ask the person for Figma access or a token.
    configuration-bundle repository through a pull request the user merges.
 2. An app is a `console` `app` entry and a design-system configuration a `console`
    `design-system` entry, as [delivery](../build-console-product/reference/app-kit.md#delivery)
-   describes. Both kinds are targets until Build and Deploy merge them. Until then
-   stop at the checked, previewed app in its repository, record the gap for
-   `tinkaton` (bundle kind) and `corviknight` (Deploy installer) and tell the user.
-   Never upload, publish or install by hand as a substitute.
+   describes. Add the app's delivery files at the repository root as that section
+   lists them. Merging the pull request delivers the app: Build checks and builds
+   it, Marketplace publishes it, Deploy installs it. Never upload, publish or
+   install by hand as a substitute.
 3. Validating and publishing through the Console API is a test-only exception on
    your own dev/test stack: verify the immutable digest and read back the active
    revision.
@@ -175,6 +232,14 @@ JavaScript in a manifest or a configuration.
 Return the app source or diff, check result, previews and the person's feedback,
 configuration artifacts with selected versions and digests, API and browser
 results, cleanup and builder handoffs.
+
+## 7. Fix a Console edit batch
+
+A run whose message begins `Console edit batch` was started by **Run fixes**. Its
+message says what to do and how to end the answer (`PR:` and `NEEDS-INFO:`
+lines); follow it exactly. Make each fix by the rules of section 3, run the
+check, and open one pull request per repository from the commit each
+annotation's `source` names. Never merge.
 
 ## Configuration provenance
 
