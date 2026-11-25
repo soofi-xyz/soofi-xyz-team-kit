@@ -130,7 +130,7 @@ the source.
   - drawing parts for custom visuals: bars, segments, grid cells and axes, so
     most new visuals need no new component and no raw SVG;
   - messages ([pull request 66](https://github.com/prismteam-ai/console/pull/66),
-    runtime 1.41.0, not yet merged), each replacing a part of the debt-collection
+    runtime 1.41.0), each replacing a part of the debt-collection
     demo: `FilledText` (message text with highlighted, linked and missing
     variables, the demo's `Filled`), `SmsPreview` (`.content-phone`),
     `EmailPreview` (`.content-mail`), `Inbox` (`.responses-inbox`),
@@ -138,7 +138,7 @@ the source.
     (`dl.responses-facts`, `dl.ms-facts`, Mayo's `dl.my-def`). The message bubble
     is shadcn's `Bubble`;
   - content ([pull request 67](https://github.com/prismteam-ai/console/pull/67),
-    runtime 1.42.0, not yet merged): `CodeBlock` (the demo's `pre.code`, plus a
+    runtime 1.42.0): `CodeBlock` (the demo's `pre.code`, plus a
     copy button; shadcn's code-block), a step bar on `Carousel` (`.mt-stepbar`),
     `SectionDots` and `SkipLink` (`.nav-dots`, `.skip-link`), `RuleCard`
     (`article.lx-term` in the Rules draft), `RatingReasons` (`.inference-dot`
