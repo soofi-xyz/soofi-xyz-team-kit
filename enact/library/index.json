@@ -865,12 +865,12 @@
       "version": "1.0.0-sha256-2bf41e6b17c43a95"
     },
     "guide-product-work": {
-      "bytes": 291374,
-      "digest": "sha256:0127b2094f44d6675402b4cae6c7d850be79ec2e0be759bad5d1c76555388f9c",
-      "encoded_bytes": 307207,
+      "bytes": 291590,
+      "digest": "sha256:f81f2d1d4ce473bc785fd4c453fce854f2530b79cd94fc435c8a9176d1fca183",
+      "encoded_bytes": 307423,
       "files": 25,
       "reason": "used by 41 packaged agents",
-      "stored_bytes": 298520,
+      "stored_bytes": 298736,
       "used_by": [
         "aegislash",
         "arceus",
@@ -914,7 +914,7 @@
         "zorua",
         "zygarde"
       ],
-      "version": "1.0.0-sha256-b584a4a6d9dd6d0a"
+      "version": "1.0.0-sha256-d267302a17d3d88e"
     },
     "integrate-ci-cd": {
       "bytes": 6805,
