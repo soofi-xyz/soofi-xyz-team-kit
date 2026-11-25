@@ -39,7 +39,7 @@
     },
     {
       "name": "configure-model-product",
-      "version": "1.0.0-sha256-14d9993535da6a96"
+      "version": "1.0.0-sha256-9622ac3184dcd088"
     },
     {
       "name": "guide-product-work",
@@ -71,5 +71,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.194.0"
+  "version": "1.195.0"
 }
