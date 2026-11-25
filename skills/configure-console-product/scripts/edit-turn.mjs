@@ -31,9 +31,9 @@ const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const FULL_SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const ABSENT = /^0+$/;
 const KIT = "@prism/console-app-kit";
-// The first kit version published to each environment's own package registry: an app pinning an
-// earlier one cannot install there, so its turn may move the pin to the registry's kit.
-const FIRST_REGISTRY_KIT = "1.44.0";
+// The lowest kit version any environment's own package registry starts at: a kit bump moves an
+// app's pin up to the registry's kit, which is never below this.
+const MIN_REGISTRY_KIT = "1.49.0";
 const EXACT_VERSION = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 
 class Refusal extends Error {}
@@ -227,19 +227,20 @@ const REFUSED_LOCKFILE_SECTIONS = ["overrides", "patchedDependencies", "pnpmfile
 const LOCKFILE_VERSION = "9.0";
 
 /**
- * `{ from, to }` when package.json changes only by moving the kit's exact pin from a version before
- * the registry's first kit to a same-major version the registry has; otherwise `{ problem }`.
+ * `{ from, to }` when package.json changes only by moving the kit's exact pin up to a later version
+ * of the same major that a registry can hold (at least MIN_REGISTRY_KIT); otherwise `{ problem }`.
  */
 const kitBump = (beforeText, afterText) => {
   const [before, after] = [parseJson(beforeText ?? ""), parseJson(afterText ?? "")];
   if (!isObject(before) || !isObject(after)) return { problem: "package.json is not a JSON object" };
   const from = before.dependencies?.[KIT];
   const to = after.dependencies?.[KIT];
-  if (typeof from !== "string" || !EXACT_VERSION.test(from) || compareVersions(from, FIRST_REGISTRY_KIT) >= 0) {
-    return { problem: `the installed commit pins ${KIT} ${from ?? "nowhere in dependencies"}; only an exact pin before ${FIRST_REGISTRY_KIT} may be bumped` };
+  if (typeof from !== "string" || !EXACT_VERSION.test(from)) {
+    return { problem: `the installed commit pins ${KIT} ${from ?? "nowhere in dependencies"}; only an exact pin may be bumped` };
   }
   if (typeof to !== "string" || !EXACT_VERSION.test(to)) return { problem: `the new ${KIT} pin must be an exact version, not ${to}` };
-  if (compareVersions(to, FIRST_REGISTRY_KIT) < 0) return { problem: `the new ${KIT} pin ${to} must be ${FIRST_REGISTRY_KIT} or later` };
+  if (compareVersions(to, MIN_REGISTRY_KIT) < 0) return { problem: `the new ${KIT} pin ${to} must be ${MIN_REGISTRY_KIT} or later, the lowest kit a registry holds` };
+  if (compareVersions(from, to) >= 0) return { problem: `${KIT} ${from} to ${to} is not an upgrade; a kit bump only moves the pin to a later version` };
   if (versionParts(to)[0] !== versionParts(from)[0]) {
     return { problem: `${KIT} ${from} to ${to} changes the major version; a kit bump stays in the same major` };
   }
@@ -484,7 +485,7 @@ const kitBumpProblems = (dir, state, sha) => {
 const bumpKit = (options) => {
   const { dir, state } = loadTurn(options.dir);
   const version = options["kit-version"];
-  if (!version || !EXACT_VERSION.test(version)) refuse(`--kit-version must be an exact version such as ${FIRST_REGISTRY_KIT}, not ${version ?? "(none)"}`);
+  if (!version || !EXACT_VERSION.test(version)) refuse(`--kit-version must be an exact version such as ${MIN_REGISTRY_KIT}, not ${version ?? "(none)"}`);
   const manifest = appFile(state, "package.json");
   const lockfile = appFile(state, "pnpm-lock.yaml");
   for (const file of [manifest, lockfile]) {

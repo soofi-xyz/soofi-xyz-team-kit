@@ -49,7 +49,7 @@ guess one: answer `NEEDS-INFO` (below) naming what is missing.
    pins them (`pnpm install --frozen-lockfile`). The sandbox already resolves
    `@prism/*` from the environment's `prism` registry with a read token: never run
    `aws codeartifact login` or write a registry file. When the install answers 404
-   for an `@prism/console-app-kit` pinned before 1.44.0, make
+   for the app's pinned `@prism/console-app-kit`, make
    [the kit bump](#bump-the-app-kit-when-the-registry-lacks-its-version), the one
    change to `package.json` and the lockfile a turn may make. Never change them, or a
    registry setting, any other way to make an install work. When the kit cannot be
@@ -79,13 +79,13 @@ second change in the same turn.
 
 ## Bump the app kit when the registry lacks its version
 
-Each environment's own package registry holds `@prism/console-app-kit` from 1.44.0
-on. An app installed earlier can pin an older kit that the registry answers with 404,
-so nothing installs and the gate refuses every push. The run's prompt names the
-registry's newest kit in a line such as:
+Each environment's own package registry holds `@prism/console-app-kit` only from the
+version it started at, never below 1.49.0. An app installed earlier can pin an older
+kit that the registry answers with 404, so nothing installs and the gate refuses every
+push. The run's prompt names the registry's newest kit in a line such as:
 
 ```text
-- @prism (prism): the latest @prism/console-app-kit published here is 1.44.0
+- @prism (prism): the latest @prism/console-app-kit published here is 1.49.0
 ```
 
 followed by a rule to use that app kit version when you add or upgrade the kit, unless
@@ -98,14 +98,14 @@ succeeds, the app's kit is in the registry: make no bump, whatever the prompt sa
 and go on with the turn as usual.
 
 Only when the app's `package.json` pins `@prism/console-app-kit` to an exact version
-before 1.44.0 **and** `pnpm install --frozen-lockfile` failed with 404 for it, take
+**and** `pnpm install --frozen-lockfile` failed with 404 for it, take
 `<kit_version>` from that prompt line, never guessed. When the prompt has no
 `- @prism (prism)` line, or has one that does not name `@prism/console-app-kit` and a
 version (a bare `- @prism (prism)`: the registry has no kit yet, and then no line of the
 prompt mentions the app kit), there is no kit to bump to: end the turn as `FAILED`,
 with a `message` saying the environment's registry has no app kit for this app. An
-installed commit pinning a kit before 1.44.0 is never a pin "on purpose" in this
-sense: the registry cannot install it. Otherwise run in the clone:
+installed commit pinning a kit the registry answers with 404 is never a pin "on
+purpose" in this sense: the registry cannot install it. Otherwise run in the clone:
 
 ```bash
 node <skill>/scripts/edit-turn.mjs bump-kit --kit-version <kit_version>
@@ -135,12 +135,15 @@ refuses. Then:
 
 It refuses, and changes nothing, when:
 
-- `<kit_version>` is not an exact version, or is earlier than 1.44.0;
+- `<kit_version>` is not an exact version, or is earlier than 1.49.0, the lowest
+  kit any registry holds;
+- `<kit_version>` is not later than the app's pin (the same version, or a
+  downgrade): the 404 has another cause, so end the turn as `FAILED`;
 - `<kit_version>` has a different major version than the app's pin (for example
   1.34.0 to 2.0.0): do not bump across a major version. End the turn as `FAILED`,
   with a `message` saying the app needs a kit upgrade across a major version;
-- the pin is 1.44.0 or later, or `package.json` or the lockfile already differ from
-  the installed commit;
+- the pin is not an exact version, or `package.json` or the lockfile already differ
+  from the installed commit;
 - a `.npmrc`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `package-lock.json` or other
   lockfile is in the app's folder or a folder above it, or such a file is untracked
   anywhere in the clone. Do not remove a committed one: end the turn as `FAILED`.

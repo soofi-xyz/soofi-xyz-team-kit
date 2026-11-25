@@ -257,12 +257,13 @@ not do those steps by hand.
    `edit/<appId>/<sessionId>`, started from that commit, and begins every turn with
    `git fetch` and `git reset --hard origin/<branch>`.
 2. Install the app's dependencies as its lockfile pins them. When the app pins
-   `@prism/console-app-kit` before 1.44.0 and the environment's registry answers 404
+   an exact `@prism/console-app-kit` that the environment's registry answers with 404
    for it, run `node scripts/edit-turn.mjs bump-kit --kit-version <kit_version>`
    with the version the prompt's line `- @prism (prism): the latest
    @prism/console-app-kit published here is <kit_version>` names, as
    [the kit bump](reference/edit-mode.md#bump-the-app-kit-when-the-registry-lacks-its-version)
-   describes; a different major version is refused, so end the turn as `FAILED`.
+   describes. Only a later version of the same major, 1.49.0 or above, is accepted;
+   for anything else end the turn as `FAILED`.
    Bump only to recover from that 404: when the frozen install succeeds, go on
    without one. With no `kit_version` in the prompt, end as `FAILED`.
    Change only the app's `console-app.json` and regular files under its `src/`,
