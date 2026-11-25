@@ -51,8 +51,11 @@ list. Component packs are built (pull request 42), installed and activated
 opened by address and rolled back with the environment key, and reads Report
 data through Console's API; on `main` no session carries an Access token yet,
 and an Access session has no `persist:read` until roles decide, so its
-Persist reads are denied; its roles are not enforced and nothing delivers it
-through Build, Marketplace or Deploy yet.
+Persist reads are denied; its roles are not enforced. As of 2026-11-25 Console's
+`main` is runtime 1.42.0, a merged app is delivered through Build, Marketplace
+and Deploy (prismteam-ai/agent-usage-app, prismteam-ai/console-pack-app), and
+two [reference apps](reference/app-kit.md#reference-apps) are built on kit
+1.42.0 in open draft pull requests.
 
 ## Scope
 

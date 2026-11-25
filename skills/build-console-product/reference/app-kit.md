@@ -10,8 +10,9 @@ the package, the guardrails, local development on sample data and `AK-1` to
 design-system pointer of the kit's own major
 ([runtime sharing](design-system.md#runtime-sharing)). App hosting and the data
 hooks are on Console's `main`; delivery of apps, design-system configuration and
-component packs is on Build's and Deploy's `main` ([Delivery](#delivery)); the
-reference app is not built.
+component packs is on Build's and Deploy's `main` ([Delivery](#delivery)), and
+apps are delivered on merge. Two reference apps are built on kit 1.42.0 in open
+draft pull requests ([Reference apps](#reference-apps)).
 Discover the target revision before relying on any part, and settle names
 still marked as placeholders in the Console repository.
 
@@ -305,7 +306,32 @@ Deploy. Console receives only delivered, reviewed output.
 - **An app's path.** A merged pull request; Build installs, checks and builds;
   Marketplace reviews and publishes; Deploy creates the app if missing, submits
   the version, publishes it and reads back the active digest, all through
-  Console's API. Installing the same bundle again changes nothing.
+  Console's API. Installing the same bundle again changes nothing. This is how
+  apps are delivered today: prismteam-ai/agent-usage-app and
+  prismteam-ai/console-pack-app published through Build and Marketplace on their
+  merge to `main` (2026-11-25), and Deploy installs from a Puller subscription
+  (`AD-1`).
+- **An app repository's delivery files.** Copy them from
+  prismteam-ai/agent-usage-app. They sit at the repository root, because Build
+  reads `bundle.json` and `marketplace.product.json` only there and GitHub runs
+  workflows only from the root `.github/workflows/`:
+  - `bundle.json`: one `console` `app` configuration whose `id` is the app's
+    `appId` and whose `source` is the app's folder, such as `apps/<app>`;
+  - `marketplace.product.json`: a `CONFIGURATION` component named as the bundle,
+    depending on the Console product (`5207d493-0aa5-4501-b8e1-787ac1ed2214`,
+    component `console`) and on each product whose data the app's bindings read;
+  - `.github/workflows/ci.yml`: Build validates the bundle on every pull request;
+  - `.github/workflows/marketplace.yml`: on a push to `main`, Build's `publish`
+    action publishes under the Console product with the `MARKETPLACE_API_KEY`
+    secret.
+
+  Before the first merge, register the component under the Console product in
+  Marketplace and add the secret. After the first publish, on the environment's
+  Deploy and Access APIs: a Puller subscription for the Console product and the
+  component (`update_policy` `AUTO`, `configuration` `{}`), the role the app's
+  `roles` names with `console:scope:console-read` and the scopes its bindings
+  need, and `use` on `console/app/<appId>` granted to that role. Without the role
+  nobody can open the app.
 - **A design-system release.** It is a Console runtime release: Deploy installs
   it, Console moves the pointer and no app file changes.
 - **Keep the contract Deploy uses.** Idempotent create and submit, immutable
@@ -330,6 +356,63 @@ from the kit only.
   exist yet. Do not style it in the app.
 - Use synthetic data from [the test data](test-data.md). Put no real name,
   number or creditor in the app or its samples.
+
+## Reference apps
+
+Two demos are rebuilt as Console apps from kit 1.42.0, each beside its Vite
+prototype on the branch `console-app`, in open draft pull requests; neither is
+merged or delivered yet. Read their `README.md` and `src/app.tsx` before building
+an app like them.
+
+- **Prism for PRA Group**: `apps/debt-collection` in
+  [prismteam-ai/debt-collection-usecase#25](https://github.com/prismteam-ai/debt-collection-usecase/pull/25),
+  role `debt-collection-viewer`. A meeting page (`src/meeting-page.tsx`) and a
+  use case in seven steps: Cohort, Rules, Predictions, Optimization, Campaigns,
+  Simulation and Outcomes, in a `Sidebar`. Its delivery files are at the
+  repository root.
+- **Prism for Mayo Clinic**: `apps/mayo-clinic` in
+  [prismteam-ai/mayo-clinic-demo#6](https://github.com/prismteam-ai/mayo-clinic-demo/pull/6),
+  role `mayo-clinic-viewer`. One meeting page with two working demos
+  (`src/demos/`), one component per section (`src/sections/`). Its delivery files
+  are staged in `apps/mayo-clinic/delivery/` until they move to the root.
+
+Copy these patterns:
+
+- **Prototype logic copied byte for byte.** Copy the prototype's data and plain
+  logic files (`src/data.ts`, `src/plan.ts`, `src/pipeline/`) unchanged, note
+  every line that had to differ (the kit allows only `.ts` and `.tsx` in `src/`,
+  so a JSON file becomes a `.ts` file with `export default`), and say in the
+  README "change in both places until the prototype is retired". Rewrite only
+  the drawing, with design-system components. Never re-derive a number the
+  prototype computes; match its numbers and record them in the pull request.
+- **A store for what carries across pages.** A setting one page changes and later
+  pages use lives in a module-level store read with `useSyncExternalStore`, not in
+  page state, which is lost when the page changes. The debt app's `src/store.ts`
+  holds the Inference, Rules and Solver settings: pages write with `setSetting`
+  and read the whole plan with `useRun()`, so a rule switched off on Rules
+  changes every later step, and `Sidebar` badges a step "changed". Mayo's
+  `createStore` keeps each demo's settings for the whole visit while sections
+  come and go.
+- **One section at a time.** An app cannot scroll its page to a section, so show
+  one section with `SectionDots` above it (a page with changes is marked) and a
+  `Next: <section>` `Button` at its foot, with `SkipLink` first on the page. A
+  case study's steps go in a `Carousel` with `navigation="steps"` and `phases`.
+- **Switch rows for on/off rules.** A rule a person switches on or off is a
+  `Switch` with the rule's name and description, a `Badge` for a legal stop and a
+  `BarRow` for how many accounts it holds back, as the debt app's Rules step.
+  `RuleCard` is for reviewing one inferred rule (its sources, the fields it is
+  enforced on, its check, the finding and an approve checkbox); do not use it as a
+  toggle.
+- **Meeting pages.** `PersonChip` shows initials, never photos; `LogoRow` takes
+  logos as `data:` addresses (an app ships no files) and shows a wordmark for one
+  left out for size; `CaseCard` draws a customer case; `SlideSection` is a
+  section of snapping slides; `CodeBlock` shows code or JSON; `RatingReasons`
+  shows a rating band with its reasons. Number formats live in one file
+  (`src/format.ts`), so a format change is one edit.
+- **No bindings until a product serves the data.** Both apps run on their
+  prototype's synthetic data and call no Prism product, so their
+  `console-app.json` has empty `bindings` and `actions`, and their role needs
+  only `console:scope:console-read`.
 
 ## Tests
 

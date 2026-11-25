@@ -31,7 +31,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-d267302a17d3d88e"
+      "version": "1.0.0-sha256-92c759ec1574432a"
     },
     {
       "name": "operate-marketplace",
@@ -56,5 +56,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.192.0"
+  "version": "1.193.0"
 }
