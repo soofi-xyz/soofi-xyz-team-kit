@@ -130,7 +130,7 @@ async function readSeedRows(seedPath) {
  * `elephant-county capture-raw --county <key> --seed <one-row.csv> --output <scratch-dir> [--stdout]`
  *
  * Captures exactly one official source response as bytes. It does not run a
- * transform, create reconciliation artifacts, load Query DB, or publish.
+ * transform, create reconciliation artifacts, record run state, or publish.
  *
  * @param {readonly string[]} argv - Arguments after `capture-raw`.
  * @returns {Promise<void>} Resolves once the raw body and receipt are written.

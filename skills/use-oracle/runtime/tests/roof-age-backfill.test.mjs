@@ -1,7 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
 
 import { parseRoofAgeBackfillArguments } from "../bin/roof-age-backfill.mjs";
 import { runRoofAgeBackfill } from "../src/roof-age/backfill.mjs";
+import { createJsonlRoofAgeStore } from "../src/roof-age/jsonl-store.mjs";
 
 function record() {
   return {
@@ -83,8 +88,8 @@ describe("roof-age audit and backfill", () => {
       "Broward",
       "--as-of-date",
       "2026-09-14",
-      "--database-url-env",
-      "DATABASE_URL",
+      "--input",
+      "records.jsonl",
       "--limit",
       "25",
     ];
@@ -94,9 +99,20 @@ describe("roof-age audit and backfill", () => {
       county: "Broward",
       limit: 25,
     });
+    expect(() => parseRoofAgeBackfillArguments([...base, "--apply"])).toThrow(
+      "--apply requires --output",
+    );
     expect(
-      parseRoofAgeBackfillArguments([...base, "--apply"]).apply,
-    ).toBe(true);
+      parseRoofAgeBackfillArguments([
+        ...base,
+        "--apply",
+        "--output",
+        "records.roof-age.jsonl",
+      ]),
+    ).toMatchObject({ apply: true, outputPath: "records.roof-age.jsonl" });
+    expect(() =>
+      parseRoofAgeBackfillArguments([...base, "--database-url-env", "X"]),
+    ).toThrow("Unknown option --database-url-env");
   });
 
   it("defaults to a read-only dry-run with projected reconciliation counts", async () => {
@@ -146,5 +162,105 @@ describe("roof-age audit and backfill", () => {
     ).rejects.toThrow("fixture write failure");
     expect(store.rollbacks).toBe(1);
     expect(store.records[0].roofDate).toBeNull();
+  });
+});
+
+describe("roof-age JSONL file store", () => {
+  const directories = [];
+  afterEach(async () => {
+    await Promise.all(
+      directories.splice(0).map((dir) => rm(dir, { recursive: true, force: true })),
+    );
+  });
+
+  async function fixtureFiles() {
+    const dir = await mkdtemp(path.join(tmpdir(), "roof-age-jsonl-"));
+    directories.push(dir);
+    const inputPath = path.join(dir, "records.jsonl");
+    const other = {
+      ...record(),
+      propertyId: "33333333-3333-4333-8333-333333333333",
+      structureId: "44444444-4444-4444-8444-444444444444",
+      county: "Duval",
+    };
+    await writeFile(
+      inputPath,
+      `${JSON.stringify({ state: "FL", county: "Broward", ...record() })}\n${JSON.stringify({ state: "FL", ...other })}\n`,
+      "utf8",
+    );
+    return { dir, inputPath, outputPath: path.join(dir, "out", "records.roof-age.jsonl") };
+  }
+
+  async function readLines(filePath) {
+    return (await readFile(filePath, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+  }
+
+  it("dry-runs without writing and scopes by county", async () => {
+    const { inputPath, outputPath } = await fixtureFiles();
+    const report = await runRoofAgeBackfill({
+      store: createJsonlRoofAgeStore({ inputPath, outputPath }),
+      ...options,
+    });
+    expect(report).toMatchObject({
+      mode: "dry-run",
+      scopeTotalRows: 1,
+      evaluatedRows: 1,
+      projectedUpdatedRows: 1,
+      rowsWritten: 0,
+    });
+    await expect(readFile(outputPath, "utf8")).rejects.toThrow();
+  });
+
+  it("applies into a new file, leaves the input unchanged, and reruns idempotently", async () => {
+    const { inputPath, outputPath } = await fixtureFiles();
+    const before = await readFile(inputPath, "utf8");
+    const first = await runRoofAgeBackfill({
+      store: createJsonlRoofAgeStore({ inputPath, outputPath }),
+      ...options,
+      apply: true,
+    });
+    expect(first.rowsWritten).toBe(1);
+    expect(await readFile(inputPath, "utf8")).toBe(before);
+    const written = await readLines(outputPath);
+    expect(written).toHaveLength(2);
+    const broward = written.find((row) => row.county === "Broward");
+    expect(broward).toMatchObject({ roofDate: "2000", roofAgeYears: 26 });
+    expect(broward.sourcePayload.roof_age_lineage.source).toBe(
+      "construction_year_default",
+    );
+    expect(written.find((row) => row.county === "Duval").roofDate).toBeNull();
+
+    const secondOutput = `${outputPath}.second`;
+    const second = await runRoofAgeBackfill({
+      store: createJsonlRoofAgeStore({
+        inputPath: outputPath,
+        outputPath: secondOutput,
+      }),
+      ...options,
+      apply: true,
+    });
+    expect(second.projectedUpdatedRows).toBe(0);
+    expect(second.rowsWritten).toBe(0);
+    expect(await readLines(secondOutput)).toEqual(written);
+  });
+
+  it("refuses to overwrite the input and refuses a second concurrent writer", async () => {
+    const { inputPath, outputPath } = await fixtureFiles();
+    expect(() =>
+      createJsonlRoofAgeStore({ inputPath, outputPath: inputPath }),
+    ).toThrow("never overwrite the input");
+    await mkdir(path.dirname(outputPath), { recursive: true });
+    await writeFile(`${outputPath}.lock`, "1\n");
+    await expect(
+      runRoofAgeBackfill({
+        store: createJsonlRoofAgeStore({ inputPath, outputPath }),
+        ...options,
+        apply: true,
+      }),
+    ).rejects.toThrow("locked by another writer");
+    await expect(readFile(outputPath, "utf8")).rejects.toThrow();
   });
 });

@@ -429,6 +429,35 @@ export async function harvestPermitProperties({
   return { summary, results, records: [...uniqueRecords.values()] };
 }
 
+/**
+ * Harvest ONE property with the same routing, resume and artifact rules as
+ * `harvestPermitProperties`, without the run-level summary file. Used by the
+ * `PermitHarvest` Restate service, which handles concurrency and resume
+ * itself (one durable invocation per parcel).
+ */
+export async function harvestPermitProperty({
+  row,
+  profile,
+  outputDir,
+  jobId,
+  resume = true,
+  adapterOptions = {},
+  clock = Date.now,
+}) {
+  assertPermitProfileReady(profile);
+  await mkdir(outputDir, { recursive: true });
+  return processProperty({
+    row,
+    profile,
+    outputDir,
+    jobId,
+    adapterOptions,
+    resume,
+    clock,
+    profileSha256: permitProfileDigest(profile),
+  });
+}
+
 export async function probePermitSources({ profile, adapterOptions = {} }) {
   assertPermitProfileReady(profile);
   const results = [];

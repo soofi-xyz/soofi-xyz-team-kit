@@ -2,7 +2,7 @@
   "name": "@soofi-xyz-team-kit/oracle-runtime",
   "version": "0.9.0",
   "private": true,
-  "description": "Self-contained Elephant county-ingestion, internal reconciliation, enrichment, and county-neutral roof-age estimation runtime bundled with the soofi-xyz-team-kit plugin.",
+  "description": "Self-contained Elephant county-ingestion runtime bundled with the soofi-xyz-team-kit plugin: Restate-tracked pipeline services, file-based reconciliation, enrichment, and county-neutral roof-age estimation.",
   "type": "module",
   "engines": {
     "node": ">=22.18.0"
@@ -12,10 +12,11 @@
     "permit-backfill": "bin/permit-backfill.mjs",
     "permit-source-coverage": "bin/permit-source-coverage.mjs",
     "probe-broward-permits": "bin/probe-broward-permits.mjs",
+    "reconcile-county": "bin/reconcile-county.mjs",
     "roof-age-backfill": "bin/roof-age-backfill.mjs"
   },
   "scripts": {
-    "test": "vitest run && npm run test:transforms",
+    "test": "npm run services:typecheck && vitest run && npm run test:transforms",
     "test:watch": "vitest",
     "test:transforms": "node scripts/run-transform-tests.mjs",
     "test:roof-age": "vitest run tests/roof-age-*.test.ts",
@@ -32,7 +33,14 @@
     "batch:submit": "tsx bin/enrichment-batch.ts submit",
     "batch:status": "tsx bin/enrichment-batch.ts status",
     "batch:recover-blocked": "tsx bin/enrichment-batch.ts recover-blocked",
-    "cdk:synth": "cdk synth"
+    "cdk:synth": "cdk synth",
+    "services": "node --env-file-if-exists=.env services/app.ts",
+    "dev": "node --env-file-if-exists=.env --watch services/app.ts",
+    "register": "node --env-file-if-exists=.env scripts/register-services.mjs",
+    "reconcile": "node --env-file-if-exists=.env bin/reconcile-county.mjs",
+    "stack:up": "docker compose up -d",
+    "stack:down": "docker compose down",
+    "services:typecheck": "tsc -p tsconfig.services.json"
   },
   "dependencies": {
     "@aws-sdk/client-batch": "^3.1127.0",
@@ -40,9 +48,9 @@
     "@aws-sdk/client-s3": "^3.879.0",
     "@aws-sdk/client-sts": "^3.1127.0",
     "@dsnp/parquetjs": "^1.8.7",
+    "@restatedev/restate-sdk": "1.18.4",
     "adm-zip": "^0.6.0",
     "cheerio": "^1.1.2",
-    "pg": "^8.23.0",
     "puppeteer-core": "^25.10.0",
     "zod": "^4.5.4"
   },

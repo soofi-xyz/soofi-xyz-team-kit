@@ -481,10 +481,15 @@ source_inventory:
   sunbiz: https://dos.fl.gov/sunbiz/
   bbb: https://www.bbb.org/
 
-destination:
-  writes_in_scope: false
-  proven: false
-  mode: Private local pilot artifacts only; database load remains an explicit user-terminal handoff.
+# Private local pilot artifacts only; run state lives in Restate, data in files.
+stack:
+  orchestrator: restate
+  restate_admin_url: http://localhost:9070
+  services_registered: false  # re-verify with `npm run register` before the next run
+  verified_at: null
+  publication:
+    in_scope: false
+    upload_node: null
 
 publication:
   status: not-in-scope

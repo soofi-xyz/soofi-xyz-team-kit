@@ -4,21 +4,36 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { runRoofAgeBackfill } from "../src/roof-age/backfill.mjs";
-import { createPostgresRoofAgeStore } from "../src/roof-age/postgres-store.mjs";
+import { createJsonlRoofAgeStore } from "../src/roof-age/jsonl-store.mjs";
 import { atomicWriteJson } from "../src/permits/storage.mjs";
 
 function usage() {
   return [
-    "Audit or backfill canonical roof age in the query database.",
-    "Dry-run is the default; --apply is required for writes.",
+    "Audit or backfill canonical roof age over roof-age record files.",
+    "Reads one record per line from --input (JSONL) and, with --apply, writes",
+    "the reconciled records to a NEW --output JSONL file. Dry-run is the default.",
     "",
-    "roof-age-backfill --state FL --as-of-date YYYY-MM-DD --database-url-env DATABASE_URL",
-    "  [--county Broward] [--source-system broward_appraiser]",
-    "  [--limit 25] [--offset 0] [--coverage-state unknown]",
-    "  [--coverage-caveats history_unknown,predecessor_gap]",
+    "roof-age-backfill --state FL --as-of-date YYYY-MM-DD --input <records.jsonl>",
+    "  [--output <records.roof-age.jsonl>] [--county Broward]",
+    "  [--source-system broward_appraiser] [--limit 25] [--offset 0]",
+    "  [--coverage-state unknown] [--coverage-caveats history_unknown,predecessor_gap]",
     "  [--report <checkpoint.json>] [--apply]",
   ].join("\n");
 }
+
+const VALUE_FLAGS = Object.freeze([
+  "--state",
+  "--county",
+  "--source-system",
+  "--as-of-date",
+  "--input",
+  "--output",
+  "--limit",
+  "--offset",
+  "--coverage-state",
+  "--coverage-caveats",
+  "--report",
+]);
 
 export function parseRoofAgeBackfillArguments(argv) {
   const values = new Map();
@@ -33,36 +48,30 @@ export function parseRoofAgeBackfillArguments(argv) {
     if (!flag?.startsWith("--") || !value || value.startsWith("--")) {
       throw new Error(`Missing value for ${flag ?? "argument"}`);
     }
-    if (
-      ![
-        "--state",
-        "--county",
-        "--source-system",
-        "--as-of-date",
-        "--database-url-env",
-        "--limit",
-        "--offset",
-        "--coverage-state",
-        "--coverage-caveats",
-        "--report",
-      ].includes(flag)
-    ) {
+    if (!VALUE_FLAGS.includes(flag)) {
       throw new Error(`Unknown option ${flag}`);
     }
     values.set(flag, value);
     index += 1;
   }
-  const required = ["--state", "--as-of-date", "--database-url-env"];
+  const required = ["--state", "--as-of-date", "--input"];
   if (required.some((flag) => !values.get(flag))) {
     throw new Error(usage());
   }
+  if (apply && !values.get("--output")) {
+    throw new Error("--apply requires --output <new JSONL file>");
+  }
+  const inputPath = values.get("--input");
   return {
     apply,
     state: values.get("--state").toUpperCase(),
     county: values.get("--county") ?? null,
     sourceSystem: values.get("--source-system") ?? null,
     asOfDate: values.get("--as-of-date"),
-    databaseUrlEnvironment: values.get("--database-url-env"),
+    inputPath,
+    outputPath:
+      values.get("--output") ??
+      inputPath.replace(/(\.jsonl)?$/, ".roof-age-dry-run.jsonl"),
     limit: Number(values.get("--limit") ?? "1000"),
     offset: Number(values.get("--offset") ?? "0"),
     reportPath: values.get("--report") ?? null,
@@ -78,29 +87,22 @@ export function parseRoofAgeBackfillArguments(argv) {
 
 async function main() {
   const options = parseRoofAgeBackfillArguments(process.argv.slice(2));
-  const connectionString =
-    process.env[options.databaseUrlEnvironment]?.trim() ?? "";
-  if (!/^postgres(?:ql)?:\/\//i.test(connectionString)) {
-    throw new Error(
-      `Database URL environment variable ${options.databaseUrlEnvironment} is missing or is not PostgreSQL`,
-    );
+  const report = await runRoofAgeBackfill({
+    store: createJsonlRoofAgeStore({
+      inputPath: options.inputPath,
+      outputPath: options.outputPath,
+    }),
+    ...options,
+  });
+  const output = {
+    ...report,
+    input: options.inputPath,
+    output: options.apply ? options.outputPath : null,
+  };
+  if (options.reportPath) {
+    await atomicWriteJson(options.reportPath, output);
   }
-  const imported = await import("pg");
-  const Client = imported.default?.Client ?? imported.Client;
-  const client = new Client({ connectionString });
-  await client.connect();
-  try {
-    const report = await runRoofAgeBackfill({
-      store: createPostgresRoofAgeStore(client),
-      ...options,
-    });
-    if (options.reportPath) {
-      await atomicWriteJson(options.reportPath, report);
-    }
-    process.stdout.write(`${JSON.stringify(report)}\n`);
-  } finally {
-    await client.end();
-  }
+  process.stdout.write(`${JSON.stringify(output)}\n`);
 }
 
 if (
