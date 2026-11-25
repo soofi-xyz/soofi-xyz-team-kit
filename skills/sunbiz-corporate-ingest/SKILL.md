@@ -1,13 +1,13 @@
 ---
 name: sunbiz-corporate-ingest
-description: "Load Florida Sunbiz corporate registration as the official legal-entity identity baseline (document_number) before county permit harvest - bulk download, ZIP-prefix extraction, and lexicon transform as one durable batch job. Use when pre-populating Florida companies for a county, refreshing quarterly Sunbiz data, or matching corporate entities to county addresses. Sunbiz does not issue contractor licenses."
+description: "Acquire Florida Sunbiz corporate registration as the official legal-entity identity baseline (document_number) before county permit harvest - bulk download, ZIP-prefix extraction, and lexicon transform as one durable batch job. Use when pre-populating Florida companies for a county, refreshing quarterly Sunbiz data, or matching corporate entities to county addresses. Sunbiz does not issue contractor licenses."
 metadata: {"author":"elephant-xyz"}
 ---
 # Sunbiz Corporate Ingest
 
 Sunbiz is STATEWIDE Florida data — the pipeline is fully reusable across FL counties.
 Sunbiz is the official corporate registry (legal entities / `document_number`). It does
-not issue contractor licenses and is not a substitute for DBPR. Load and reconcile this
+not issue contractor licenses and is not a substitute for DBPR. Acquire and reconcile this
 snapshot as identity baseline **before** the county's permit harvest. After Sunbiz,
 run `dbpr-license-ingest` and acquire official DBPR if inadequate — Sunbiz is first
 among identity sources, not a substitute for licensing. Outside Florida, use the
@@ -40,9 +40,10 @@ Daily incremental files (`YYYYMMDDc.txt`) are plain text and work directly.
 The implementation lives in `skills/use-oracle/runtime/src/enrichment/` and is exposed
 through `elephant-county`. It validates the archive entry list and SHA-256, expands with
 system `unzip`, streams every fixed-width record once, writes checksummed JSONL chunks,
-transforms them to lexicon records, and writes the Sunbiz identity rows used by the
-internal reconciliation store. The CLI still uses `sunbiz-enrich`; that command is identity-baseline
-load, not post-permit enrichment.
+transforms them to lexicon records, and writes the Sunbiz identity output as files: an
+immutable private snapshot plus lexicon `classes/` and `relationships/`. It writes no SQL
+rows. The CLI still uses `sunbiz-enrich`; that command builds the identity baseline, not
+post-permit enrichment.
 
 ```bash
 cd skills/use-oracle/runtime
@@ -111,7 +112,7 @@ Apply this for every county. Do not special-case one county.
 2. Filter with that county's ZIP profile.
 3. Transform.
 4. For each company, set `source_http_request` to a GET of the unique official Sunbiz detail URL calculated from that company's document number. `request_identifier` stays `sunbiz:<documentNumber>:company`.
-5. Load only after that stamp is on the company.
+5. Write the company to the lexicon output only after that stamp is on it.
 
 The detail URL is:
 
@@ -119,13 +120,15 @@ The detail URL is:
 
 `sunbizCompanyDetailUrl()` in `skills/use-oracle/runtime/src/enrichment/sunbiz.mjs` builds it. The bulk page `https://dos.fl.gov/sunbiz/other-services/data-downloads/` is the archive source. Do not write it onto the company. Address rows keep their own source rule.
 
-Load with the enrichment prefix per `query-db-loading-matching`:
-`--sunbiz-prefix enrichment/sunbiz/<quarter>/<county>/business-registration-v1/classes/`.
+Keep the lexicon output under the enrichment prefix
+`enrichment/sunbiz/<quarter>/<county>/business-registration-v1/` (`classes/` +
+`relationships/`) and record its digest in the run manifest. Permit identity resolution
+reads this output as files; see the reconcile section of `county-ingest-run`.
 
 ## 4. Address matching (optional, after both identity and permits exist)
 
 A follow-on step may match a supplied address batch (e.g. permit work locations) against
-already-loaded corporate addresses. Do not delay the Sunbiz identity baseline until
+the corporate addresses in the Sunbiz output files. Do not delay the Sunbiz identity baseline until
 permits accumulate. Permit contractor identity uses the permit-evidence-preflight
 resolver (license number, else unique company+qualifier with temporal DBPR
 qualification), not this address match.
@@ -133,7 +136,7 @@ qualification), not this address match.
 ## Known gaps (do not silently fix)
 
 - Corporate-event and fictitious-name files are optional HOA/PM resolver inputs; they are
-  not transformed into general query-DB event entities.
+  not transformed into general event entities.
 - `party_type_code` decoding is incomplete; officers are not normalized to person/company.
 - The HOA/PM heuristic (`hoa-pm-enrich`) uses registered-agent **company** name, not officer rows.
 - Unmapped fields are intentionally preserved in the output for future lexicon expansion.

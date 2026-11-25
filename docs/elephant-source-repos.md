@@ -7,8 +7,8 @@ Use these ownership boundaries after the Atlas SQL migration.
 This repository owns:
 
 - Oracle agent and stage guidance;
-- the self-contained ingestion/reconciliation runtime;
-- internal Query DB operating guidance;
+- the self-contained ingestion/reconciliation runtime (Restate run tracking, artifact
+  files, and per-run manifests);
 - Atlas publication instructions;
 - bundled Elephant MCP 2.0 configuration.
 
@@ -56,17 +56,18 @@ install, the differences and the check to run before a cut-over.
 - the Atlas tools (`listAtlasCounties`, `getAtlasDatasetInfo`, `getAtlasSchema`,
   `queryAtlas`, `listAtlasProperties`, `getAtlasProperty`) and the lexicon tools.
 
-Request handlers query the accepted snapshot. They do not fetch remote archives or the
-ingestion Query DB.
+Request handlers query the accepted snapshot. They do not fetch remote archives or
+Oracle's ingestion artifacts.
 
-## Query DB
+## Run tracking
 
-The Query DB package remains an internal ingest/reconciliation dependency. It owns its
-schema, migrations, loaders, folio reconciliation, permit/property links, official identity
-edges, roof-age lineage, and enrichment working tables.
+Oracle tracks runs in Restate and keeps all data in files: captures, transformed lexicon
+output, permit artifacts, identity relationship files, roof-age lineage, enrichment
+working files, and a per-run manifest written by reconciliation. The former internal SQL
+Query DB (`elephant-query-db`) is retired; nothing loads it.
 
-It is not a public consumer product, MCP source, registry, or publication path. Public
-schema snapshots and direct-consumer guidance are intentionally not bundled.
+Run state and working files are not a public consumer product, MCP source, registry, or
+publication path.
 
 ## Historical upstreams
 

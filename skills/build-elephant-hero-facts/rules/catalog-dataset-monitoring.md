@@ -12,7 +12,7 @@ endpoint authentication; it never resolves the index or loads archives per reque
 
 Configure only global Atlas inputs (`ATLAS_IPNS`, `ATLAS_GATEWAYS`) plus HTTP auth and
 optional embedding credentials. Never restore county maps, specialized dataset pointers,
-or direct Query DB access.
+or direct access to Oracle's ingestion run state or working artifacts.
 
 ## Required contract
 
@@ -79,4 +79,5 @@ const counties = ["lee", "palm-beach"];
 const count = await queryInternalWarehouse(counties[0]);
 ```
 
-The Query DB is internal ingestion state and must never back Watchog facts.
+Oracle's ingestion run state (Restate ledger, run manifests, working artifacts) is internal
+and must never back Watchog facts.

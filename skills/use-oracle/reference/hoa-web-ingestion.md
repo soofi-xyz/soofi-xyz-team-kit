@@ -53,7 +53,7 @@ Freeze these inputs before discovery:
 - the NetSuite paid-HOA cohort and query revision used for accuracy scoring.
 
 The seed is the input of record. Never rebuild the population from search
-results, Query DB joins, or whichever source returned an HOA.
+results, working-artifact joins, or whichever source returned an HOA.
 
 Select the gap fields per row and record them as `need_name` and `need_fee`:
 
@@ -785,7 +785,7 @@ parser.
 ## Shadow the complete 18,073-address cohort
 
 Run the candidate ingestion as an immutable shadow job. Do not overwrite the
-control CSV, Query DB working table, or any published artifact.
+control CSV, any working artifact, or any published artifact.
 
 Record these observed control values with their observation date rather than
 treating them as permanent constants:

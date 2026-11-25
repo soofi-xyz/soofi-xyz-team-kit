@@ -1,6 +1,6 @@
 ---
 name: bbb-harvest
-description: "Harvest BBB (Better Business Bureau) business profiles by category for contractor reputation and quality enrichment in the elephant query DB, with throughput checks before long crawls. Use when asked to collect BBB profiles, contractor reputation data, or refresh bbb_* tables."
+description: "Harvest BBB (Better Business Bureau) business profiles by category as artifact files for contractor reputation and quality enrichment, with throughput checks before long crawls. Use when asked to collect BBB profiles, contractor reputation data, or refresh BBB enrichment output."
 metadata: {"author":"elephant-xyz"}
 ---
 # BBB Harvest
@@ -68,13 +68,15 @@ subdir there):
    digest, and Batch job ID as source-access evidence.
 3. Estimate total crawl time from probe latency, page/profile counts, delays, retries,
    and safe concurrency. If the estimate is more than 48 hours, ask whether to download
-   BBB artifacts anyway, ingest them into the query DB, or retrieve BBB profile data at
-   runtime from the owning app/service. For runtime retrieval, capture the expected API
+   BBB artifacts anyway, ingest an approved BBB API export as artifact files instead of
+   crawling, or retrieve BBB profile data at runtime from the owning app/service. For runtime retrieval, capture the expected API
    or scrape path, cache/freshness needs, and failure behavior. Stop here if the
    operator chose ingest-only or runtime retrieval — do not proceed to step 4.
 4. Run the full category with conservative delays only when the bounded probe is allowed.
 5. Reconcile `summary.json` counts vs profiles parts, retry failures.
-6. Load into the `bbb_*` tables per the `query-db-loading-matching` skill.
+6. Reconcile the category directories with `bbb-reconcile` (below) and record the
+   output digests in the run manifest. BBB output stays enrichment files; it is never
+   SQL rows and never official identity.
 
 Reconcile a completed profile-category directory set using the profile's category keys:
 
@@ -107,7 +109,7 @@ The linker automatically accepts unique exact license, phone, and normalized-nam
 matches. Jaro-Winkler matches are review candidates only and must not set accepted property
 flags without explicit review. Preserve accepted links and review candidates as private
 audit artifacts. The linker must reproduce the permit reconciliation exclusions and
-deduplication, reconcile source/loaded/linked/excluded permit counts exactly, and prove
+deduplication, reconcile source/read/linked/excluded permit counts exactly, and prove
 that every BBB-flagged property also has `has_permits = true` before lexicon validation.
 The flag links the current BBB snapshot to historical permit contractor
 identities; it does not claim that a contractor held BBB accreditation when an older
@@ -130,9 +132,9 @@ and `incomplete_reason: http_403_source_block`.
 
 When matching BBB contractor profiles to municipal permit records or Sunbiz business
 entities, apply a strict 3-tier cascade. This cascade is reputation-profile matching
-only. It is not the permit identity resolver and must not stamp
-`permit_contacts.company_id` or write inferred licenses into raw
-`permit_contacts.license_number`.
+only. It is not the permit identity resolver: it must not emit
+`property_improvement_has_contractor` or any other official identity edge, and must
+not write an inferred license onto a raw permit contact.
 
 1. **Tier 1 — State License Number Match**: Match exact state license strings (e.g. `CCC1328456`, `CAC1815924`). Highest confidence (1.0).
 2. **Tier 2 — Standardized Phone Number Match**: Normalize 10-digit phone strings (strip punctuation and country code `+1`). High confidence (0.95).

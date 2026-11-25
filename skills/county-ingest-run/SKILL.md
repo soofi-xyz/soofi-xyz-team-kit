@@ -1,6 +1,6 @@
 ---
 name: county-ingest-run
-description: "Operate the end-to-end property-first ingestion run for an onboarded county: pilot batch, source-feasibility gate, backpressure-aware full run with stepwise ramp-up, and the streamed internal load that reconciles the county before Atlas publication. Use when starting, scaling, resuming, or wrapping up a county ingestion run."
+description: "Operate the end-to-end property-first ingestion run for an onboarded county: pilot batch, source-feasibility gate, backpressure-aware full run with stepwise ramp-up, and the ledger-and-files reconciliation that gates Atlas publication. Use when starting, scaling, resuming, reconciling, or wrapping up a county ingestion run."
 metadata: {"author":"elephant-xyz"}
 ---
 # County Ingest Run
@@ -24,31 +24,38 @@ sustained traffic to county websites and should never start on guessed inputs.
 
 ## Run shape
 
-Property-first: each parcel flows prepare → transform → validate (fail-closed) →
-eligibility branch → permit harvest → internal query DB, individually. The query DB is a
-private reconciliation store: loading it does not publish anything. Public publication
-happens later through the Atlas CAR/table sequence in `use-oracle`. County-level identity
-registries (Sunbiz + official DBPR) are a predecessor of this permit harvest, not a later
-enrichment join. Input is ONLY the seed CSV
-at `data/seeds/<county>.csv` (never re-derive work from the DB). The `CountyIngest`
-workflow (keyed `<county>-<jobId>`) fans into per-chunk `IngestChunk` children (~10k
-rows each, keyed `<county>-<jobId>-c<N>`) that dispatch `Parcel.process` in bounded
-windows; when appraisal dispatch completes it starts the `PermitFeed` workflow
-(keyed `<parent key>-permits`, so a redrive pass feeds its own `…-r2-permits`),
-which walks eligibility artifacts and dispatches permit
-harvests in its OWN bounded windows — neither side ever queues the whole county.
-Journal replay is the only checkpoint. See `durable-workflow-builder` patterns
-1 (backpressure feeder), 2 (layered concurrency), and 11 (chunked fan-out).
+Property-first: each parcel flows capture → transform → validate (fail-closed) → ready
+marker → `CountyLedger` record → eligibility branch → permit harvest, individually.
+Restate is the only run-state store (progress, retries, per-parcel status, dedupe,
+resume); files under `DATA_DIR` hold all data. There is no SQL database. Public
+publication happens later through the Atlas CAR/table sequence in `use-oracle`, from
+validated group directories, never from Restate state. County-level identity registries
+(Sunbiz + official DBPR) are a predecessor of this permit harvest, not a later
+enrichment join. Input is ONLY the seed CSV at `data/seeds/<county>.csv` (never
+re-derive work from run state). The `CountyIngest` workflow (keyed `<county>-<jobId>`)
+streams the seed into per-chunk `IngestChunk` children (~10k rows each, keyed
+`<county>-<jobId>-c<N>`) that dispatch `Parcel.process` in bounded windows; when
+appraisal dispatch completes it starts the `PermitFeed` workflow (keyed
+`<CountyIngest key>-permits`, so a redrive pass feeds its own `…-r2-permits`), which
+walks eligibility from the ledger and artifacts and dispatches
+`PermitHarvest.harvestParcel` in its OWN bounded windows — neither side ever queues the
+whole county. Journal replay is the only checkpoint. `CountyLedger` (virtual object keyed
+`<county>-<jobId>`) is the single writer of per-parcel status: `pending`, `ready`,
+`dead`, `invalid`, `failed`, with permit link results under `stage: "permits"`. See
+`durable-workflow-builder` patterns 1 (backpressure feeder), 2 (layered concurrency),
+8 (single-writer ledger), and 11 (chunked fan-out).
 
 For an operator-requested full re-ingest, preserve this one order: readiness PASS and
 seed/appraisal backbone → official corporate registry → official licensing-authority
 adequacy-or-acquire → permit detail/contact harvest → permit evidence preflight and
-versioned identity resolution → company-edge backfill, index verification, Query-DB
-load/reconciliation and product-query rerun → BBB/places enrichment.
+versioned identity resolution → identity relationship files, reconcile, and product-query
+rerun → BBB/places enrichment.
 
-Everything runs locally: `docker compose up -d` (Restate + Postgres), services
-process on :9080 (`npm run dev`), registered via
-`restate deployments register http://host.docker.internal:9080`. Egress must be US
+Everything runs locally (`bootstrap-oracle-infra`): Restate only from
+`skills/use-oracle/runtime/local/compose.yaml` (ingress :8080, admin/UI :9070), one
+services process (`services/app.ts`) on :9080, registered with
+`restate deployments register http://host.docker.internal:9080` (or
+`http://localhost:9080` with Linux host networking). Egress must be US
 (`curl -s ipinfo.io/country` → `US`) — county portals geo-block.
 
 ## 1. Pilot (always first)
@@ -59,13 +66,16 @@ process on :9080 (`npm run dev`), registered via
 
    ```bash
    curl localhost:8080/restate/send/CountyIngest/<county>-pilot-<date>/run \
-     --json '{"county":"<county>","jobId":"pilot-<date>","seedPath":"seeds/<county>-pilot.csv","chunkSize":10000,"batchSize":100,"window":25}'
+     --json '{"county":"<county>","jobId":"pilot-<date>","seedPath":"seeds/<county>-pilot.csv","chunkSize":10000,"window":25}'
    ```
 
 3. Verify one parcel end-to-end, in order: `capture.zip` on disk
-   (`data/artifacts/appraisal/<county>/<jobId>/<folio>/`) → `transformed.zip` →
-   validation pass → DB row → `eligibility.json` (and, if eligible, permit artifacts
-   under `data/artifacts/permits/<county>/<jobId>/`).
+   (`data/artifacts/appraisal/<county>/<jobId>/<parcel_id>/`) → `transformed.zip` →
+   validation pass → `ready.json` (`captureHash`, `transformVersion`, `transformedHash`,
+   `validatedAt`, `cli`) → the parcel's `CountyLedger` record
+   (`curl localhost:8080/CountyLedger/<county>-<jobId>/get --json '{"parcel_id":"..."}'`
+   shows `ready`) → `eligibility.json` (and, if eligible, permit artifacts under
+   `data/artifacts/permits/<county>/<jobId>/` plus a `stage: "permits"` ledger record).
 4. Verify a permit-less parcel completes cleanly and a residential parcel stops after
    archive with `eligibility.json` showing `eligible: false` and no permit artifacts.
 5. Record pilot timings per source: observed latency, safe concurrency, retry/failure
@@ -85,8 +95,8 @@ Project full-county duration from the pilot rate for every source that will be s
 - If the estimated full acquisition is 48 hours or less, proceed with the measured safe
   concurrency.
 - If any source is estimated above 48 hours, do not scale it by default. Ask the operator
-  whether to download artifacts anyway, ingest the source into the query DB, or retrieve
-  it at runtime.
+  whether to download artifacts anyway, ingest an official bulk export or records
+  extract as artifact files instead of scraping, or retrieve it at runtime.
 - If runtime retrieval is selected, ask which app/service owns the lookup and what the
   runtime path should be (direct API call, server-side scrape, cached lookup, queued
   background fetch). Record freshness, latency, and failure behavior before changing scope.
@@ -97,7 +107,7 @@ Same workflow, full seed:
 
 ```bash
 curl localhost:8080/restate/send/CountyIngest/<county>-<jobId>/run \
-  --json '{"county":"<county>","jobId":"<jobId>","seedPath":"seeds/<county>.csv","chunkSize":10000,"batchSize":100,"window":25}'
+  --json '{"county":"<county>","jobId":"<jobId>","seedPath":"seeds/<county>.csv","chunkSize":10000,"window":25}'
 ```
 
 The workflow key `<county>-<jobId>` is the idempotency boundary: the same key is
@@ -112,7 +122,8 @@ reboot resumes mid-chunk with no checkpoint files and no re-streaming
 (`durable-workflow-builder` patterns 1, 2, and 11).
 
 Watch with `monitoring-county-ingestion`: Web UI at `http://localhost:9070`,
-`restate invocations list`, `restate sql` over `sys_invocation`/`state`.
+`restate invocations list`, `restate sql` over `sys_invocation`/`state`,
+`CountyIngest/<county>-<jobId>/status`, and `CountyLedger/<county>-<jobId>/summary`.
 
 ## 4. Ramp-up & Warm Worker Pool Optimization
 
@@ -164,7 +175,7 @@ export async function* streamSeedCsvRows(csvPath) {
 
 ### Fast Parallel File I/O & Zip Reading
 
-When loading or validating transformed parcels:
+When reconciling or validating transformed parcels:
 - Prioritize reading `transformed_output.zip` using in-memory `AdmZip` rather than performing 15 sequential `fs.readFile()` calls for loose JSON files. This yields a **6.7x speedup** in disk I/O.
 - Batch directory iterations in chunks of 256–512 with `Promise.all`.
 
@@ -175,7 +186,7 @@ the full journal. Inspect the journal, classify, act:
 
 - **DEAD** — permanent source conditions (parcel retired/renumbered, page loads with no
   detail grid, selector permanently absent, true 404). Handlers record these
-  (`dead.json` + a dead status in the return) and return normally — never thrown, so one
+  (`dead.json` + a `dead` ledger record) and return normally — never thrown, so one
   dead parcel cannot fail its chunk (`durable-workflow-builder` pattern 5). Do not
   chase: achievable county count =
   seed − dead − current-invalid. A few record-heavy parcels can be unbounded-cost in
@@ -188,66 +199,101 @@ the full journal. Inspect the journal, classify, act:
   back off concurrency and resume. Consistent 500 unloaded → source-side defect, treat as
   dead tail.
 - **Never gate completion on an exact source count.** An exact `== source` assert against
-  a source with a dead tail loops forever. Gate on `loaded >= achievable`.
+  a source with a dead tail loops forever. Gate on `ready >= achievable`.
 
 See `durable-workflow-builder` pattern 5 for the full taxonomy.
 
 Geo-block or portal outage: pause the affected invocations (or stop the services
 process), fix egress (US VPN/proxy — verify `curl -s ipinfo.io/country` → `US`), resume;
-Restate redispatches. Machine crash or reboot: compose restarts the stack
+Restate redispatches. Machine crash or reboot: compose restarts Restate
 (`restart: unless-stopped`), but the services process must also be relaunched (run it
 supervised/detached for multi-day runs — see the `bootstrap-oracle-infra` gotchas);
 the run then resumes from its journals — no watchdog, no re-streaming.
 
-## 6. Streamed internal load + reconciliation — reconciled AS it ingests
+## 6. Reconcile
 
-Runs alongside the full run so the county lands in the internal query DB
-incrementally, not in one batch at the end. (`Loader` must be authored per
-`durable-workflow-builder` patterns 8–9 before first use.)
+Reconciliation is computed from the `CountyLedger` plus the artifact files — never from
+SQL. Run it during the full run to watch drift, and with `--strict` before wrap-up:
 
-- `Loader` (virtual object keyed `<county>`) merges new artifacts into the DB
-  incrementally — single-writer per county, so bulk merges never deadlock. Don't also
-  bulk-load appraisal by hand mid-run; the incremental merge already covers it.
-  Different counties may run in parallel; appraisal and permit merges for one county
-  stay serialized.
-- Require deterministic folio/request-identifier parcel keys; source-scoped, FK-safe
-  reloads and idempotent upserts; one artifact sweep over ready markers (not per-parcel
-  filesystem stats); a content-aware watermark of `(path, artifact hash)` per track; a
-  ready-hash gate so partially regenerated output cannot load; tombstone consumption for
-  dead/invalid records that were previously loaded; and final watermarks covering
-  appraisal, permits, and each requested enrichment track.
-- Do not use digits-only parcel normalization as a conflict key. Do not truncate shared
-  addresses, companies, people, or parent tables with cascade.
-- There is no runtime publisher and no per-county public pointer. Loading the query DB
-  is not a publication step.
+```bash
+cd skills/use-oracle/runtime
+node bin/reconcile-county.mjs --county <county> --job <jobId> \
+  --restate http://localhost:9070 --strict
+```
 
-Details: `query-db-loading-matching` (loading/merges/matching).
+It reads the ledger (Restate admin SQL query API first, falling back to
+`CountyLedger/summary` + `list` through ingress), the seed, and the ready markers, then
+writes the durable run manifest `data/runs/<county>/<jobId>/manifest.json`: counts by
+status, dead/invalid reasons, permits linked/unlinked by reason, ready-marker hash
+coverage, and ledger-vs-file mismatches. Restate keeps finished state only for its
+retention window, so the manifest is the record of the run. `--strict` exits non-zero on
+a failed gate. Require every gate:
+
+- **Seed identity:** `seed = ready + dead + invalid`; before completion the remainder is
+  `pending` or `failed`, never unaccounted.
+- **Unique keys:** no duplicate parcel keys. The key is the official folio/request
+  identifier as a string; never a digits-only normalization, which collapses distinct
+  lettered parcels. Use normalized identifiers only as bounded matching candidates.
+- **Ready-marker hash coverage:** every `ready` parcel has `ready.json` whose
+  `transformedHash` matches its `transformed.zip` and whose `transformVersion` is
+  current. A missing or mismatched marker is not ready, not an empty record.
+- **Tombstones:** a parcel that was `ready` and is now `dead` or `invalid` keeps its
+  `dead.json`/`invalid.json` and reason and is excluded from every group directory.
+- **Ledger = files:** zero mismatches between ledger status and the markers on disk.
+- **Permits:** every harvested permit is linked to its requested parcel or explicitly
+  unlinked with a reason.
 
 ### Permit and official identity reconciliation
 
-- Link a permit from the harvest request's target-parcel evidence; preserve permits
-  that cannot be linked.
-- Preserve raw contractor names and omitted license values.
-- Resolve contractor companies from an official licence number or one unique company
-  plus a temporally valid licensed qualifier. Record resolver version and
-  identity-snapshot digests.
-- Set `permit_contacts.company_id` only for accepted official evidence. Set
-  `property_improvements.contractor_company_id` only when all contractor contacts on
-  the permit resolve to one company.
-- Keep unresolved, ambiguous, conflicting, stale, and orphaned edges explicit. Verify
-  indexes on both company-link columns before product queries.
+- Link a permit to the REQUESTED parcel from the harvest request's target evidence.
+  Use exact folio/source identity first; normalized parcel or address evidence only as
+  an explicit, recorded fallback. Never trust a portal's displayed related parcel
+  without reconciling it to the target. Keep valid permits that cannot be linked,
+  `unlinked` with a reason, and record match method, version, and source hashes.
+- Preserve raw contractor names and omitted license values in the permit artifacts.
+- Resolve contractor companies per
+  [`permit-evidence-preflight.md`](../use-oracle/reference/permit-evidence-preflight.md):
+  an official license number, or one unique company plus a temporally valid licensed
+  qualifier. Persist company, person, and license only from the official DBPR/Sunbiz
+  detail records and emit them as lexicon relationship files —
+  `property_improvement_has_contractor`, `contractor_has_license`
+  (`license_identifier` on `license`), and `contractor_has_person`. Write a permit-level
+  contractor edge only when every contractor-role contact on that permit resolves to the
+  same company.
+- Record resolver version and identity-snapshot digests in a private, immutable
+  resolution ledger (JSONL) beside the job's permit artifacts. Keep unresolved,
+  ambiguous, conflicting, stale, and orphaned identities unlinked there with reasons.
+  Name, phone, address, BBB, and places matches are candidates only.
 
 ### Roof age and enrichment
 
-Run the shared roof-age estimator after permit and company-edge reconciliation.
-Preserve accepted work and lifecycle-status mapping, the selected permit or built-year
-fallback, source profile and digest, evidence date precision, confidence and
-historical-coverage caveats, and the as-of date and terminal reason. Do not infer
-replacement from generic repair text, open permits, coatings, accessory roofs, or
-impossible dates.
+Compute roof age from files after permit and identity reconciliation: the estimator
+(`runtime/src/roof-age/`, called from the transform) reads the transformed appraisal
+output and the job's extracted permit artifacts and writes the estimate and lineage
+into the lexicon output. Preserve accepted work and lifecycle-status mapping, the
+selected permit or built-year fallback, source profile and digest, evidence date
+precision, confidence and historical-coverage caveats, and the as-of date and terminal
+reason. Do not infer replacement from generic repair text, open permits, coatings,
+accessory roofs, or impossible dates. See
+[`roof-age-and-identity-reingest.md`](../use-oracle/reference/roof-age-and-identity-reingest.md).
 
-Run BBB, places, HOA/property management, and AVM as separate enrichment tracks. They
-may add useful evidence but never establish corporate or licensing identity.
+Run BBB, places, HOA/property management, and AVM as separate enrichment tracks with
+their own source and licence gates and their own manifests. They may add useful
+evidence but never establish corporate or licensing identity or change core permit
+completeness. Their working Parquet and coverage files are internal intermediates:
+never upload them or point MCP at them.
+
+### Assemble group directories
+
+After a strict pass, assemble each data group from ready parcels only:
+
+```bash
+node bin/reconcile-county.mjs --county <county> --job <jobId> --strict \
+  --assemble <group>
+```
+
+This writes `data/groups/<county>/<jobId>/<group>/`. Hand those validated directories
+to `use-oracle` (or `PublishGroup`) for the Atlas sequence.
 
 ## 7. Redrives
 
@@ -290,24 +336,23 @@ just has no data.
 
 ## 8. Wrap-up
 
-- `CountyIngest` completing means appraisal DISPATCH is done — permit harvests it sent
-  are still draining under their own caps. Wrap up only when: permit status artifacts
-  exist for every eligible parcel, the `Loader` watermark covers the final artifacts,
-  and tombstones are reconciled. Reconcile with `monitoring-county-ingestion`:
-  at appraisal terminal state `seed = ready + dead + current-invalid`; DB completion is
-  verified separately (the `Loader` watermark covers the final artifacts, the distinct
-  DB folio count covers `ready`); then permit-eligible vs permits loaded.
-- When public publication is in scope, hand the validated lexicon group directories to
-  `use-oracle` for the Atlas CAR/table sequence. Do not run a runtime publisher or
-  create a per-county public pointer.
-- Before wrap-up, backfill existing `permit_contacts.company_id` with the current
-  versioned official-registry resolver. Set
-  `property_improvements.contractor_company_id` only when all contractor-role contacts
-  agree. Preserve raw names and omitted licenses; unresolved, ambiguous, or conflicting
-  contacts remain unlinked. Verify company-FK indexes and rerun the product query in
+- `CountyIngest` completing means appraisal DISPATCH is done — permit harvests sent by
+  `PermitFeed` are still draining under their own caps. Wrap up only when permit status
+  artifacts exist for every eligible parcel and `reconcile-county.mjs --strict` passes
+  every gate in §6 (`seed = ready + dead + invalid`, no duplicate keys, ready-marker hash
+  coverage, tombstones excluded, ledger = files, every permit linked or unlinked with a
+  reason). Keep the resulting `manifest.json`; it outlives Restate retention.
+- Before wrap-up, rerun the current versioned official-identity resolver over the
+  harvested permits and regenerate the identity relationship files. Preserve raw names
+  and omitted licenses; unresolved, ambiguous, or conflicting contacts remain unlinked
+  in the resolution ledger. Rerun the product query in
   `use-oracle/reference/roof-age-and-identity-reingest.md`.
+- When public publication is in scope, assemble the group directories (§6) and hand
+  them to `use-oracle` for the Atlas CAR/table sequence. Do not run another publisher or
+  create a per-county public pointer.
 - PR findings and any transform-script changes to `Counties-trasform-scripts`
   (`gh pr create`); commit code/docs, never data.
-- Return pilot/full counts, source rates, failure classes, watermarks, tombstones,
-  folio reconciliation, permit links, official identity edges, roof-age/enrichment
-  coverage, and the validated group directories ready for the Atlas sequence.
+- Return pilot/full counts, source rates, failure classes, the run manifest path and its
+  gate results (status counts, dead/invalid reasons, tombstones, hash coverage,
+  mismatches), permit links and unlinked reasons, official identity edges, roof-age and
+  enrichment coverage, and the validated group directories ready for the Atlas sequence.

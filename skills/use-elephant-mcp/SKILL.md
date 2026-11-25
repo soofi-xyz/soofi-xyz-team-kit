@@ -6,9 +6,9 @@ description: "Explore published county property data through the Elephant MCP: s
 # Use Elephant MCP
 
 Call only MCP tools on server `elephant`. The server serves a local snapshot synchronized
-from the global Atlas index; request handlers never fetch remote archives. The ingestion
-query DB is internal: never query it, expose it, or treat it as the MCP or publication
-source.
+from the global Atlas index; request handlers never fetch remote archives. Oracle's
+ingestion run state and working artifacts are internal: never query them, expose them, or
+treat them as the MCP or publication source.
 
 ## Read first
 

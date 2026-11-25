@@ -14,7 +14,7 @@ This is a capture-only diagnostic:
 - validate that the body belongs to the requested parcel;
 - write request/response metadata and a SHA-256 digest to a separate receipt.
 
-Do not run county transforms, reconciliation exports, Query DB loading, hashing,
+Do not run county transforms, reconciliation, hashing,
 CAR/table export, Atlas registration, or publication. Reading an in-memory decoded
 copy to validate the official parcel identifier is not a data transformation; the
 stored and streamed body remains the original byte sequence.

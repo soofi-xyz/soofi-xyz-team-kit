@@ -65,4 +65,4 @@ command as a scheduled job; request handlers never resolve the index or download
 - **Verified-script search fails:** configure one supported embedding provider; Atlas
   tools do not require it.
 
-Never fix a sync problem by pointing MCP at the ingestion query DB.
+Never fix a sync problem by pointing MCP at Oracle's ingestion artifacts or run state.

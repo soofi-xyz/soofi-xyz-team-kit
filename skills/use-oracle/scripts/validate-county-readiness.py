@@ -5,6 +5,10 @@ Reads skills/use-oracle/runtime/docs/<county>-sources.yaml (or a fixture path). 
 readiness report. Exit 0 only when every gate is PASS, APPROVED_EXCEPTION, or
 NOT_APPLICABLE. Any BLOCKED gate exits 1.
 
+The stack gate proves the Restate run-tracking stack (catalog section `stack`). A
+leftover `destination` section from the retired Query DB adds a non-blocking WARN to
+`warnings`; it never decides readiness.
+
 onboard-county, county-seed-data, and county-ingest-run (pilot or full) MUST run this
 and STOP on a non-zero exit.
 """
@@ -40,15 +44,32 @@ GATE_OWNERS = {
     "catalog_metadata": "county-discovery",
     "parcel": "county-discovery",
     "permit": "county-discovery / county-permit-adapter",
-    "destination": "bootstrap-oracle-infra / query-db-loading-matching",
+    "stack": "bootstrap-oracle-infra",
     "enrichment": "bbb-harvest",
 }
 SAFE_PREPARATION_ACTIONS = [
     "Continue bounded source and jurisdiction enumeration",
     "Continue adapter fingerprinting, scaffolds, fixtures, and bounded tests",
-    "Continue AWS BBB runtime, internal destination, upload-node, and Atlas PR readiness",
+    "Continue AWS BBB runtime, Restate stack, upload-node, and Atlas PR readiness",
     "Prepare named API or records requests for blocked sources",
 ]
+REQUIRED_SERVICES = [
+    "Parcel",
+    "CountyIngest",
+    "CountyLedger",
+    "PermitFeed",
+    "PermitHarvest",
+    "PublishGroup",
+]
+STACK_ACTION = (
+    "Bring up the Restate stack with bootstrap-oracle-infra, register the services "
+    "process, and record stack.orchestrator: restate, stack.services_registered: true, "
+    "stack.verified_at, and stack.publication.upload_node when publication is in scope"
+)
+LEGACY_DESTINATION_WARNING = (
+    "destination section is obsolete: the internal Query DB was removed and the "
+    "readiness validator ignores it; delete it and keep run tracking in the stack section"
+)
 READY_AUTO_ADVANCE_ACTION = (
     "Start the next dependency-ready stage from the durable run manifest "
     "without operator confirmation"
@@ -182,14 +203,6 @@ def _approved(catalog: dict, gate: str) -> dict | None:
         if isinstance(item, dict) and item.get("gate") == gate and item.get("reason"):
             return item
     return None
-
-
-def _identity_sources(raw: object) -> list[str]:
-    if isinstance(raw, list):
-        return [str(item).strip() for item in raw if str(item).strip()]
-    if isinstance(raw, str):
-        return [part.strip() for part in raw.split(",") if part.strip()]
-    return []
 
 
 def _records_request_complete(row: dict) -> bool:
@@ -389,44 +402,75 @@ def evaluate(catalog: dict) -> dict:
             )
         )
 
-    destination = catalog.get("destination") or {}
-    writes = destination.get("writes_in_scope")
-    if writes is False:
+    stack = catalog.get("stack")
+    if not isinstance(stack, dict) or not stack:
         gates.append(
             _gate(
-                "destination",
-                "NOT_APPLICABLE",
-                "writes_in_scope is false",
+                "stack",
+                "BLOCKED",
+                "stack section is missing",
+                STACK_ACTION,
             )
         )
-    elif destination.get("proven") is True:
-        sources = _identity_sources(destination.get("independent_identity_sources"))
-        if len(sources) < 2:
+    else:
+        stack_reasons: list[str] = []
+        orchestrator = str(stack.get("orchestrator") or "").strip().lower()
+        if orchestrator != "restate":
+            stack_reasons.append(
+                f"stack.orchestrator is {orchestrator or 'missing'}; it must be restate"
+            )
+        if stack.get("services_registered") is not True:
+            stack_reasons.append(
+                "stack.services_registered is not true; "
+                + ", ".join(REQUIRED_SERVICES)
+                + " must be visible in `restate services list`"
+            )
+        if not str(stack.get("verified_at") or "").strip():
+            stack_reasons.append("stack.verified_at is missing")
+        publication = stack.get("publication")
+        if not isinstance(publication, dict):
+            publication = {}
+        publication_in_scope = publication.get("in_scope") is True
+        if publication_in_scope and not str(publication.get("upload_node") or "").strip():
+            stack_reasons.append(
+                "stack.publication.in_scope is true but stack.publication.upload_node is not set"
+            )
+        if stack_reasons:
             gates.append(
                 _gate(
-                    "destination",
+                    "stack",
                     "BLOCKED",
-                    "destination proven requires two independent identity sources",
-                    "Prove destination from two independent sources (for example console project/branch and configured IDs) before writes",
+                    "; ".join(stack_reasons),
+                    STACK_ACTION,
                 )
             )
         else:
             gates.append(
                 _gate(
-                    "destination",
+                    "stack",
                     "PASS",
-                    "destination independently proven",
+                    f"orchestrator=restate admin={stack.get('restate_admin_url') or 'n/a'} "
+                    f"services_registered=true verified_at={stack.get('verified_at')} "
+                    f"publication_in_scope={str(publication_in_scope).lower()}"
+                    + (
+                        f" upload_node={publication.get('upload_node')}"
+                        if publication_in_scope
+                        else ""
+                    ),
                 )
             )
-    else:
-        gates.append(
-            _gate(
-                "destination",
-                "BLOCKED",
-                "destination is not independently proven",
-                "Prove project, branch, endpoint, role, and non-production status before writes",
-            )
-        )
+
+    warnings: list[dict] = []
+    if "destination" in catalog:
+        warning = {
+            "gate": "stack",
+            "level": "WARN",
+            "message": LEGACY_DESTINATION_WARNING,
+        }
+        warnings.append(warning)
+        for gate in gates:
+            if gate["gate"] == "stack":
+                gate.setdefault("warnings", []).append(LEGACY_DESTINATION_WARNING)
 
     enrichment = catalog.get("enrichment") or {}
     bbb = enrichment.get("bbb") if isinstance(enrichment, dict) else None
@@ -486,6 +530,7 @@ def evaluate(catalog: dict) -> dict:
             "fips": str(catalog.get("fips")) if catalog.get("fips") is not None else None,
         },
         "gates": gates,
+        "warnings": warnings,
         "preparation_allowed": True,
         "execution_allowed": overall == "PASS",
         "auto_advance_required": True,
@@ -508,6 +553,20 @@ def validate_path(path: Path) -> tuple[dict, int]:
 def _expect(condition: bool, message: str, errors: list[str]) -> None:
     if not condition:
         errors.append(message)
+
+
+def _gate_status(report: dict, name: str) -> str | None:
+    for gate in report["gates"]:
+        if gate["gate"] == name:
+            return gate["status"]
+    return None
+
+
+def _gate_evidence(report: dict, name: str) -> str:
+    for gate in report["gates"]:
+        if gate["gate"] == name:
+            return gate["evidence"]
+    return ""
 
 
 def run_self_test() -> int:
@@ -589,6 +648,11 @@ def run_self_test() -> int:
                     errors,
                 ),
                 _expect(
+                    _gate_status(report, "stack") == "PASS",
+                    "ready catalog must PASS the stack gate",
+                    errors,
+                ),
+                _expect(
                     report["next_automated_action"] == READY_AUTO_ADVANCE_ACTION,
                     "ready catalog must auto-advance without operator confirmation",
                     errors,
@@ -665,6 +729,100 @@ def run_self_test() -> int:
                     errors,
                 ),
                 _expect(report["seed_allowed"] is False, "BBB advertised-count trap must forbid seed", errors),
+            ),
+        ),
+        (
+            "stack-ready-publication-in-scope.yaml",
+            0,
+            lambda report: (
+                _expect(report["overall"] == "PASS", "proven stack with upload node must PASS", errors),
+                _expect(
+                    _gate_status(report, "stack") == "PASS",
+                    "proven stack with upload node must PASS the stack gate",
+                    errors,
+                ),
+                _expect(report["warnings"] == [], "stack without destination must not warn", errors),
+                _expect(report["ingest_allowed"] is True, "proven stack must allow ingest", errors),
+            ),
+        ),
+        (
+            "stack-missing.yaml",
+            1,
+            lambda report: (
+                _expect(
+                    _gate_status(report, "stack") == "BLOCKED",
+                    "missing stack section must BLOCK the stack gate",
+                    errors,
+                ),
+                _expect(report["seed_allowed"] is False, "missing stack must forbid seed", errors),
+                _expect(
+                    any(
+                        item["gate"] == "stack" and item["owner"] == "bootstrap-oracle-infra"
+                        for item in report["required_blocker_actions"]
+                    ),
+                    "blocked stack gate must name bootstrap-oracle-infra",
+                    errors,
+                ),
+            ),
+        ),
+        (
+            "stack-services-not-registered.yaml",
+            1,
+            lambda report: (
+                _expect(
+                    _gate_status(report, "stack") == "BLOCKED",
+                    "unregistered services must BLOCK the stack gate",
+                    errors,
+                ),
+                _expect(
+                    "services_registered" in _gate_evidence(report, "stack"),
+                    "stack evidence must name services_registered",
+                    errors,
+                ),
+                _expect(report["execution_allowed"] is False, "unregistered services must forbid execution", errors),
+            ),
+        ),
+        (
+            "stack-publication-without-upload-node.yaml",
+            1,
+            lambda report: (
+                _expect(
+                    _gate_status(report, "stack") == "BLOCKED",
+                    "publication in scope without upload node must BLOCK the stack gate",
+                    errors,
+                ),
+                _expect(
+                    "upload_node" in _gate_evidence(report, "stack"),
+                    "stack evidence must name upload_node",
+                    errors,
+                ),
+            ),
+        ),
+        (
+            "legacy-destination-section-warns.yaml",
+            0,
+            lambda report: (
+                _expect(report["overall"] == "PASS", "leftover destination must not block", errors),
+                _expect(
+                    _gate_status(report, "stack") == "PASS",
+                    "leftover destination must leave the stack gate PASS",
+                    errors,
+                ),
+                _expect(
+                    any(
+                        warning["gate"] == "stack"
+                        and warning["level"] == "WARN"
+                        and "obsolete" in warning["message"]
+                        for warning in report["warnings"]
+                    ),
+                    "leftover destination must produce a WARN note",
+                    errors,
+                ),
+                _expect(
+                    all(gate["gate"] != "destination" for gate in report["gates"]),
+                    "destination must no longer be a gate",
+                    errors,
+                ),
             ),
         ),
     ]

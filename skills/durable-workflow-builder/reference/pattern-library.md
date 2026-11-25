@@ -58,15 +58,16 @@ under a NEW workflow key (`<county>-<jobId>-r2`): the key gives the pass exactly
 the unchanged jobId keeps artifacts in the same namespace so skip-existing applies.
 
 **4. Idempotent side effects in `ctx.run`.** A step interrupted mid-flight re-executes
-from its start. File writes: deterministic path, atomic tmp+rename. DB: `ON CONFLICT DO
-UPDATE`. External calls:
-check-then-act or natural idempotency. In the old pipeline, at-least-once delivery times
+from its start. File writes: deterministic path, atomic tmp+rename, skip when the input
+hash and transform version already match. Ledger records: idempotent per
+`(parcel_id, stage, status, artifactHash)`. External calls: check-then-act or natural
+idempotency. In the old pipeline, at-least-once delivery times
 non-idempotent completion callbacks produced an entire class of dead-token churn bugs;
 this rule makes the class impossible.
 
 **5. DEAD vs RETRYABLE taxonomy.** Permanent per-item conditions (404 page, parcel gone,
 selector permanently absent) are RECORDED — `dead.json` next to the artifacts plus a
-`status: "dead"` return — and the handler returns normally. Never throw for a per-item
+`dead` `CountyLedger` record — and the handler returns normally. Never throw for a per-item
 condition: a thrown `TerminalError` propagates through the chunk's `RestatePromise.all`
 and fails the whole run. Reserve `TerminalError` for invocation-level permanent errors
 (invalid payload, broken config). Transient conditions (timeouts, 5xx, nav failures)
@@ -74,59 +75,55 @@ throw ordinary errors — retried with backoff, pausing at max attempts. Disambi
 HTTP 500 with a couple of unloaded probes before classifying. See the error taxonomy
 section below.
 
-**6. Claim-check.** Files go to `data/`; journals and object state hold only paths and
-small JSON — never file contents. Restate caps payload entries at 32 MiB — never put
+**6. Claim-check.** Files go to `data/`; journals and object state (including
+`CountyLedger`) hold only paths, hashes, and small JSON — never file contents. Restate caps payload entries at 32 MiB — never put
 captures or zips in workflow state. The old pipeline blurred artifact store, state store,
 and signalling channel into one storage layer; here the filesystem plays only the
 artifact role.
 
-**7. Fail-closed validation gate.** Every parcel passes `elephant-cli validate` before
-its row is loaded or permits are enqueued. A parcel that fails is recorded and excluded
-— never silently loaded. The mechanism: loaders and pre-load validation enumerate
-`ready.json` markers (written only after validation passes, removed on dead/invalid) —
-never raw `transformed.zip` files, which exist before validation runs. Status
-transitions are ORDERED: `transform()` removes `ready.json` before regenerating (a
-replacement is unloadable until revalidated); `ready.json` records the validated
-transform hash and the Loader loads only on hash match; `ok → invalid/dead` leaves a
-tombstone the Loader reconciles into a DB deletion or status downgrade; a later pass
-that validates clears BOTH stale markers. Test all four transitions
-(`ok→invalid`, `ok→dead`, `invalid→ok`, `dead→ok`). Origin: a branch
-of the old pipeline skipped validation and unvalidated data reached the DB. See
+**7. Fail-closed validation gate.** Every parcel passes `elephant-cli validate` (exit 0)
+before it is marked ready or its permits are enqueued. A parcel that fails is recorded
+`invalid` and excluded — never silently published. The mechanism: group assembly and
+reconciliation enumerate `ready.json` markers (written only after validation passes,
+removed on dead/invalid) — never raw `transformed.zip` files, which exist before
+validation runs. Status transitions are ORDERED: `transform()` removes `ready.json`
+before regenerating (a replacement is not ready until revalidated); `ready.json` records
+`captureHash`, `transformVersion`, and `transformedHash`, and reconciliation accepts a
+parcel only on hash match; `ready → invalid/dead` leaves a TOMBSTONE (`invalid.json` or
+`dead.json` plus the ledger record) that excludes the parcel from every group
+directory; a later pass that validates clears BOTH stale markers. Test all four
+transitions (`ready→invalid`, `ready→dead`, `invalid→ready`, `dead→ready`). Origin: a
+branch of the old pipeline skipped validation and unvalidated data was published. See
 `build-county-transform`.
 
-**8. Single-writer per county (Virtual Object).** Parallel bulk merges into DB parent
-tables deadlock. Route ALL bulk loads for a county through `Loader.load` (object keyed by
-`<county>`) — the object's per-key serialization replaces advisory locks and serial-task
-constraints. Ownership split: `Parcel.process` keeps its per-parcel single-row upsert
-(deadlock-safe); `Loader` owns every MULTI-row bulk merge, clear, and reload. The object
-key is the identity: `Loader` derives `dbCounty = ctx.key.replace(/-/g, "_")`,
-`jurisdictionKey = dbCounty + "_appraiser"`, and the job artifact prefix from key +
-payload `jobId` — a payload-supplied value that differs from the derived one is rejected
-with `TerminalError`, so a lee-keyed invocation can never clear or load another county.
-`Loader` owns the permits track too: `PermitFeed` submits batched permit merges per
-completed chunk (`tracks: ["permits"]`); harvesters write artifacts and status only,
-never merge inline. Watermarks are content-aware: `watermark_<track>` state tracks
-merged (path, artifact-hash) pairs — the hash index lives on disk under
-`$DATA_DIR/staging/loader/<county>/<jobId>/` (claim-check; state stays small) — so an
-in-place redrive that regenerates `transformed.zip` gets re-merged; a path-only
-watermark would silently skip corrections. The incremental merge also consumes
-invalid/dead TOMBSTONES — removing or downgrading previously loaded rows; without that,
-a parcel that went invalid after loading lives on in the DB.
-Loader steps are long: raise its timeouts per authoring rule 3. Merge
-details: `query-db-loading-matching`.
+**8. Single-writer ledger (Virtual Object).** Per-parcel status has exactly one writer:
+`CountyLedger`, keyed `<county>-<jobId>`. The object's per-key serialization replaces
+locks; handlers (`Parcel`, `PermitHarvest`) never write status files that compete with
+it — they write artifacts at deterministic paths, then send one `record`. Different
+counties and jobs have different keys and run in parallel. Read handlers (`get`,
+`summary`, `list`) are `shared`, so monitoring never queues behind writes. Validate the
+key against the payload: a `record` whose `parcel_id` path or county does not match the
+object key is a `TerminalError`. Keep state small (pattern 6) and paginate `list` with a
+cursor. Restate keeps finished state only for its retention window, so
+`bin/reconcile-county.mjs` writes the durable per-run manifest
+(`data/runs/<county>/<jobId>/manifest.json`) from the ledger plus the files; prefer the
+Restate admin SQL query API for bulk ledger reads and fall back to `summary` + `list`.
 
-**9. Human approval as a handoff state.** Store any required privacy or scope approval
-durably against an immutable group-manifest digest. Approval makes the validated group
-eligible for the external Elephant CLI/Atlas sequence; it does not upload from the
-runtime. No "missing parameter means approved" convention.
+**9. Human approval as a durable promise.** `PublishGroup` (workflow keyed
+`<county>-<group>-<jobId>`) runs validate → hash → validate CAR → export-tables, then
+awaits a durable promise resolved by `approve({approvedBy})` or rejected by
+`reject({reason})`. Bind the approval to the immutable group digest it reviewed; a
+changed group needs a new workflow key. Only after approval does it upload the CAR and
+tables with readback. It stops before the Atlas PR, which stays a human/agent `gh` step.
+No "missing parameter means approved" convention.
 
 **10. Self-scheduling reconciliation loop.** Recurring internal work is a virtual-object
-handler that re-schedules itself with a delayed send or waits with `ctx.sleep`. Persist one
-scheduled flag and one content watermark so a fresh county cannot sit pending and unchanged
-multi-GB working artifacts are not rebuilt every interval. Clear pending only after the
-internal load, watermark, and tombstone reconciliation succeeds. Public publication remains
-the separate CAR/table/Atlas sequence. This replaces naive cron poll loops and the
-stale-checkpoint watchdog — which, in its no-cooldown form, once piled ~150
+handler that re-schedules itself with a delayed send or waits with `ctx.sleep`. Persist
+one scheduled flag and one content digest so a fresh county cannot sit pending and
+unchanged multi-GB working artifacts are not rebuilt every interval. Clear pending only
+after a reconcile pass writes its manifest with every gate passing. Public publication
+remains the separate CAR/table/Atlas sequence. This replaces naive cron poll loops and
+the stale-checkpoint watchdog — which, in its no-cooldown form, once piled ~150
 duplicate feeder invocations that deadlocked the worker.
 
 **11. Chunked fan-out.** Never run a whole county through one invocation: `window` bounds
@@ -175,22 +172,22 @@ from the owning app. See `county-permit-adapter` for the permit-portal variant.
   or an in-place replay-compatible fix per authoring rule 2. This replaces every
   DLQ-inspect-and-redrive procedure.
 - **Never gate completion on an exact count.** Some parcels are legitimately dead at the
-  source; `assert loaded == seedTotal` produces an infinite retry loop (the old pipeline
-  burned ~10 h per attempt on exactly this). Gate on `loaded >= achievable`, where
+  source; `assert ready == seedTotal` produces an infinite retry loop (the old pipeline
+  burned ~10 h per attempt on exactly this). Gate on `ready >= achievable`, where
   achievable = seed − dead − current-invalid, and reconcile the same identity:
-  seed = loaded + dead + current-invalid ("current" because a stale `invalid.json` is
+  seed = ready + dead + current-invalid ("current" because a stale `invalid.json` is
   cleared when a later validation passes).
 
 ## Operate & debug quick reference
 
 ```bash
-docker compose up -d                      # restate + postgres
-npm run dev                               # services on :9080 (tsx watch services/app.ts)
-restate deployments register http://host.docker.internal:9080   # --force in dev only
+docker compose -f local/compose.yaml up -d   # Restate only (from skills/use-oracle/runtime)
+npx tsx services/app.ts                   # services on :9080
+restate deployments register http://host.docker.internal:9080   # or http://localhost:9080 on Linux host networking; --force in dev only
 
 # start a run (fire-and-forget)
 curl localhost:8080/restate/send/CountyIngest/<county>-<jobId>/run \
-  --json '{"county":"lee","jobId":"2026q3","seedPath":"seeds/lee.csv","chunkSize":10000,"batchSize":100,"window":25}'
+  --json '{"county":"lee","jobId":"2026q3","seedPath":"seeds/lee.csv","chunkSize":10000,"window":25}'
 
 # inspect
 restate invocations list
@@ -198,16 +195,18 @@ restate invocations describe <id>         # journal, current step, last error
 restate invocations resume <id>           # after fixing a paused invocation
 restate invocations cancel <id>           # graceful; kill <id> as last resort
 restate sql "SELECT id, target, status FROM sys_invocation WHERE status != 'completed'"
+curl -s localhost:8080/CountyLedger/lee-2026q3/summary         # per-status counts
+node bin/reconcile-county.mjs --county lee --job 2026q3        # manifest; add --strict to gate
 ```
 
 - **Web UI `http://localhost:9070`**: invocations with live journals, workflow/object
-  state (for example `CountyIngest` chunksDone and Loader watermarks), paused invocations
+  state (for example `CountyIngest` chunksDone and `CountyLedger` counters), paused invocations
   with their error, and per-service configuration (retries and the inactivity/abort
   timeouts from authoring rule 3 — not concurrency).
 - **Concurrency caps live in `.env`** (`CONCURRENCY_*`, pattern 2): edit and restart the
   services process — safe mid-run, invocations resume from their journals. Use the UI to
   watch error rates while ramping; it does not tune caps on this stack.
-- Counts for reconciliation: `find … | wc -l` over `data/artifacts` (pattern 13) and
-  `docker compose exec postgres psql -U postgres elephant -c "..."`.
+- Counts for reconciliation: `find … | wc -l` over `data/artifacts` (pattern 13), the
+  `CountyLedger` summary, and the manifest from `bin/reconcile-county.mjs`.
 - Run operations end-to-end (pilot, ramp, wrap-up): `county-ingest-run`. Status and ETA
   reporting: `monitoring-county-ingestion`.

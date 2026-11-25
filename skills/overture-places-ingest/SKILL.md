@@ -1,6 +1,6 @@
 ---
 name: overture-places-ingest
-description: "Ingest Overture Maps places for a county with pinned release, county-boundary, taxonomy, source-licence, and internal-reconciliation gates, producing lexicon places records ready for Atlas publication. Use when a county needs business/POI category data or when refreshing an Overture release."
+description: "Ingest Overture Maps places for a county with pinned release, county-boundary, taxonomy, source-licence, and file-reconciliation gates, producing lexicon places records ready for Atlas publication. Use when a county needs business/POI category data or when refreshing an Overture release."
 metadata: {"author":"elephant-xyz"}
 ---
 # Overture Places Ingest
@@ -9,10 +9,10 @@ Ingest Overture Maps places as county-scoped business/POI locations. Overture is
 pipeline's category source: Sunbiz describes legal entities, BBB is selected for
 contractor reputation, and neither is a general location taxonomy.
 
-> **Implementation status:** Lee County, Florida is verified end to end through
-> extraction, internal query DB load, and validation. The implemented
-> extract/export/validation code is in `oracle-node`; the places schema, bulk-loader
-> track, and coverage upsert are in `elephant-query-db`. The earlier dedicated
+> **Implementation status:** Lee County, Florida was verified end to end through
+> extraction, reconciliation, and validation. The implemented extract/export/validation
+> code came from `oracle-node`. Its old internal SQL load track is retired: reconcile
+> places from the extract files and manifest instead. The earlier dedicated
 > per-county places Filebase/IPNS publication is retired: public publication now runs
 > through the `places` data group in the Atlas CAR/table sequence (`use-oracle`).
 > Parcel-link population, counties other than Lee, and an automated monthly refresh
@@ -28,9 +28,9 @@ contractor reputation, and neither is a general location taxonomy.
    `categories.primary`; retain it only as `legacy_category_primary` while the source
    still supplies it.
 4. Run the mandatory, case-insensitive source-dataset gate after extraction and again
-   against the loaded source rows immediately before the lexicon handoff. `osm` and
+   against the reconciled records immediately before the lexicon handoff. `osm` and
    every unknown provider are hard stops.
-5. Set `oracle_dataset_coverage.expected_count` to `NULL`. Overture supplies a
+5. Record `expected_count` as `NULL` in the run manifest. Overture supplies a
    numerator, not an authoritative denominator for all county businesses.
 6. Publish places only as lexicon records in the `places` data group through the
    normal CAR/table/Atlas sequence. Carry the Overture citation, per-provider licences,
@@ -52,7 +52,7 @@ release. Store and query:
 - `categories.primary`: temporary compatibility field named
   `legacy_category_primary` only.
 
-Stamp every row with `overture_release`. Overture taxonomy changes quarterly, so a
+Stamp every record with `overture_release`. Overture taxonomy changes quarterly, so a
 category is meaningful only with its release.
 
 ### Hosted-service classification
@@ -147,76 +147,81 @@ overture-signals
 Overture's own lineage. This decision does not authorize other new providers.
 
 Collect distinct `sources[].dataset` values from the complete clipped extract,
-lowercase only for comparison, and preserve the source spelling in stored rows. Fail
+lowercase only for comparison, and preserve the source spelling in the records. Fail
 closed:
 
-- if `osm` appears in any casing, stop and do not load or publish;
+- if `osm` appears in any casing, stop and do not transform or publish;
 - if any value is outside the approved set, stop for human licence review;
 - never auto-extend the allowlist from observed data.
 
-Repeat this gate against `business_location_sources` immediately before the lexicon
-handoff. The attribution you publish is valid only for the providers it names.
+Repeat this gate against the reconciled provider-lineage records immediately before
+the lexicon handoff. The attribution you publish is valid only for the providers it names.
 
-## 4. Load and reconcile in the internal query DB
+## 4. Reconcile the extract as files
 
-Load the chunked `places/places-part-NNNN.jsonl` and
-`manifest/summary.json` through the query DB's `--tracks places` bulk-loader track.
-The implementation uses these grains:
+Reconcile the chunked `places/places-part-NNNN.jsonl` against `manifest/summary.json`
+and write a places manifest for the county/release run (release, county FIPS, TIGER
+vintage, bbox count, clipped count, category/source/status summaries, part digests,
+and duration). Keep these grains in the extract records:
 
-- `business_locations`: one row per county/GERS place.
-- `business_location_categories`: taxonomy primary/alternate rows.
-- `business_location_sources`: provider lineage and licence evidence.
-- `overture_place_extractions`: one row per county/release run.
-- `business_location_parcel_links`: later confidence-scored bridge; do not populate
-  during ingest.
+- one record per county/GERS place;
+- taxonomy primary/alternate entries;
+- provider lineage and licence evidence per place;
+- one extraction record per county/release run.
 
-Use GERS ID as the source identity and idempotent upserts. Retain the complete source
-payload. Do not load places into `companies`, do not infer `company_id`, and do not
-conflate a business location with a legal entity.
+Parcel links are a later confidence-scored bridge; do not produce them during ingest.
 
-After load, assert:
+Use GERS ID as the source identity, so a rerun of the same release produces the same
+records. Retain the complete source payload. Do not write places as `company` records,
+do not infer a company, and do not conflate a business location with a legal entity.
 
-- loaded `business_locations` count equals the clipped manifest count;
+Assert from the files:
+
+- record count across all parts equals the clipped manifest count;
 - no duplicate GERS IDs and no null geometry;
-- loaded distinct source datasets pass the licence gate;
-- the extraction run records release, county FIPS, TIGER vintage, bbox count, clipped
+- distinct source datasets in the records pass the licence gate;
+- the places manifest records release, county FIPS, TIGER vintage, bbox count, clipped
   count, category/source/status summaries, and duration;
 - parcel links may remain zero because that later step is not part of ingest.
 
-Upsert `oracle_dataset_coverage` with:
+Record coverage in the run manifest:
 
 ```text
 source = overture_places
-ingested_count = current business_locations count for the county/release
+ingested_count = reconciled place count for the county/release
 expected_count = NULL
 ```
 
 Do not manufacture 100% completion by setting `expected_count = ingested_count`.
 
-The query DB is not the public source. Its working Parquet/coverage outputs are internal.
+Working Parquet and coverage files are internal intermediates. Never upload them or
+point MCP at them.
 
 ## 5. Validate, transform to lexicon, and hand off to Atlas
 
-Validate the current query DB rows, not the raw extract:
+Validate the working Parquet against the reconciled JSONL parts and places manifest,
+not against the raw extract alone:
 
 ```bash
 node scripts/validate-overture-places-table.mjs \
-  --from-neon \
-  --env-file ../elephant-query-db/.env.local \
   --county lee \
   --release 2026-07-22.0 \
   --parquet downloads/overture-places/lee/2026-07-22.0/working/lee/places-table.parquet
 ```
 
+The earlier `--from-neon` mode compared against the retired internal SQL store; do not
+use it. If the validator in use still requires a database input, record the gap and
+validate the Parquet against the places manifest from files.
+
 The handoff gate requires:
 
-- working rows equal current query DB rows for that county/release;
+- working Parquet rows equal the reconciled JSONL record count for that county/release;
 - zero duplicate GERS IDs;
 - zero null geometries;
 - `taxonomy.hierarchy` serialized as a `/`-delimited scalar;
 - the live source/licence gate passes.
 
-Transform the reconciled rows into lexicon-compliant places records with exact source
+Transform the reconciled records into lexicon-compliant places records with exact source
 provenance and validate every record against the live lexicon. Include the Overture
 citation and access date, per-provider licences, the Foursquare copyright notice, and
 Elephant's own change statement/date in the group's source metadata, plus release, row
@@ -239,7 +244,7 @@ Reference run: Lee County, Florida, FIPS `12071`, TIGER
 - boundary-clipped: **40,191**;
 - old scoping baseline: **40,190**; the verified clip is +1, and neither number is an
   `expected_count`;
-- Neon `business_locations`: **40,191**, with `expected_count = NULL`;
+- reconciled places: **40,191**, with `expected_count = NULL`;
 - source gate: PASS, `osm` absent, unknown providers empty;
 - hosted-service flag: 956 records from the five approved full paths;
 - Lee PII decision: approved 2026-08-12 to publish public business `emails` and
@@ -247,30 +252,31 @@ Reference run: Lee County, Florida, FIPS `12071`, TIGER
 - the earlier dedicated Lee places Filebase/IPNS publication is retired; re-publish
   Lee through the `places` data group in Atlas.
 
-The loaded source spellings were `AllThePlaces`, `BrightQuery`, `DAC`, `Foursquare`,
+The reconciled source spellings were `AllThePlaces`, `BrightQuery`, `DAC`, `Foursquare`,
 `meta`, `Microsoft`, `Overture`, `Overture-signals`, `PinMeTo`, and `RenderSEO`.
 `krick` is approved but was absent in Lee.
 
 ## Refresh semantics
 
-The first county run is a full extract. Later releases are upserts/diffs:
+The first county run is a full extract. Later releases are diffs against the previous
+reconciled release files:
 
 - use GERS ID as the merge key and provider `dataset + record_id` as re-identification
   evidence;
 - maintain `first_seen_release`, `last_seen_release`, and `is_current`;
 - process Overture changelog `added`, `removed`, and `data_changed` records for the
   county;
-- never delete historical rows;
+- never delete historical records;
 - absence from a release is not business closure;
 - use `operating_status` for Overture's explicit closure state.
 
-Re-run extraction, source gate, internal reconciliation, lexicon validation, attribution,
+Re-run extraction, source gate, file reconciliation, lexicon validation, attribution,
 and the Atlas CAR/table sequence for every release. Automated monthly discovery/execution
 is not implemented; refreshes are operator-run until that workflow lands.
 
 ## Open questions and intentionally unimplemented work
 
-- Populate `business_location_parcel_links` with a confidence-scored spatial match.
+- Produce place-to-parcel links with a confidence-scored spatial match.
 - Onboard and boundary-validate a county other than Lee.
 - Automate monthly STAC discovery, approval/pinning, diff ingest, and publication.
 - Decide whether later counties inherit Lee's 2026-08-12 PII publication decision.
@@ -282,5 +288,5 @@ is not implemented; refreshes are operator-run until that workflow lands.
 Persist run notes and source decisions, but never extracted place data or secrets.
 
 Return release, county/FIPS, TIGER vintage, bbox and clipped counts, source/licence gate,
-hosted-service rule version, internal reconciliation counts, attribution, places group
+hosted-service rule version, file reconciliation counts, attribution, places group
 validation, CAR/tables roots, Atlas PR, global index CID, and MCP sync result.

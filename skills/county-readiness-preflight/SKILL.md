@@ -1,6 +1,6 @@
 ---
 name: county-readiness-preflight
-description: "Fail-closed county readiness validator. Use before county-seed-data, county-ingest-run, onboard-county, or any pilot or full ingest. At the start of every new county, validates skills/use-oracle/runtime/docs/<county>-sources.yaml for GIS vs tax-roll, permit-jurisdiction classification, destination proof, records-request recipients, and BBB advertised-count traps."
+description: "Fail-closed county readiness validator. Use before county-seed-data, county-ingest-run, onboard-county, or any pilot or full ingest. At the start of every new county, validates skills/use-oracle/runtime/docs/<county>-sources.yaml for GIS vs tax-roll, permit-jurisdiction classification, the Restate stack proof, records-request recipients, and BBB advertised-count traps."
 ---
 
 # County Readiness Preflight
@@ -13,7 +13,7 @@ stop.
 
 Start the independent preparation tracks at intake: full source/jurisdiction enumeration,
 adapter fingerprinting and implementation scaffolds, AWS remote BBB execution setup,
-internal destination proof, Atlas upload/PR readiness, and named request routing. This validator stops
+Restate stack proof, Atlas upload/PR readiness, and named request routing. This validator stops
 seed, pilots, adapter scale-out, and full ingest; it does not stop that safe preparation.
 
 ## At the jump of every ingest
@@ -39,9 +39,25 @@ failure modes, not a list of special counties:
    `portal_kind` `central-submission` / `onestop` / `supplemental-approval` /
    `application-intake` as `historical_records: true`. Supplemental county approvals are
    not complete municipal permits.
-4. **Destination must be proven** before writes. Proven destinations need two
-   independent identity sources (for example console project/branch plus configured
-   branch and endpoint IDs). Copying IDs from the connection under test is not proof.
+4. **The Restate stack must be proven** before seed or ingest. Record it in the
+   catalog after `bootstrap-oracle-infra` passes:
+
+   ```yaml
+   stack:
+     orchestrator: restate
+     restate_admin_url: http://localhost:9070
+     services_registered: true   # Parcel, CountyIngest, CountyLedger, PermitFeed,
+                                 # PermitHarvest, PublishGroup in `restate services list`
+     verified_at: "<iso8601>"
+     publication:
+       in_scope: false           # true requires upload_node
+       upload_node: null
+   ```
+
+   PASS requires `orchestrator: restate`, `services_registered: true`, and
+   `verified_at`. When `publication.in_scope` is true, `upload_node` must name the
+   publicly reachable node. A leftover `destination:` section from the retired Query DB
+   only adds a non-blocking WARN; delete it.
 5. **Blocked, custodian-only, and manual-only permit rows need a complete
    `records_request`.** Name the recipient office, portal or email, system/date scope,
    and `api-first` or `records-first`. “Request a bulk export” without a recipient is
@@ -59,7 +75,7 @@ python3 skills/use-oracle/scripts/validate-county-readiness.py \
 
 Exit **0** only when `overall` is `PASS` and `seed_allowed` / `ingest_allowed` are true.
 Exit **1** when any gate is `BLOCKED` (or the catalog file is missing). Print the JSON
-report to the operator. Keep `preparation_allowed: true`, set `execution_allowed` from
+report to the operator, including any `warnings`. Keep `preparation_allowed: true`, set `execution_allowed` from
 readiness, name `required_blocker_actions` with owners, and return
 `next_automated_actions`. On PASS, auto-advance the durable run without operator
 confirmation.
@@ -94,6 +110,11 @@ Fixtures are named by **failure mode**. They must keep passing
 | `fixtures/readiness/ready-minimal.yaml` | PASS — seed and ingest allowed |
 | `fixtures/readiness/blocked-without-request-route.yaml` | Blocked/custodian/manual-only rows need a complete `records_request` |
 | `fixtures/readiness/advertised-listing-count-is-not-harvestable.yaml` | BBB advertised listing total is not `expected_count` without a page cap |
+| `fixtures/readiness/stack-ready-publication-in-scope.yaml` | PASS — Restate stack proven, publication in scope with an upload node |
+| `fixtures/readiness/stack-missing.yaml` | Missing `stack` section blocks |
+| `fixtures/readiness/stack-services-not-registered.yaml` | Restate up but services not registered blocks |
+| `fixtures/readiness/stack-publication-without-upload-node.yaml` | Publication in scope without `upload_node` blocks |
+| `fixtures/readiness/legacy-destination-section-warns.yaml` | Leftover `destination:` section warns, never blocks |
 
 ## After a BLOCKED report
 

@@ -24,7 +24,7 @@ Use explicit states:
 - `COMPLETE`
 - `FAILED_EXHAUSTED`
 
-A stage success, status report, pilot completion, capture completion, load completion, or
+A stage success, status report, pilot completion, capture completion, reconciliation completion, or
 agent-session boundary is not a terminal condition. Stop advancing only when:
 
 - the requested scope is `COMPLETE`;
@@ -39,7 +39,10 @@ returning to the chat to resume it.
 ## Durable run manifest
 
 Create the run manifest at intake and store revisioned updates in durable orchestration
-storage. Never use chat text, a local path, a PID, or a dashboard count as the source of
+storage: live progress in Restate (`CountyIngest` state and the `CountyLedger` object), and
+the durable record in `data/runs/<county>/<jobId>/manifest.json`, which
+`bin/reconcile-county.mjs` writes because Restate keeps finished state only for its
+retention window. Never use chat text, a local path, a PID, or a dashboard count as the source of
 truth.
 
 Record:
@@ -48,13 +51,15 @@ Record:
   URI plus digest;
 - repository identity, branch, commit SHA, clean-tree or tree/patch digest, installed skill
   version, runtime image digest, and redacted configuration/registry/schema digests;
-- independently proven Neon destination identifiers;
+- stack proof: Restate admin URL, registered services, and verification time (the catalog
+  `stack` section);
 - AWS BBB execution proof: approved AWS account/region, remote runtime identity, US egress,
   `operator_machine: false`, and secret references/availability—not secret values;
 - Atlas publication readiness: upload-node credential availability, Atlas repository
-  access, county-page path, PR state, global index CID, and last published watermark;
+  access, county-page path, PR state, global index CID, and the digest of the manifest the
+  published group was built from;
 - stage state, attempt count, heartbeat, lease expiry, fencing token, checkpoint URI and
-  signature, artifact manifest URI, source/captured/loaded/published counts, and blocker
+  signature, artifact manifest URI, source/captured/reconciled/published counts, and blocker
   owner/action.
 
 Before remote dispatch, validate the recorded repository commit/tree, runtime image,
@@ -69,7 +74,7 @@ Every producer writes an immutable handoff manifest before marking a stage compl
 - artifact URI, byte/content digest, schema version, row/count reconciliation, and privacy
   classification;
 - terminal checkpoint and all configuration/registry/schema signatures;
-- destination proof reference and next eligible stage.
+- stack proof reference and next eligible stage.
 
 The consumer verifies the manifest and artifact digest, then records an idempotency receipt
 before processing. Reject incompatible or mutable handoffs. Never copy hardcoded counts from
@@ -83,12 +88,13 @@ operator message to continue.
 ## Worker supervision and recovery
 
 Every worker must hold a renewable lease and fencing token and emit heartbeats plus committed
-checkpoint progress. Record `nextAttemptAt` for deliberate cooldowns.
+checkpoint progress. On the local stack, Restate invocations and journals provide this:
+keyed workflows are exactly-once and replay resumes from the last journaled step. Record `nextAttemptAt` for deliberate cooldowns.
 
 Classify a worker as stale only when its lease/heartbeat deadline expires and it is not in a
 valid cooldown. Recover automatically only when:
 
-- no unexpired lease or advisory lock remains;
+- no unexpired lease or in-flight invocation for the same key remains;
 - the source, registry, configuration, schema, and checkpoint signatures match;
 - the retry budget remains; and
 - the resume command targets pending work without resetting completed units.
@@ -101,9 +107,9 @@ recovery action, and continue independent workstreams.
 ## Automatic stage transitions
 
 - Intake launches source/jurisdiction enumeration, adapter determination/build,
-  identity-registry route proof, execution and internal-destination proof, upload-node and
+  identity-registry route proof, execution and stack proof, upload-node and
   Atlas-PR readiness, and blocker routing in parallel. Adapter build is not permit harvest.
-- After appraisal/transform readiness, enqueue identity-baseline load. Sunbiz comes
+- After appraisal/transform readiness, enqueue the identity-baseline stage. Sunbiz comes
   first: stamp each company with a GET of `search.sunbiz.org` by document number, not
   the bulk download page. Then enqueue `dbpr-license-ingest`. A printed permit license
   number, person name, and company name are DBPR search keys only. Persist company,
@@ -116,12 +122,14 @@ recovery action, and continue independent workstreams.
   person). Relationship objects are only `from` and `to`. Do not enqueue `PermitFeed`
   for historical qualification of permits that omit a license number until the
   public-records relationship extract is adequate. That extract does not block
-  reading permits that already print a license number. Schema gaps after loading
-  supported tables do not skip acquisition.
+  reading permits that already print a license number. Schema gaps after writing
+  supported records do not skip acquisition.
 - Readiness `PASS` enqueues the next dependency-ready seed/pilot/run stages automatically.
-- A capture handoff enqueues transform/validation; a valid transform handoff enqueues
-  idempotent load/match; a reconciled load advances the loaded watermark and enqueues the
-  CAR/table/Atlas-PR preparation sequence.
+- A capture handoff enqueues transform/validation; a valid transform writes its ready
+  marker and records `ready` in `CountyLedger`; permit harvest records link results under
+  `stage: "permits"`; a passing `reconcile-county.mjs --strict` writes a new manifest,
+  assembles group directories from ready parcels, and enqueues the CAR/table/Atlas-PR
+  preparation sequence (`PublishGroup`).
 - A readiness block prevents seed, pilots, adapter scale-out, and full ingestion, but keeps
   bounded enumeration, adapter implementation/fixtures, access remediation, records-request
   preparation, and publication readiness active.
@@ -134,7 +142,10 @@ recovery action, and continue independent workstreams.
 Set `COMPLETE` only when the requested scope has:
 
 1. terminal source enumeration and capture checkpoints;
-2. reconciled, idempotently loaded Neon rows with linked and valid-unlinked counts;
+2. a strict reconcile manifest: `seed = ready + dead + invalid`, every harvested permit
+   linked or unlinked with a reason, no duplicate parcel keys, ready-marker hash coverage,
+   tombstoned parcels excluded from group directories, and zero ledger-vs-file
+   mismatches;
 3. validated lexicon groups and one validated CAR per data group;
 4. CLI-exported normalized table roots;
 5. archive/table upload with remote CID readback;
@@ -142,10 +153,11 @@ Set `COMPLETE` only when the requested scope has:
 7. successful MCP sync, `listAtlasCounties`, `getAtlasDatasetInfo`, and representative
    scoped `queryAtlas` checks.
 
-Capture is not load. Load is not publication. Publication is not MCP visibility.
+Capture is not reconciliation. Reconciliation is not publication. Publication is not MCP
+visibility.
 
-After freezing a snapshot, compare every later loaded manifest/watermark to the published
-one. If loaded data advances, mark publication stale and automatically enqueue a **new**
+After freezing a snapshot, compare every later reconciled manifest digest to the one the
+published group was built from. If a newer reconciled manifest exists, mark publication stale and automatically enqueue a **new**
 immutable snapshot. Never mutate the old prefix or CID. Report partial coverage honestly
 while the new snapshot is pending.
 
@@ -153,5 +165,5 @@ while the new snapshot is pending.
 
 Every status report must include the run state/revision, provenance digest, stage dependency
 states, heartbeat/lease/checkpoint freshness, retry budget, exact next automatic transition,
-human blockers and owners, loaded versus published watermark, and whether end-to-end
+human blockers and owners, reconciled versus published manifest, and whether end-to-end
 completion is established.
