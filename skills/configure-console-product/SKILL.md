@@ -128,7 +128,7 @@ The person understands the business, not software. Use plain words.
    Leave its build settings as generated. To install the kit on Enact: when
    `REGISTRY_AWS_ACCESS_KEY_ID` and `REGISTRY_AWS_SECRET_ACCESS_KEY` are set, sign
    npm in to Build's registry for the working copy only with
-   `AWS_ACCESS_KEY_ID="$REGISTRY_AWS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$REGISTRY_AWS_SECRET_ACCESS_KEY" aws codeartifact login --tool npm --domain buildworkflow --domain-owner 848665034107 --repository npm --namespace prism --region <registry region>`
+   `AWS_ACCESS_KEY_ID="$REGISTRY_AWS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$REGISTRY_AWS_SECRET_ACCESS_KEY" aws codeartifact login --tool npm --domain buildworkflow --domain-owner 848665034107 --repository npm --namespace prism --region us-east-2`
    and install the exact kit version. Otherwise build the kit from
    `prismteam-ai/console`'s `main` (`pnpm install --frozen-lockfile`,
    `pnpm app-kit:build`, `pnpm pack` in `app-kit/`) and install the tarball in

@@ -689,7 +689,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 779144,
+      "library_pinned_bytes": 779136,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3253,7 +3253,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 779144,
+      "library_pinned_bytes": 779136,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -4208,7 +4208,7 @@
       ]
     },
     "configure-console-product": {
-      "bytes": 72929,
+      "bytes": 72921,
       "files": 3,
       "flags": {},
       "omitted": [],
