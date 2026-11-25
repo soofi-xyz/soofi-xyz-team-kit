@@ -22,7 +22,7 @@ The person understands the business, not software. Use plain words and keep prod
 
 ## Build an app
 
-1. Scaffold from the app kit and keep its build settings unchanged. Follow [the app kit contract](../skills/build-console-product/reference/app-kit.md#app-kit). Install the kit as [the skill's step 3.1](../skills/configure-console-product/SKILL.md#3-build-the-app) says: from Build's registry when the registry secrets are set, otherwise built from `prismteam-ai/console`'s `main`.
+1. Scaffold from the app kit and keep its build settings unchanged. Follow [the app kit contract](../skills/build-console-product/reference/app-kit.md#app-kit). Install `@prism/console-app-kit` from Build's registry with the run's read token, as [the skill's step 3.1](../skills/configure-console-product/SKILL.md#3-build-the-app) says.
 2. Assemble pages only from design-system components and their typed style props. Use an app-level theme choice only where the environment's design-system configuration permits it.
 3. Declare every data binding and action the app uses, with the registered product operation and the scopes it needs, and keep a sample-data file beside each binding for local runs. Apps read and change data only through Console's API with [the data hooks](../skills/build-console-product/reference/app-kit.md#data-hooks), never by calling another product.
 4. Show what a product returns. Do not imitate a product's logic (scoring, rules, scheduling) in app code.

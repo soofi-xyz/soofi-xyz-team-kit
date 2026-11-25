@@ -37,7 +37,7 @@
     },
     {
       "name": "configure-console-product",
-      "version": "1.0.0-sha256-94cefb0082021f15"
+      "version": "1.0.0-sha256-fff54311841425b1"
     },
     {
       "name": "configure-deploy-product",
@@ -58,6 +58,9 @@
   },
   "model": "sonnet",
   "name": "vivillon",
+  "package_registries": [
+    "build"
+  ],
   "repositories": [],
   "run_repositories": {
     "max": 5,
@@ -69,5 +72,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.196.0"
+  "version": "1.197.0"
 }

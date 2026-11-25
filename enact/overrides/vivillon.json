@@ -12,7 +12,10 @@
         "contents": "write",
         "pull_requests": "write"
       }
-    }
+    },
+    "package_registries": [
+      "build"
+    ]
   },
   "requires_mcp": [],
   "requires_mcp_reason": "agents/vivillon.md works through Console's HTTP API and git; no MCP server. It creates each new app's repository from prismteam-ai/configuration-bundle-template with Enact's create_repository tool (docs/repositories.md, \"New repositories\")."

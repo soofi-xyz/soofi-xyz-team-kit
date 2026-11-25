@@ -125,16 +125,12 @@ The person understands the business, not software. Use plain words.
 ## 3. Build the app
 
 1. Scaffold from [the app kit](../build-console-product/reference/app-kit.md#app-kit).
-   Leave its build settings as generated. To install the kit on Enact: when
-   `REGISTRY_AWS_ACCESS_KEY_ID` and `REGISTRY_AWS_SECRET_ACCESS_KEY` are set, sign
-   npm in to Build's registry for the working copy only with
-   `AWS_ACCESS_KEY_ID="$REGISTRY_AWS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$REGISTRY_AWS_SECRET_ACCESS_KEY" aws codeartifact login --tool npm --domain buildworkflow --domain-owner 848665034107 --repository npm --namespace prism --region us-east-2`
-   and install the exact kit version. Otherwise build the kit from
-   `prismteam-ai/console`'s `main` (`pnpm install --frozen-lockfile`,
-   `pnpm app-kit:build`, `pnpm pack` in `app-kit/`) and install the tarball in
-   the working copy only; that needs the person to name `prismteam-ai/console`
-   on the run, so ask for it when it is missing. Commit no `.npmrc`, tarball or
-   `file:` dependency, and never print a credential.
+   Leave its build settings as generated. Install `@prism/console-app-kit` at the
+   exact version the app pins from Build's registry: on Enact every turn has a
+   short-lived read token for it (the manifest's `package_registries`), so
+   `pnpm install` resolves the `@prism` scope with no sign-in step. Commit no
+   `.npmrc`, tarball or `file:` dependency, and never print the token. When the
+   install is refused, say so and stop; do not build the kit another way.
 2. Assemble each page only from design-system components and their typed style
    props. Use an app-level theme choice only where the environment's design-system
    configuration permits it. To show the Prism logo and the signed-in person's

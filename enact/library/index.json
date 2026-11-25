@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.196.0",
+  "kit_version": "0.197.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -638,17 +638,17 @@
       "version": "1.0.0-sha256-9b419ff3c4c0d09d"
     },
     "configure-console-product": {
-      "bytes": 48272,
-      "digest": "sha256:2f781d84d2e5ac95be08d058f08c5f78666bb569282a47bf035b7c164bd62ad3",
-      "encoded_bytes": 51950,
+      "bytes": 47844,
+      "digest": "sha256:5efbe583094803c7737858d25a7877592a445c8b789be999915014ca4cb8f71b",
+      "encoded_bytes": 51502,
       "files": 3,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 50082,
+      "stored_bytes": 49646,
       "used_by": [
         "chandelure",
         "vivillon"
       ],
-      "version": "1.0.0-sha256-94cefb0082021f15"
+      "version": "1.0.0-sha256-fff54311841425b1"
     },
     "configure-deploy-product": {
       "bytes": 8757,

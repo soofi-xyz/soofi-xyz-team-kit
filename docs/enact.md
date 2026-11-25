@@ -97,6 +97,7 @@ scripts/sync-enact-schema.sh [sync|check]   # refresh enact/schema from prismtea
 | Agent assets (`assets`, `POST /agents/{name}/assets`) | [#33](https://github.com/prismteam-ai/enact/pull/33) | merged | ampharos's reference images; it leaves `stays_local` |
 | Sign-in (access tokens, per-agent grants) | [#28](https://github.com/prismteam-ai/enact/pull/28) | merged | Replacing the shared `x-api-key` in the editor setup above |
 | New repositories (`create_repositories`, `create_repository` tool) | [#44](https://github.com/prismteam-ai/enact/pull/44) | merged | `create_repositories` from an override's `manifest` (vivillon, from `prismteam-ai/configuration-bundle-template`); the appendix names the tool |
+| Package registries (`package_registries`, a per-turn read token) | [#47](https://github.com/prismteam-ai/enact/pull/47) | open | `package_registries` from an override's `manifest` (vivillon, `build` for `@prism/console-app-kit`); needs Build's reader role ([prismteam-ai/build#77](https://github.com/prismteam-ai/build/pull/77)). `enact/schema/` is copied from #47's branch until it merges |
 
 All are on prismteam-ai/enact main; `enact/schema/` is copied from there
 (`enact/schema/SOURCE_REVISION`).

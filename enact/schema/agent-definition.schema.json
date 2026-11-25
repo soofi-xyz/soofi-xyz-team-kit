@@ -185,6 +185,13 @@
           "uniqueItems": true,
           "items": { "$ref": "#/$defs/name" }
         },
+        "package_registries": {
+          "description": "Private package registries the agent installs from, by name, each on the environment's list (GET /package-registries). Every turn gets a short-lived read token for each, and npm and pnpm resolve each registry's scope from it.",
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/name" }
+        },
         "hosts": {
           "description": "Hosts a run may connect to, beyond what every run needs.",
           "type": "array",
