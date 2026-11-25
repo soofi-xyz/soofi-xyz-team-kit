@@ -129,23 +129,21 @@ the source.
     heatmap, county map, form and job-status components, restyled;
   - drawing parts for custom visuals: bars, segments, grid cells and axes, so
     most new visuals need no new component and no raw SVG;
-  - messages ([pull request 66](https://github.com/prismteam-ai/console/pull/66),
-    runtime 1.41.0), each replacing a part of the debt-collection
-    demo: `FilledText` (message text with highlighted, linked and missing
-    variables, the demo's `Filled`), `SmsPreview` (`.content-phone`),
-    `EmailPreview` (`.content-mail`), `Inbox` (`.responses-inbox`),
-    `ConversationThread` (`.responses-thread` with its facts) and `FactsList`
-    (`dl.responses-facts`, `dl.ms-facts`, Mayo's `dl.my-def`). The message bubble
-    is shadcn's `Bubble`;
-  - content ([pull request 67](https://github.com/prismteam-ai/console/pull/67),
-    runtime 1.42.0): `CodeBlock` (the demo's `pre.code`, plus a
-    copy button; shadcn's code-block), a step bar on `Carousel` (`.mt-stepbar`),
-    `SectionDots` and `SkipLink` (`.nav-dots`, `.skip-link`), `RuleCard`
-    (`article.lx-term` in the Rules draft), `RatingReasons` (`.inference-dot`
-    and `ul.inference-reasons`), `PersonChip` (`Avatar` with a name; no photos),
-    `LogoRow` (`.brand-logos`, `.mt-logos`, `.mt-case-logos`), `CaseCard`
-    (`ul.mt-cases`) and `SlideSection` (`section.mt-section` with its next
-    button). The demo's team diagram is `OrgChart`; there is no people group.
+  - messages (runtime 1.41.0): `FilledText` (message text with highlighted,
+    linked and missing variables), `SmsPreview` (a text message in a phone
+    frame, with its length in texts), `EmailPreview` (From, To, subject and
+    body), `Inbox` (selectable replies with channel and intent),
+    `ConversationThread` (sent and received messages with the deciding words
+    marked) and `FactsList` (labels with their values, side by side or
+    stacked). The message bubble is shadcn's `Bubble`;
+  - content (runtime 1.42.0): `CodeBlock` (scrolling code with a copy button;
+    shadcn's code-block), a step bar with phases on `Carousel`, `SectionDots`
+    and `SkipLink` (page navigation), `RuleCard` (a rule with its source,
+    check and approval), `RatingReasons` (a high, medium or low band with the
+    reasons behind it), `PersonChip` (`Avatar` with a name; no photos),
+    `LogoRow` (logos joined by "&"), `CaseCard` (a titled case with a status
+    and its facts) and `SlideSection` (a full-screen section with a next
+    button). Use `OrgChart` for a team diagram; there is no people group.
 - **Public props.** Give no component a `className`, a `style` or a DOM
   reference. Offer variants as a closed, typed list: an unknown variant
   fails compilation, with no free-string names and no silent fall-through to a
