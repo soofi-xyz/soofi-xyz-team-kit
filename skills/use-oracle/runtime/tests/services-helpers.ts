@@ -32,6 +32,17 @@ const MANAGED_ENV = [
   "CAPTURE_MODULE_TESTCOUNTY",
   "PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_TESTCOUNTY",
   "PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES",
+  "CAPTURE_TIMEOUT_MS_TESTCOUNTY",
+  "PREPARE_METHOD_TESTCOUNTY",
+  "PREPARE_JSON_TEMPLATE_TESTCOUNTY",
+  "PREPARE_BODY_TEMPLATE_TESTCOUNTY",
+  "PREPARE_CONTENT_TYPE_TESTCOUNTY",
+  "PERMIT_BULK_DIR_DUVAL",
+  "PERMIT_ROUTING_MODULE_DUVAL",
+  "PERMIT_ADAPTER_OPTIONS_DUVAL",
+  "PERMIT_TIMEOUT_MS_DUVAL",
+  "PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_DUVAL",
+  "CHROME_EXECUTABLE_PATH",
 ];
 
 export type Sandbox = {
@@ -55,25 +66,12 @@ export async function createSandbox(): Promise<Sandbox> {
   const transformZip = path.join(root, "transform-v2.zip");
   await writeFile(transformZip, "handler-v1");
   const log = path.join(root, "cli.log");
+  for (const name of MANAGED_ENV) delete process.env[name];
   process.env.DATA_DIR = dataDir;
   process.env.ELEPHANT_CLI = wrapper;
   process.env.FAKE_CLI_LOG = log;
   process.env.TRANSFORM_ZIP_TESTCOUNTY = transformZip;
   process.env.PREPARE_URL_TEMPLATE_TESTCOUNTY = "https://appraiser.example.gov/parcel/{parcel_id}";
-  for (const name of [
-    "ELEPHANT_CLI_COMMIT",
-    "FAKE_INVALID",
-    "FAKE_TRANSFORM_FAIL",
-    "FAKE_USAGE_TYPE",
-    "FAKE_DATA_GROUP",
-    "FAKE_NO_SEED",
-    "TRANSFORM_SEED_TESTCOUNTY",
-    "CAPTURE_MODULE_TESTCOUNTY",
-    "PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_TESTCOUNTY",
-    "PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES",
-  ]) {
-    delete process.env[name];
-  }
   resetGates();
   resetCliIdentity();
   return {

@@ -1,8 +1,10 @@
 /**
  * `PublishGroup` sequence for one county data group:
  *
- *   validate group → hash → validate CAR → export-tables (--atlas-page)
- *   → wait for approval (durable promise) → upload CAR + tables with readback.
+ *   validate group → hash → validate CAR → export-tables (--atlas-page on a
+ *   staged copy under data/publish/…/atlas/) → wait for approval (durable
+ *   promise) → upload CAR + tables with readback → copy the staged page onto
+ *   the given Atlas checkout path (only if that page is unchanged since export).
  *
  * It stops before the Atlas PR: the PR, merge, global IPNS check and MCP sync
  * stay a human/agent step per `use-oracle`. Publication reads only the
@@ -20,6 +22,8 @@ import {
   assertCounty,
   assertJobId,
   assertPublishableGroup,
+  atomicCopy,
+  exists,
   paths,
   readJsonIfExists,
   removeIfExists,
@@ -48,6 +52,7 @@ export type PublishPhase =
   | "exporting-tables"
   | "awaiting-approval"
   | "uploading"
+  | "applying-atlas-page"
   | "uploaded"
   | "rejected"
   | "failed";
@@ -58,7 +63,13 @@ export type PublishState = {
   groupFiles?: number;
   car?: { path: string; root: string | null; blocks: number | null };
   tables?: { path: string; root: string | null; exportJson: string };
-  atlasPage?: string;
+  atlasPage?: {
+    target: string;
+    staged: string;
+    baseSha256: string | null;
+    stagedSha256: string | null;
+    applied: boolean;
+  };
   uploads?: { car: UploadSummary; tables: UploadSummary };
   decision?: Decision;
   cli?: { version: string | null; commit: string | null };
@@ -228,6 +239,7 @@ export async function runPublish(io: PublishIO, req: PublishRequest, identity?: 
   const carPath = path.join(outDir, `${req.county}-${req.group}.car`);
   const tablesDir = path.join(outDir, "tables");
   const tablesJson = path.join(outDir, "tables-export.json");
+  const stagedAtlasPage = path.join(outDir, "atlas", "counties", req.state, `${req.county}.json`);
   const cli = identity ?? (await io.run("cli-identity", () => cliIdentity()));
   io.setState({ phase: "validating-group", cli: { version: cli.version, commit: cli.commit } });
 
@@ -295,10 +307,16 @@ export async function runPublish(io: PublishIO, req: PublishRequest, identity?: 
   });
   if (!carValid.ok) await gateFailure(io, "validate-car", carValid.error);
 
-  // 4. Export tables and write the Atlas county-page entry.
+  // 4. Export tables and write the Atlas county-page entry into a STAGED copy
+  //    of the page under the publish dir. The real Atlas checkout is untouched
+  //    until approval and upload readback (step 7).
   io.setState({ phase: "exporting-tables" });
   const exported = await io.run("export-tables", async () => {
     await removeIfExists(tablesDir);
+    await removeIfExists(stagedAtlasPage);
+    const base = (await exists(req.atlasPage)) ? await sha256File(req.atlasPage) : null;
+    if (base) await atomicCopy(req.atlasPage, stagedAtlasPage);
+    else await mkdir(path.dirname(stagedAtlasPage), { recursive: true });
     const result = await runElephantCli(
       [
         "export-tables",
@@ -308,7 +326,7 @@ export async function runPublish(io: PublishIO, req: PublishRequest, identity?: 
         "--output-json",
         tablesJson,
         "--atlas-page",
-        req.atlasPage,
+        stagedAtlasPage,
         "--county",
         req.county,
         "--state",
@@ -326,12 +344,20 @@ export async function runPublish(io: PublishIO, req: PublishRequest, identity?: 
       ok: result.code === 0,
       error: cliErrorText(result),
       root: typeof summary.root === "string" ? summary.root : null,
+      atlasBase: base,
+      atlasStaged: (await exists(stagedAtlasPage)) ? await sha256File(stagedAtlasPage) : null,
     };
   });
   if (!exported.ok) await gateFailure(io, "export-tables", exported.error);
   io.setState({
     tables: { path: tablesDir, root: exported.root, exportJson: tablesJson },
-    atlasPage: req.atlasPage,
+    atlasPage: {
+      target: req.atlasPage,
+      staged: stagedAtlasPage,
+      baseSha256: exported.atlasBase,
+      stagedSha256: exported.atlasStaged,
+      applied: false,
+    },
     phase: "awaiting-approval",
   });
 
@@ -370,7 +396,30 @@ export async function runPublish(io: PublishIO, req: PublishRequest, identity?: 
   if (!uploadTables.verified || (uploadTables.cid && exported.root && !sameCid(uploadTables.cid, exported.root))) {
     await gateFailure(io, "upload-tables", `readback did not match tables root ${exported.root}`);
   }
-  io.setState({ phase: "uploaded", uploads: { car: uploadCar, tables: uploadTables } });
+  // 7. Apply the staged Atlas page to the real checkout, only after approval
+  //    and verified readback, and only if the checkout page is unchanged since
+  //    export (otherwise rerun so the entry is computed on the current page).
+  io.setState({ phase: "applying-atlas-page", uploads: { car: uploadCar, tables: uploadTables } });
+  const applied = await io.run("apply-atlas-page", async () => {
+    const current = (await exists(req.atlasPage)) ? await sha256File(req.atlasPage) : null;
+    if (current !== exported.atlasBase) {
+      return { ok: false, error: "the Atlas checkout page changed after export-tables; rerun PublishGroup" };
+    }
+    if (!(await exists(stagedAtlasPage))) return { ok: false, error: "export-tables wrote no Atlas page" };
+    await atomicCopy(stagedAtlasPage, req.atlasPage);
+    return { ok: true, error: "", sha256: await sha256File(req.atlasPage) };
+  });
+  if (!applied.ok) await gateFailure(io, "apply-atlas-page", applied.error);
+  io.setState({
+    phase: "uploaded",
+    atlasPage: {
+      target: req.atlasPage,
+      staged: stagedAtlasPage,
+      baseSha256: exported.atlasBase,
+      stagedSha256: exported.atlasStaged,
+      applied: true,
+    },
+  });
   return {
     status: "uploaded" as const,
     groupDigest: group.digest,

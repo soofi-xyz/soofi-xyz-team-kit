@@ -7,6 +7,7 @@ import path from "node:path";
 
 import AdmZip from "adm-zip";
 
+import { normalizeSourceRequest, type SourceRequest } from "./source-request.ts";
 import { promote, temporaryPathFor } from "./storage.ts";
 
 type Json = Record<string, unknown>;
@@ -135,13 +136,17 @@ export async function filterZipToGroup(
   return { labels: labels.sort(), files: keep.size };
 }
 
-/** The capture's source request (`property_seed.json` or `parcel.json`), if any. */
-export function captureSourceRequest(zipPath: string): { method: string; url: string } | null {
-  for (const name of ["property_seed.json", "parcel.json"]) {
+/**
+ * The capture's source request (`property_seed.json`, `parcel.json` or
+ * `address.json`), with method, URL, `multiValueQueryString`, headers and
+ * json/body preserved. Null when the capture carries none.
+ */
+export function captureSourceRequest(zipPath: string): SourceRequest | null {
+  for (const name of ["property_seed.json", "parcel.json", "address.json"]) {
     const json = readZipJson(zipPath, name);
-    const request = json?.source_http_request as { method?: unknown; url?: unknown } | undefined;
+    const request = json?.source_http_request as Record<string, unknown> | undefined;
     if (request && typeof request.url === "string" && request.url) {
-      return { method: typeof request.method === "string" ? request.method : "GET", url: request.url };
+      return normalizeSourceRequest(request);
     }
   }
   return null;

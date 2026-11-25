@@ -15,6 +15,7 @@ import { computePermitLinks, PERMIT_STATUS_SCHEMA } from "../services/lib/permit
 import {
   type LedgerSnapshot,
   loadLedger,
+  readIngestSeedPath,
   reconcileCounty,
 } from "../services/lib/reconcile.ts";
 import { scanSeed, readSeedRange } from "../services/lib/seed.ts";
@@ -295,6 +296,79 @@ describe("reconcile-county gates", () => {
     const { manifest, exitCode } = await reconcileCounty({ county: COUNTY, jobId: JOB, ledger: none, strict: true });
     expect(gate(manifest, "seed_accounted")).toBe("fail");
     expect(exitCode).toBe(1);
+  });
+});
+
+describe("reconcile seed source and blocked permits", () => {
+  const json = (value: unknown, ok = true) =>
+    new Response(JSON.stringify(value), { status: ok ? 200 : 500, headers: { "content-type": "application/json" } });
+
+  it("reads the run's seed path from CountyIngest state, then its status handler", async () => {
+    const viaSql = (async (url: string, init: RequestInit) => {
+      expect(url).toBe("http://admin/query");
+      expect(JSON.parse(String(init.body)).query).toContain("service_name = 'CountyIngest'");
+      return json({ rows: [{ value_utf8: JSON.stringify({ path: "seeds/cobb-pilot.csv", rows: 25 }) }] });
+    }) as unknown as typeof fetch;
+    expect(await readIngestSeedPath({ adminUrl: "http://admin", ingressUrl: "http://ingress", key: "cobb-p1", fetchImpl: viaSql })).toEqual({
+      path: "seeds/cobb-pilot.csv",
+      source: "countyingest-state",
+    });
+    const viaStatus = (async (url: string) => {
+      if (url.endsWith("/query")) return json({}, false);
+      expect(url).toBe("http://ingress/CountyIngest/cobb-p1/status");
+      return json({ phase: "done", seed: { path: "seeds/cobb-pilot.csv" } });
+    }) as unknown as typeof fetch;
+    expect(await readIngestSeedPath({ adminUrl: "http://admin", ingressUrl: "http://ingress", key: "cobb-p1", fetchImpl: viaStatus })).toMatchObject({
+      source: "countyingest-status",
+    });
+    const none = (async () => json({}, false)) as unknown as typeof fetch;
+    expect(await readIngestSeedPath({ adminUrl: "http://a", ingressUrl: "http://b", key: "k", fetchImpl: none })).toBeNull();
+  });
+
+  let sandbox: Sandbox;
+  beforeEach(async () => {
+    sandbox = await createSandbox();
+  });
+  afterEach(async () => {
+    await sandbox.cleanup();
+  });
+
+  it("uses a non-default seed and reports blocked permit sources apart from dead ones", async () => {
+    const run = pipeline();
+    await writeFile(
+      path.join(sandbox.dataDir, "seeds", "pilot.csv"),
+      "parcel_id,situs_address\nA,1 Main St\nB,2 Main St\n",
+    );
+    process.env.PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_TESTCOUNTY = "__ALL__";
+    await run.process("A");
+    await run.process("B");
+    for (const [id, harvestStatus, reason, jurisdictionKey] of [
+      ["A", "blocked", "blocked: no_public_historical_search", "beach"],
+      ["B", "no_profile", "no_permit_profile", null],
+    ] as const) {
+      await atomicWriteJson(paths.permitStatus(COUNTY, JOB, id), {
+        schemaVersion: PERMIT_STATUS_SCHEMA,
+        parcel_id: id,
+        parcelKey: id,
+        jurisdictionKey,
+        harvestStatus,
+        parcelReason: reason,
+        permits: [],
+      });
+      run.record({ parcel_id: id, stage: "permits", status: harvestStatus === "blocked" ? "blocked" : "dead", reason });
+    }
+    const { manifest } = await reconcileCounty({
+      county: COUNTY,
+      jobId: JOB,
+      ledger: run.snapshot(),
+      seedPath: "seeds/pilot.csv",
+      seedSource: "countyingest-state",
+      strict: true,
+    });
+    expect(manifest.seed).toMatchObject({ path: "seeds/pilot.csv", source: "countyingest-state", rows: 2 });
+    expect(manifest.failedGates).toEqual([]);
+    expect(manifest.permits.blocked).toEqual({ parcels: 1, byJurisdiction: { beach: 1 } });
+    expect(manifest.permits.harvestStatus).toEqual({ blocked: 1, no_profile: 1 });
   });
 });
 

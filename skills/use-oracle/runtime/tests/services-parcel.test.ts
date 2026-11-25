@@ -1,10 +1,13 @@
 import { readFile, writeFile } from "node:fs/promises";
+
+import AdmZip from "adm-zip";
 import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { LedgerRecordInput } from "../services/lib/ledger-state.ts";
 import { parseParcelRequest, processParcel, type StepIO } from "../services/lib/parcel-flow.ts";
+import { normalizeSourceRequest, seedCsvColumns } from "../services/lib/source-request.ts";
 import { exists, paths, safeKeyPart } from "../services/lib/storage.ts";
 import { COUNTY, createSandbox, JOB, type Sandbox } from "./services-helpers.ts";
 
@@ -183,6 +186,116 @@ export async function capture(input) {
     expect(commands).not.toContain("prepare");
     const dead = await processParcel(recorder(), request("GONE"));
     expect(dead).toMatchObject({ status: "dead", reason: "parcel-retired" });
+  });
+
+  it("keeps the captured request (base URL + multiValueQueryString) in the merged Seed group", async () => {
+    const plugin = path.join(sandbox.root, "capture-query.mjs");
+    await writeFile(
+      plugin,
+      `import AdmZip from ${JSON.stringify(path.resolve("node_modules/adm-zip/adm-zip.js"))};
+export async function capture(input) {
+  const zip = new AdmZip();
+  const request = { method: "GET", url: "https://appraiser.example.gov/parcel", multiValueQueryString: { id: [input.parcel_id], tab: ["summary"] } };
+  zip.addFile("parcel.json", Buffer.from(JSON.stringify({ parcel_identifier: input.parcel_id, request_identifier: input.parcel_id, source_http_request: request })));
+  zip.writeZip(input.dest);
+  return { status: "captured" };
+}
+`,
+    );
+    process.env.CAPTURE_MODULE_TESTCOUNTY = plugin;
+    process.env.FAKE_NO_SEED = "1";
+    for (const id of ["Q-1", "Q-2"]) {
+      expect((await processParcel(recorder(), request(id))).status).toBe("ready");
+      const zip = new AdmZip(path.join(dirOf(id), "seed-transform-input.zip"));
+      const csv = zip.readAsText("seed.csv");
+      const [header, row] = csv.trim().split("\n");
+      expect(header).toBe("parcel_id,address,county,source_identifier,method,url,multiValueQueryString");
+      expect(row).toContain("https://appraiser.example.gov/parcel");
+      expect(row).toContain(`""id"":[""${id}""]`);
+      expect(row).toContain(`""tab"":[""summary""]`);
+    }
+  });
+
+  it("splits a templated query string into multiValueQueryString and carries POST json + content-type", async () => {
+    process.env.PREPARE_URL_TEMPLATE_TESTCOUNTY = "https://appraiser.example.gov/search?parcel={parcel_id}&kind=real";
+    await processParcel(recorder(), request("T-1"));
+    const seed = JSON.parse(new AdmZip(path.join(dirOf("T-1"), "seed.zip")).readAsText("property_seed.json"));
+    expect(seed.source_http_request).toEqual({
+      method: "GET",
+      url: "https://appraiser.example.gov/search",
+      multiValueQueryString: { parcel: ["T-1"], kind: ["real"] },
+    });
+    process.env.PREPARE_URL_TEMPLATE_TESTCOUNTY = "https://appraiser.example.gov/api/parcel";
+    process.env.PREPARE_METHOD_TESTCOUNTY = "POST";
+    process.env.PREPARE_JSON_TEMPLATE_TESTCOUNTY = '{"parcel":"{parcel_id}"}';
+    await processParcel(recorder(), request("T-2"));
+    const post = JSON.parse(new AdmZip(path.join(dirOf("T-2"), "seed.zip")).readAsText("property_seed.json"));
+    expect(post.source_http_request).toEqual({
+      method: "POST",
+      url: "https://appraiser.example.gov/api/parcel",
+      json: { parcel: "T-2" },
+      headers: { "content-type": "application/json" },
+    });
+  });
+
+  it("normalizes source requests without dropping fields", () => {
+    const form = normalizeSourceRequest({
+      method: "post",
+      url: "https://a.example.gov/x?b=2",
+      multiValueQueryString: '{"a":["1"]}',
+      body: "parcel=1",
+      content_type: "application/x-www-form-urlencoded",
+    });
+    expect(form).toEqual({
+      method: "POST",
+      url: "https://a.example.gov/x",
+      multiValueQueryString: { a: ["1"], b: ["2"] },
+      body: "parcel=1",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+    });
+    expect(seedCsvColumns(form)).toEqual({
+      method: "POST",
+      url: "https://a.example.gov/x",
+      multiValueQueryString: '{"a":["1"],"b":["2"]}',
+      headers: '{"content-type":"application/x-www-form-urlencoded"}',
+      body: "parcel=1",
+    });
+    expect(() => normalizeSourceRequest({ url: "https://a.example.gov", json: "{}", body: "x" })).toThrow("not both");
+    expect(() => normalizeSourceRequest({ url: "https://a.example.gov", method: "DELETE" })).toThrow("method");
+  });
+
+  it("creates the parcel dir before the plug-in runs and passes an AbortSignal tied to the step timeout", async () => {
+    const plugin = path.join(sandbox.root, "capture-contract.mjs");
+    await writeFile(
+      plugin,
+      `import { existsSync, writeFileSync } from "node:fs";
+import AdmZip from ${JSON.stringify(path.resolve("node_modules/adm-zip/adm-zip.js"))};
+export async function capture(input, ctx) {
+  if (!existsSync(input.parcelDir)) throw new Error("parcelDir missing");
+  if (!(ctx.signal instanceof AbortSignal) || ctx.parcelDir !== input.parcelDir || !(ctx.timeoutMs > 0)) {
+    throw new Error("bad context");
+  }
+  writeFileSync(input.parcelDir + "/scratch.txt", "ok");
+  if (input.parcel_id === "SLOW") {
+    await new Promise((resolve) => ctx.signal.addEventListener("abort", resolve));
+    globalThis.__captureAborted = ctx.signal.aborted;
+    return { status: "captured" };
+  }
+  const zip = new AdmZip();
+  zip.addFile("parcel.json", Buffer.from(JSON.stringify({ parcel_identifier: input.parcel_id, request_identifier: input.parcel_id })));
+  zip.writeZip(input.dest);
+  return { status: "captured" };
+}
+`,
+    );
+    process.env.CAPTURE_MODULE_TESTCOUNTY = plugin;
+    expect((await processParcel(recorder(), request("C-1"))).status).toBe("ready");
+    expect(await exists(path.join(dirOf("C-1"), "scratch.txt"))).toBe(true);
+    process.env.CAPTURE_TIMEOUT_MS_TESTCOUNTY = "50";
+    await expect(processParcel(recorder(), request("SLOW"))).rejects.toThrow("timed out");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect((globalThis as { __captureAborted?: boolean }).__captureAborted).toBe(true);
+    expect(await exists(path.join(dirOf("SLOW"), "capture.zip"))).toBe(false);
   });
 
   it("computes eligibility from the transformed usage type and the county policy", async () => {

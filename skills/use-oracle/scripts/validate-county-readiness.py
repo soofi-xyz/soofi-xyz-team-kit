@@ -7,7 +7,9 @@ NOT_APPLICABLE. Any BLOCKED gate exits 1.
 
 The stack gate proves the Restate run-tracking stack (catalog section `stack`). A
 leftover `destination` section from the retired Query DB adds a non-blocking WARN to
-`warnings`; it never decides readiness.
+`warnings`; it never decides readiness. With `--probe`, the stack gate also queries
+`<restate_admin_url>/services` (or `--restate-admin-url`) and BLOCKS unless all seven
+Oracle services are registered there; without it the gate trusts the catalog.
 
 onboard-county, county-seed-data, and county-ingest-run (pilot or full) MUST run this
 and STOP on a non-zero exit.
@@ -17,6 +19,7 @@ from __future__ import annotations
 
 import json
 import sys
+import urllib.request
 from pathlib import Path
 
 PERMIT_CLASSIFICATIONS = {
@@ -61,6 +64,8 @@ REQUIRED_SERVICES = [
     "PermitHarvest",
     "PublishGroup",
 ]
+# --probe checks every service the runtime registers, IngestChunk included.
+PROBED_SERVICES = [*REQUIRED_SERVICES, "IngestChunk"]
 STACK_ACTION = (
     "Bring up the Restate stack with bootstrap-oracle-infra, register the services "
     "process, and record stack.orchestrator: restate, stack.services_registered: true, "
@@ -226,7 +231,28 @@ def _as_number(value) -> float | None:
         return None
 
 
-def evaluate(catalog: dict) -> dict:
+def probe_stack(admin_url: str, opener=None) -> dict:
+    """List the services registered on a Restate admin API.
+
+    `opener(url) -> bytes` is injectable so the self-test stays offline.
+    """
+    url = admin_url.rstrip("/") + "/services"
+    try:
+        if opener is None:
+            with urllib.request.urlopen(url, timeout=10) as response:  # noqa: S310 - operator URL
+                body = response.read()
+        else:
+            body = opener(url)
+        services = sorted(
+            {str(item.get("name")) for item in json.loads(body).get("services", []) if isinstance(item, dict)}
+        )
+    except Exception as error:  # network, HTTP, or JSON failure
+        return {"url": url, "ok": False, "services": [], "missing": PROBED_SERVICES, "error": str(error)[:200]}
+    missing = [name for name in PROBED_SERVICES if name not in services]
+    return {"url": url, "ok": not missing, "services": services, "missing": missing, "error": None}
+
+
+def evaluate(catalog: dict, probe: dict | None = None) -> dict:
     gates = []
 
     required = ["county", "state", "slug", "fips"]
@@ -435,6 +461,11 @@ def evaluate(catalog: dict) -> dict:
             stack_reasons.append(
                 "stack.publication.in_scope is true but stack.publication.upload_node is not set"
             )
+        if probe is not None and not probe["ok"]:
+            stack_reasons.append(
+                f"probe of {probe['url']} failed: "
+                + (probe["error"] or "missing " + ", ".join(probe["missing"]))
+            )
         if stack_reasons:
             gates.append(
                 _gate(
@@ -456,6 +487,11 @@ def evaluate(catalog: dict) -> dict:
                         f" upload_node={publication.get('upload_node')}"
                         if publication_in_scope
                         else ""
+                    )
+                    + (
+                        f" probe={probe['url']} services={len(probe['services'])}"
+                        if probe is not None
+                        else " probe=not-run"
                     ),
                 )
             )
@@ -543,10 +579,19 @@ def evaluate(catalog: dict) -> dict:
     }
 
 
-def validate_path(path: Path) -> tuple[dict, int]:
+def validate_path(
+    path: Path, probe: bool = False, admin_url: str | None = None, opener=None
+) -> tuple[dict, int]:
     catalog = load_catalog(path)
-    report = evaluate(catalog)
+    probe_result = None
+    if probe:
+        stack = catalog.get("stack") if isinstance(catalog.get("stack"), dict) else {}
+        url = admin_url or str(stack.get("restate_admin_url") or "http://localhost:9070")
+        probe_result = probe_stack(url, opener)
+    report = evaluate(catalog, probe_result)
     report["catalog_path"] = str(path)
+    if probe_result is not None:
+        report["stack_probe"] = probe_result
     return report, 0 if report["overall"] == "PASS" else 1
 
 
@@ -831,6 +876,22 @@ def run_self_test() -> int:
         report, code = validate_path(path)
         _expect(code == expected_exit, f"{filename}: exit {code} != {expected_exit}", errors)
         check(report)
+    # --probe, offline: an injected opener stands in for the Restate admin API.
+    ready = FIXTURES_DIR / "stack-ready-publication-in-scope.yaml"
+    all_services = json.dumps({"services": [{"name": name} for name in PROBED_SERVICES]}).encode()
+    report, code = validate_path(ready, probe=True, admin_url="http://probe.invalid:9070", opener=lambda url: all_services)
+    _expect(code == 0 and _gate_status(report, "stack") == "PASS", "probe with all services must PASS", errors)
+    _expect(report.get("stack_probe", {}).get("url") == "http://probe.invalid:9070/services", "probe must query <admin>/services", errors)
+    partial = json.dumps({"services": [{"name": "Parcel"}, {"name": "CountyIngest"}]}).encode()
+    report, code = validate_path(ready, probe=True, opener=lambda url: partial)
+    _expect(code == 1 and _gate_status(report, "stack") == "BLOCKED", "probe missing services must BLOCK", errors)
+    _expect("IngestChunk" in _gate_evidence(report, "stack"), "probe evidence must name missing services", errors)
+
+    def unreachable(url):
+        raise OSError("connection refused")
+
+    report, code = validate_path(ready, probe=True, opener=unreachable)
+    _expect(code == 1 and "connection refused" in _gate_evidence(report, "stack"), "unreachable probe must BLOCK", errors)
     if errors:
         print("readiness self-test failed:", file=sys.stderr)
         for error in errors:
@@ -841,20 +902,37 @@ def run_self_test() -> int:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) == 2 and argv[1] in {"--self-test", "--test"}:
+    args = argv[1:]
+    if args in (["--self-test"], ["--test"]):
         return run_self_test()
-    if len(argv) != 2:
+    probe = False
+    admin_url = None
+    positional: list[str] = []
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--probe":
+            probe = True
+        elif arg == "--restate-admin-url" and index + 1 < len(args):
+            admin_url = args[index + 1]
+            probe = True
+            index += 1
+        else:
+            positional.append(arg)
+        index += 1
+    if len(positional) != 1 or positional[0].startswith("--"):
         print(
-            "usage: validate-county-readiness.py <docs/<county>-sources.yaml>\n"
+            "usage: validate-county-readiness.py [--probe] [--restate-admin-url URL] "
+            "<docs/<county>-sources.yaml>\n"
             "       validate-county-readiness.py --self-test",
             file=sys.stderr,
         )
         return 2
-    path = Path(argv[1])
+    path = Path(positional[0])
     if not path.is_file():
         print(json.dumps({"overall": "BLOCKED", "error": f"catalog not found: {path}"}))
         return 1
-    report, code = validate_path(path)
+    report, code = validate_path(path, probe=probe, admin_url=admin_url)
     json.dump(report, sys.stdout, indent=2)
     sys.stdout.write("\n")
     return code

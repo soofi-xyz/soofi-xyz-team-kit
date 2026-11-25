@@ -6,7 +6,11 @@
  *
  *   node bin/reconcile-county.mjs --county <slug> --job <jobId>
  *     [--restate http://localhost:9070] [--ingress http://localhost:8080]
- *     [--seed seeds/<county>.csv] [--strict] [--assemble <group>] [--no-rehash]
+ *     [--seed <DATA_DIR-relative csv>] [--strict] [--assemble <group>] [--no-rehash]
+ *
+ * Without --seed the seed path comes from the CountyIngest state of
+ * `<county>-<jobId>` (admin SQL, then the ingress status handler), falling
+ * back to seeds/<county>.csv.
  *
  * The ledger is read through the Restate admin SQL query API (`--restate`),
  * falling back to `CountyLedger/<county>-<jobId>/summary` + `list` through the
@@ -17,7 +21,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadLedger, reconcileCounty } from "../services/lib/reconcile.ts";
+import { loadLedger, readIngestSeedPath, reconcileCounty } from "../services/lib/reconcile.ts";
 import { assertCounty, assertJobId, assertPublishableGroup } from "../services/lib/storage.ts";
 
 const USAGE =
@@ -67,11 +71,20 @@ async function main() {
     ingressUrl: options.ingressUrl,
     key: `${options.county}-${options.jobId}`,
   });
+  // Without --seed, use the seed the run itself was started with.
+  const fromRun = options.seedPath
+    ? null
+    : await readIngestSeedPath({
+        adminUrl: options.adminUrl,
+        ingressUrl: options.ingressUrl,
+        key: `${options.county}-${options.jobId}`,
+      });
   const { manifest, manifestPath, exitCode } = await reconcileCounty({
     county: options.county,
     jobId: options.jobId,
     ledger,
-    seedPath: options.seedPath,
+    seedPath: options.seedPath ?? fromRun?.path,
+    seedSource: options.seedPath ? "argument" : (fromRun?.source ?? "default"),
     strict: options.strict,
     assemble: options.assemble,
     rehash: options.rehash,
@@ -82,6 +95,7 @@ async function main() {
       county: manifest.county,
       jobId: manifest.jobId,
       ledgerSource: manifest.ledger.source,
+      seed: { path: manifest.seed.path, source: manifest.seed.source, rows: manifest.seed.rows },
       counts: manifest.counts,
       gates: manifest.gates,
       failedGates: manifest.failedGates,

@@ -8,6 +8,7 @@ declare module "adm-zip" {
   class AdmZip {
     constructor(input?: string | Buffer);
     getEntries(): IZipEntry[];
+    readAsText(entry: string): string;
     addFile(entryName: string, content: Buffer): void;
     addLocalFile(localPath: string, zipPath?: string, zipName?: string): void;
     writeZip(targetFileName: string): void;

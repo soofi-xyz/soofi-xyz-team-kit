@@ -59,9 +59,17 @@ describe("PublishGroup sequence", () => {
   });
 
   it("validates, hashes, validates the CAR and exports tables before approval, and uploads nothing before approve", async () => {
+    await mkdir(path.dirname(request.atlasPage), { recursive: true });
+    await writeFile(request.atlasPage, JSON.stringify({ county: COUNTY, groups: { existing: {} } }));
+    const original = await readFile(request.atlasPage, "utf8");
     const { io, phases, state } = harness(async (current, calls) => {
       expect(current.phase).toBe("awaiting-approval");
       expect(await calls()).toEqual(["validate", "hash", "validate", "export-tables"]);
+      // Pre-approval: the Atlas checkout is untouched; the entry is staged.
+      expect(await readFile(request.atlasPage, "utf8")).toBe(original);
+      expect(current.atlasPage).toMatchObject({ target: request.atlasPage, applied: false });
+      const staged = JSON.parse(await readFile(current.atlasPage!.staged, "utf8"));
+      expect(Object.keys(staged.groups).sort()).toHaveLength(2);
       return { approved: true, approvedBy: "reviewer", groupDigest: current.groupDigest!, at: "2026-11-25T00:00:00Z" };
     }, sandbox);
     const result = await runPublish(io, request, IDENTITY);
@@ -81,15 +89,36 @@ describe("PublishGroup sequence", () => {
       "exporting-tables",
       "awaiting-approval",
       "uploading",
+      "applying-atlas-page",
       "uploaded",
     ]);
     expect(state().uploads?.car.verified).toBe(true);
     const page = JSON.parse(await readFile(request.atlasPage, "utf8"));
     expect(page.county).toBe(COUNTY);
+    expect(Object.keys(page.groups)).toContain("existing");
+    expect(Object.keys(page.groups)).toHaveLength(2);
+    expect(state().atlasPage).toMatchObject({ applied: true });
     const exportCall = (await sandbox.calls()).find((call) => call.command === "export-tables")!;
+    const staged = path.join(sandbox.dataDir, "publish", COUNTY, JOB, "county", "atlas", "counties", "GA", `${COUNTY}.json`);
     expect(exportCall.args).toEqual(
-      expect.arrayContaining(["--atlas-page", request.atlasPage, "--county", COUNTY, "--state", "GA", "--fips", "13067"]),
+      expect.arrayContaining(["--atlas-page", staged, "--county", COUNTY, "--state", "GA", "--fips", "13067"]),
     );
+    expect(exportCall.args).not.toContain(request.atlasPage);
+  });
+
+  it("leaves the Atlas checkout untouched when rejected, and refuses a page changed after export", async () => {
+    const rejected = harness(async () => ({ approved: false, reason: "no", at: "t" }), sandbox);
+    await runPublish(rejected.io, request, IDENTITY);
+    await expect(readFile(request.atlasPage, "utf8")).rejects.toThrow();
+
+    const changed = harness(async (current) => {
+      await mkdir(path.dirname(request.atlasPage), { recursive: true });
+      await writeFile(request.atlasPage, "{\"edited\":true}");
+      return { approved: true, approvedBy: "reviewer", groupDigest: current.groupDigest!, at: "t" };
+    }, sandbox);
+    await expect(runPublish(changed.io, request, IDENTITY)).rejects.toThrow("apply-atlas-page failed");
+    expect(changed.state().phase).toBe("failed");
+    expect(await readFile(request.atlasPage, "utf8")).toBe("{\"edited\":true}");
   });
 
   it("never uploads when rejected", async () => {

@@ -16,7 +16,11 @@ import { permitProfileRegistry } from "../../src/counties/permit-profiles.mjs";
 import { harvestPermitProperty } from "../../src/permits/harvest.mjs";
 import { routePermitJurisdiction } from "../../src/permits/normalization.mjs";
 import { artifactPaths } from "../../src/permits/storage.mjs";
-import { resolveEligibilityPolicy } from "./county-config.ts";
+import {
+  loadPermitRoutingHook,
+  resolveEligibilityPolicy,
+  resolvePermitAdapterOptions,
+} from "./county-config.ts";
 import { gate } from "./limits.ts";
 import { type Eligibility, FILES, writeEligibility } from "./parcel-steps.ts";
 import {
@@ -183,10 +187,19 @@ export async function harvestOneParcel(req: {
     return status;
   }
   const routing = eligibility.routing;
-  const jurisdiction = routePermitJurisdiction(profile, routing.city ?? routing.situs_address) as
-    | { key: string; adapterKey?: string | null }
-    | null
-    | undefined;
+  const seedRow: Record<string, string> = routing.seed ?? {
+    parcel_id: req.parcel_id,
+    ...(routing.situs_address ? { situs_address: routing.situs_address } : {}),
+    ...(routing.city ? { city: routing.city } : {}),
+  };
+  // County routing hook first (tax district or any other seed column), then city.
+  const hook = await loadPermitRoutingHook(req.county);
+  const hookKey = hook ? await hook.resolveJurisdiction({ seedRow, routing, profile }) : null;
+  const jurisdiction = (
+    hookKey
+      ? profile.jurisdictions.find((candidate) => candidate.key === hookKey)
+      : routePermitJurisdiction(profile, routing.city ?? routing.situs_address)
+  ) as { key: string; adapterKey?: string | null } | null | undefined;
   const adapterKey = jurisdiction?.adapterKey ?? null;
   const outputDir = paths.permitsJob(req.county, req.jobId);
   const result = (await gate(`permit_${adapterKey ?? "unrouted"}`, 2)(() =>
@@ -196,11 +209,13 @@ export async function harvestOneParcel(req: {
         property_id: null,
         city: routing.city,
         situs_address: routing.situs_address,
+        ...(hookKey ? { jurisdictionKey: hookKey } : {}),
       },
       profile,
       outputDir,
       jobId: req.jobId,
       resume: true,
+      adapterOptions: resolvePermitAdapterOptions(req.county, profile),
     }),
   )) as HarvestResult;
   const harvested = result.status;
@@ -267,6 +282,15 @@ export function permitLedgerRecord(status: PermitParcelStatus) {
       detail,
     };
   }
+  if (status.harvestStatus === "blocked") {
+    return {
+      parcel_id: status.parcel_id,
+      stage: "permits" as const,
+      status: "blocked" as const,
+      reason: status.parcelReason ?? "blocked",
+      detail,
+    };
+  }
   if (status.harvestStatus === "failed") {
     return {
       parcel_id: status.parcel_id,
@@ -327,14 +351,18 @@ export async function buildEligibleIndex(
             throw new Error("eligibility.json is missing parcel_id or eligible");
           }
           if (eligibility.policyFingerprint !== policy.fingerprint) {
+            const { parcel_id, source_identifier, situs_address, ...seedExtra } =
+              eligibility.routing?.seed ?? {};
+            void parcel_id;
             eligibility = await writeEligibility(
               {
                 county,
                 jobId,
                 parcel_id: eligibility.parcel_id,
-                source_identifier: eligibility.routing?.source_identifier ?? undefined,
-                situs_address: eligibility.routing?.situs_address ?? undefined,
+                source_identifier: source_identifier ?? eligibility.routing?.source_identifier ?? undefined,
+                situs_address: situs_address ?? eligibility.routing?.situs_address ?? undefined,
                 extra: {
+                  ...seedExtra,
                   ...(eligibility.routing?.city ? { city: eligibility.routing.city } : {}),
                   ...(eligibility.routing?.parcel_identifier
                     ? { permit_parcel_identifier: eligibility.routing.parcel_identifier }

@@ -8,7 +8,7 @@
  * before regenerating, `ready.json` is written only after validation passes,
  * and dead/invalid/failed remove `ready.json` and `eligibility.json`.
  */
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import AdmZip from "adm-zip";
@@ -22,6 +22,8 @@ import {
   runElephantCli,
 } from "./cli.ts";
 import {
+  captureTimeoutMs,
+  type CaptureOutcome,
   countyDisplayName,
   loadCapturePlugin,
   resolveEligibilityPolicy,
@@ -38,6 +40,7 @@ import {
   sha256File,
   temporaryPathFor,
 } from "./storage.ts";
+import { seedCsvColumns, type SourceRequest } from "./source-request.ts";
 import { captureSourceRequest, listDataGroups, mergeTransformedZips, readZipJson } from "./zip.ts";
 
 export type ParcelRequest = {
@@ -105,8 +108,12 @@ export function isGoneAtSource(message: string): boolean {
 /** Prepare mechanisms that build their own requests from `request_identifier`. */
 export const FLOW_MECHANISMS = new Set(["multi-request-flow", "browser-flow", "browser-flow-zip"]);
 
-async function buildSeedZip(req: ParcelRequest, dest: string, mechanism: string): Promise<boolean> {
-  const request = resolveSourceRequest(req.county, req);
+async function buildSeedZip(
+  req: ParcelRequest,
+  dest: string,
+  mechanism: string,
+  request: SourceRequest | null,
+): Promise<boolean> {
   if (!request && !FLOW_MECHANISMS.has(mechanism)) return false;
   const identifier = req.source_identifier ?? req.parcel_id;
   const zip = new AdmZip();
@@ -157,20 +164,43 @@ export async function captureParcel(req: ParcelRequest, dir: string): Promise<Ca
   }
   const plugin = await loadCapturePlugin(req.county);
   if (plugin) {
+    // The plug-in may write scratch files next to the capture.
+    await mkdir(dir, { recursive: true });
     const temporary = temporaryPathFor(dest);
-    const outcome = await plugin.capture(
-      {
-        county: req.county,
-        jobId: req.jobId,
-        parcel_id: req.parcel_id,
-        source_identifier: req.source_identifier,
-        situs_address: req.situs_address,
-        extra: req.extra ?? {},
-        dest: temporary,
-        parcelDir: dir,
-      },
-      {},
-    );
+    const timeoutMs = captureTimeoutMs(req.county);
+    const controller = new AbortController();
+    let timer: NodeJS.Timeout | undefined;
+    const timedOut = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort(new Error(`capture timed out after ${timeoutMs} ms`));
+        reject(new Error(`capture plug-in timed out after ${timeoutMs} ms`));
+      }, timeoutMs);
+    });
+    let outcome: CaptureOutcome;
+    try {
+      outcome = await Promise.race([
+        plugin.capture(
+          {
+            county: req.county,
+            jobId: req.jobId,
+            parcel_id: req.parcel_id,
+            source_identifier: req.source_identifier,
+            situs_address: req.situs_address,
+            extra: req.extra ?? {},
+            dest: temporary,
+            parcelDir: dir,
+          },
+          { signal: controller.signal, timeoutMs, parcelDir: dir },
+        ),
+        timedOut,
+      ]);
+    } catch (error) {
+      // Timeouts and plug-in errors are transient: retried with backoff.
+      await removeIfExists(temporary);
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
     const captured = outcome === true || (typeof outcome === "object" && outcome.status === "captured");
     if (!captured) {
       await removeIfExists(temporary);
@@ -186,7 +216,13 @@ export async function captureParcel(req: ParcelRequest, dir: string): Promise<Ca
   }
   const prepare = await resolvePrepareConfig(req.county);
   const seedZip = file(dir, "seed");
-  if (!(await buildSeedZip(req, seedZip, prepare.mechanism))) {
+  let request: SourceRequest | null;
+  try {
+    request = resolveSourceRequest(req.county, req);
+  } catch (error) {
+    return { status: "failed", reason: `bad-source-request: ${(error as Error).message}` };
+  }
+  if (!(await buildSeedZip(req, seedZip, prepare.mechanism, request))) {
     // A configuration gap, not a gone parcel: recorded as failed for redrive.
     return { status: "failed", reason: "no-source-url: set source_url in the seed or PREPARE_URL_TEMPLATE_<COUNTY>" };
   }
@@ -224,20 +260,25 @@ async function mergeSeedGroup(
   | { status: "merged"; seed: NonNullable<TransformMeta["seed"]> }
   | { status: "failed"; reason: string }
 > {
-  const request =
-    resolveSourceRequest(req.county, req) ?? captureSourceRequest(file(dir, "capture"));
+  // The request the capture actually made wins; the seed row/template is the fallback.
+  let request: SourceRequest | null;
+  try {
+    request = captureSourceRequest(file(dir, "capture")) ?? resolveSourceRequest(req.county, req);
+  } catch (error) {
+    return { status: "failed", reason: `seed-transform-failed: ${(error as Error).message}` };
+  }
   if (!request) {
     return { status: "failed", reason: "seed-transform-failed: no source request for the Seed group" };
   }
-  const columns = ["parcel_id", "address", "method", "url", "county", "source_identifier"];
-  const values = [
-    req.parcel_id,
-    req.situs_address ?? req.extra?.address ?? "",
-    request.method,
-    request.url,
-    countyDisplayName(req.county),
-    req.source_identifier ?? req.parcel_id,
-  ];
+  const row: Record<string, string> = {
+    parcel_id: req.parcel_id,
+    address: req.situs_address ?? req.extra?.address ?? "",
+    county: countyDisplayName(req.county),
+    source_identifier: req.source_identifier ?? req.parcel_id,
+    ...seedCsvColumns(request),
+  };
+  const columns = Object.keys(row);
+  const values = columns.map((column) => row[column]!);
   const seedInput = path.join(dir, "seed-transform-input.zip");
   const zip = new AdmZip();
   zip.addFile(
@@ -436,6 +477,8 @@ export type Eligibility = {
     source_identifier: string | null;
     situs_address: string | null;
     city: string | null;
+    /** The full seed row (canonical fields + extra columns) for routing hooks. */
+    seed?: Record<string, string>;
   };
 };
 
@@ -460,6 +503,12 @@ export async function writeEligibility(req: ParcelRequest, dir: string): Promise
       source_identifier: req.source_identifier ?? null,
       situs_address: req.situs_address ?? extra.address ?? null,
       city: extra.city ?? extra.situs_city ?? extra.address_city ?? null,
+      seed: {
+        ...extra,
+        parcel_id: req.parcel_id,
+        ...(req.source_identifier ? { source_identifier: req.source_identifier } : {}),
+        ...(req.situs_address ? { situs_address: req.situs_address } : {}),
+      },
     },
   };
   await atomicWriteJson(file(dir, "eligibility"), eligibility);

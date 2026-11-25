@@ -84,7 +84,12 @@ async function assertCountyRunnable(county: string, header: string[]): Promise<v
   const plugin = await loadCapturePlugin(county);
   if (plugin) return;
   const hasUrlColumn = header.includes("source_url") || header.includes("url");
-  const probe = resolveSourceRequest(county, { parcel_id: "probe" });
+  let probe: ReturnType<typeof resolveSourceRequest>;
+  try {
+    probe = resolveSourceRequest(county, { parcel_id: "probe" });
+  } catch (error) {
+    throw new TerminalError(`bad PREPARE_* request template for ${county}: ${(error as Error).message}`);
+  }
   const prepare = await resolvePrepareConfig(county);
   if (!hasUrlColumn && !probe && !FLOW_MECHANISMS.has(prepare.mechanism)) {
     throw new TerminalError(
@@ -141,6 +146,8 @@ export const ingestChunk = restate.workflow({
       rows: (await ctx.get<number>("rows")) ?? null,
       done: (await ctx.get<number>("done")) ?? 0,
       counts: (await ctx.get<Record<string, number>>("counts")) ?? {},
+      permitFeed: (await ctx.get<string>("permitFeed")) ?? null,
+      permits: (await ctx.get<Record<string, unknown>>("permits")) ?? null,
     }),
   },
 });
@@ -215,21 +222,28 @@ export const countyIngest = restate.workflow({
         ctx.set("counts", totals);
       }
       const startPermits = req.startPermits !== false;
+      let permits: Record<string, unknown> | null = null;
       if (startPermits) {
         // Bounded permit feeder; never one send per parcel from Parcel.process.
-        ctx.workflowSendClient(permitFeed, `${ctx.key}-permits`).run({
+        // Awaited, so this run's phase and result cover the permit pass too
+        // (the workflow is suspended while it waits).
+        ctx.set("phase", "permits");
+        ctx.set("permitFeed", `${ctx.key}-permits`);
+        permits = (await ctx.workflowClient(permitFeed, `${ctx.key}-permits`).run({
           county: req.county,
           jobId: req.jobId,
           window: permitWindow,
-        });
+        })) as Record<string, unknown>;
+        ctx.set("permits", { eligible: permits.eligible ?? null, counts: permits.counts ?? {} });
       }
-      ctx.set("phase", startPermits ? "permits-started" : "appraisal-done");
+      ctx.set("phase", startPermits ? "done" : "appraisal-done");
       return {
         county: req.county,
         jobId: req.jobId,
         seedRows: index.rows,
         chunks: index.chunks.length,
         counts: totals,
+        permits,
         permitFeed: startPermits ? `${ctx.key}-permits` : null,
         next: `node bin/reconcile-county.mjs --county ${req.county} --job ${req.jobId}`,
       };
@@ -240,6 +254,8 @@ export const countyIngest = restate.workflow({
       chunks: (await ctx.get<number>("chunks")) ?? null,
       chunksDone: (await ctx.get<number>("chunksDone")) ?? 0,
       counts: (await ctx.get<Record<string, number>>("counts")) ?? {},
+      permitFeed: (await ctx.get<string>("permitFeed")) ?? null,
+      permits: (await ctx.get<Record<string, unknown>>("permits")) ?? null,
     }),
   },
 });

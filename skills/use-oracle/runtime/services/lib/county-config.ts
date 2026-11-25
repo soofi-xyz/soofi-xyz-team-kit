@@ -21,6 +21,7 @@ import { pathToFileURL } from "node:url";
 import AdmZip from "adm-zip";
 
 import { countyEnv, countyOnlyEnv, envFlag, RUNTIME_DIR } from "./config.ts";
+import { normalizeSourceRequest, type SourceRequest } from "./source-request.ts";
 import { dataPath, exists, promote, sha256File, temporaryPathFor } from "./storage.ts";
 
 export type CaptureInput = {
@@ -41,9 +42,18 @@ export type CaptureOutcome =
   | { status: "captured" }
   | { status: "dead"; reason: string };
 
+/** Context handed to a capture plug-in. `signal` aborts at the step timeout. */
+export type CaptureContext = { signal: AbortSignal; timeoutMs: number; parcelDir: string };
+
 export type CapturePlugin = {
-  capture: (input: CaptureInput, ctx: { signal?: AbortSignal }) => Promise<CaptureOutcome>;
+  capture: (input: CaptureInput, ctx: CaptureContext) => Promise<CaptureOutcome>;
 };
+
+/** Capture step timeout: `CAPTURE_TIMEOUT_MS[_<COUNTY>]`, default 10 minutes. */
+export function captureTimeoutMs(county: string): number {
+  const parsed = Number(countyEnv("CAPTURE_TIMEOUT_MS", county));
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 10 * 60 * 1000;
+}
 
 export type PrepareConfig = {
   flags: string[];
@@ -154,22 +164,48 @@ export async function resolvePrepareConfig(county: string): Promise<PrepareConfi
   return { flags, mechanism };
 }
 
-/** Source URL for the parcel's seed request, from the row or a URL template. */
+/**
+ * The parcel's source request from the seed row (`source_url`/`url`,
+ * `method`, `multiValueQueryString`, `json`, `body`, `headers`,
+ * `content_type`) or from the county templates (`PREPARE_URL_TEMPLATE_<COUNTY>`,
+ * `PREPARE_METHOD_<COUNTY>`, `PREPARE_JSON_TEMPLATE_<COUNTY>`,
+ * `PREPARE_BODY_TEMPLATE_<COUNTY>`, `PREPARE_CONTENT_TYPE_<COUNTY>`; each
+ * substitutes `{parcel_id}` and `{source_identifier}`). A query string moves
+ * into `multiValueQueryString`. Throws on a malformed request.
+ */
 export function resolveSourceRequest(
   county: string,
   row: { parcel_id: string; source_identifier?: string; extra?: Record<string, string> },
-): { method: string; url: string } | null {
+): SourceRequest | null {
   const extra = row.extra ?? {};
   const direct = extra.source_url ?? extra.url;
-  const method = (extra.method ?? "GET").toUpperCase();
-  if (direct) return { method, url: direct };
+  if (direct) {
+    return normalizeSourceRequest({
+      method: extra.method,
+      url: direct,
+      multiValueQueryString: extra.multiValueQueryString,
+      json: extra.json,
+      body: extra.body,
+      headers: extra.headers,
+      content_type: extra.content_type,
+    });
+  }
   const template = countyOnlyEnv("PREPARE_URL_TEMPLATE", county);
   if (!template) return null;
   const identifier = row.source_identifier ?? row.parcel_id;
-  const url = template
-    .replaceAll("{parcel_id}", encodeURIComponent(row.parcel_id))
-    .replaceAll("{source_identifier}", encodeURIComponent(identifier));
-  return { method, url };
+  const fill = (text: string, encode: (value: string) => string) =>
+    text
+      .replaceAll("{parcel_id}", encode(row.parcel_id))
+      .replaceAll("{source_identifier}", encode(identifier));
+  const jsonTemplate = countyOnlyEnv("PREPARE_JSON_TEMPLATE", county);
+  const bodyTemplate = countyOnlyEnv("PREPARE_BODY_TEMPLATE", county);
+  return normalizeSourceRequest({
+    method: countyOnlyEnv("PREPARE_METHOD", county) ?? extra.method ?? "GET",
+    url: fill(template, encodeURIComponent),
+    json: jsonTemplate ? fill(jsonTemplate, (value) => JSON.stringify(value).slice(1, -1)) : undefined,
+    body: bodyTemplate ? fill(bodyTemplate, encodeURIComponent) : undefined,
+    content_type: countyOnlyEnv("PREPARE_CONTENT_TYPE", county),
+  });
 }
 
 async function directoryDigest(dir: string, files: string[]): Promise<string> {
@@ -278,4 +314,95 @@ export function resolveEligibilityPolicy(county: string): {
     .digest("hex")
     .slice(0, 16);
   return { mode, usageTypes, source, fingerprint };
+}
+
+/**
+ * Options for the county's permit adapters, from env (and the profile):
+ * - `PERMIT_BULK_DIR_<COUNTY>` (DATA_DIR-relative or absolute): a directory of
+ *   per-source `linked-permits.jsonl` + `summary.json` snapshots. PermitHarvest
+ *   reads each parcel's records from it and falls back to the live adapter
+ *   when the parcel's jurisdiction has no snapshot.
+ * - `PERMIT_TIMEOUT_MS_<COUNTY>`, `PERMIT_MAX_ATTEMPTS_<COUNTY>`,
+ *   `PERMIT_CHROMIUM_PATH_<COUNTY>` (else `CHROME_EXECUTABLE_PATH`),
+ *   `PERMIT_HEADLESS_<COUNTY>`.
+ * - `PERMIT_ADAPTER_OPTIONS_<COUNTY>`: a JSON object of further scalar options.
+ */
+export function resolvePermitAdapterOptions(
+  county: string,
+  profile?: { countyKey?: string; countyName?: string } | null,
+): Record<string, unknown> {
+  const options: Record<string, unknown> = {};
+  if (profile?.countyKey) options.countyKey = profile.countyKey;
+  if (profile?.countyName) options.countyName = profile.countyName;
+  const extra = countyOnlyEnv("PERMIT_ADAPTER_OPTIONS", county);
+  if (extra) {
+    const parsed = JSON.parse(extra) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("PERMIT_ADAPTER_OPTIONS must be a JSON object");
+    }
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (value === null || ["string", "number", "boolean"].includes(typeof value)) options[key] = value;
+    }
+  }
+  const positive = (name: string) => {
+    const parsed = Number(countyOnlyEnv(name, county));
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+  };
+  const timeoutMs = positive("PERMIT_TIMEOUT_MS");
+  if (timeoutMs) options.timeoutMs = timeoutMs;
+  const maxAttempts = positive("PERMIT_MAX_ATTEMPTS");
+  if (maxAttempts) options.maxAttempts = maxAttempts;
+  const chromium = countyOnlyEnv("PERMIT_CHROMIUM_PATH", county) ?? process.env.CHROME_EXECUTABLE_PATH?.trim();
+  if (chromium) options.chromiumExecutablePath = chromium;
+  const headless = countyOnlyEnv("PERMIT_HEADLESS", county);
+  if (headless !== undefined) options.headless = envFlag(headless);
+  const bulk = countyOnlyEnv("PERMIT_BULK_DIR", county);
+  if (bulk) {
+    const dir = path.isAbsolute(bulk) ? bulk : dataPath(...bulk.split("/").filter(Boolean));
+    options.bulkLinkedDir = dir;
+    options.bulkSnapshotDir = dir;
+  }
+  return options;
+}
+
+export type PermitRoutingHook = {
+  /**
+   * Return the permit-profile jurisdiction key for this parcel, or null to
+   * use the default city routing (`city`, `situs_city`, `address_city`).
+   */
+  resolveJurisdiction: (input: {
+    seedRow: Record<string, string>;
+    routing: { parcel_identifier: string; city: string | null; situs_address: string | null };
+    profile: { countyKey: string; jurisdictions: Array<{ key: string }> };
+  }) => string | null | undefined | Promise<string | null | undefined>;
+};
+
+const routingCache = new Map<string, Promise<PermitRoutingHook | null>>();
+
+/**
+ * County permit-routing hook: `src/counties/<county>/permit-routing.mjs`
+ * (or `PERMIT_ROUTING_MODULE_<COUNTY>`) exporting `resolveJurisdiction`.
+ */
+export function loadPermitRoutingHook(county: string): Promise<PermitRoutingHook | null> {
+  const override = countyOnlyEnv("PERMIT_ROUTING_MODULE", county);
+  const modulePath = override
+    ? path.resolve(RUNTIME_DIR, override)
+    : path.join(RUNTIME_DIR, "src", "counties", county, "permit-routing.mjs");
+  const cacheKey = `${county}\u0000${modulePath}`;
+  let loaded = routingCache.get(cacheKey);
+  if (!loaded) {
+    loaded = (async () => {
+      if (!(await exists(modulePath))) {
+        if (override) throw new Error(`PERMIT_ROUTING_MODULE for ${county} not found`);
+        return null;
+      }
+      const module = (await import(pathToFileURL(modulePath).href)) as Partial<PermitRoutingHook>;
+      if (typeof module.resolveJurisdiction !== "function") {
+        throw new Error(`${path.relative(RUNTIME_DIR, modulePath)} must export resolveJurisdiction()`);
+      }
+      return module as PermitRoutingHook;
+    })();
+    routingCache.set(cacheKey, loaded);
+  }
+  return loaded;
 }

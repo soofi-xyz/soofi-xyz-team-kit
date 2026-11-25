@@ -21,7 +21,7 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 
-import type { LedgerEntry, LedgerStatus, LedgerSummary } from "./ledger-state.ts";
+import { emptyCounts, type LedgerEntry, type LedgerStatus, type LedgerSummary } from "./ledger-state.ts";
 import { FILES, type ReadyMarker } from "./parcel-steps.ts";
 import type { PermitParcelStatus } from "./permit-steps.ts";
 import { readSeedRange, scanSeed } from "./seed.ts";
@@ -93,11 +93,11 @@ export async function readLedgerViaAdminSql(
       ? {
           key,
           parcels: parcels.size,
-          counts: counts ?? { pending: 0, ready: 0, dead: 0, invalid: 0, failed: 0 },
+          counts: { ...emptyCounts(), ...(counts ?? {}) },
           tombstones: (valueOf("tombstones") as number | null) ?? 0,
           permits: {
             parcels: permits.size,
-            counts: permitCounts ?? { pending: 0, ready: 0, dead: 0, invalid: 0, failed: 0 },
+            counts: { ...emptyCounts(), ...(permitCounts ?? {}) },
           },
           updatedAt: (valueOf("updatedAt") as string | null) ?? null,
         }
@@ -142,6 +142,51 @@ export async function readLedgerViaIngress(
     summary,
     error: null,
   };
+}
+
+/**
+ * The seed the run used, from CountyIngest state (key `<county>-<jobId>`):
+ * admin SQL first, then the ingress `status` handler. Null when neither has it.
+ */
+export async function readIngestSeedPath(options: {
+  adminUrl: string;
+  ingressUrl: string;
+  key: string;
+  fetchImpl?: FetchLike;
+}): Promise<{ path: string; source: "countyingest-state" | "countyingest-status" } | null> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  try {
+    const response = await fetchImpl(`${options.adminUrl.replace(/\/$/, "")}/query`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({
+        query: `SELECT value_utf8 FROM state WHERE service_name = 'CountyIngest' AND service_key = ${sqlString(options.key)} AND key = 'seed'`,
+      }),
+    });
+    if (response.ok) {
+      const body = (await response.json()) as { rows?: Array<{ value_utf8: string | null }> };
+      const value = body.rows?.[0]?.value_utf8;
+      const seed = value ? (JSON.parse(value) as { path?: unknown }) : null;
+      if (typeof seed?.path === "string" && seed.path) return { path: seed.path, source: "countyingest-state" };
+    }
+  } catch {
+    // fall through to the ingress
+  }
+  try {
+    const response = await fetchImpl(
+      `${options.ingressUrl.replace(/\/$/, "")}/CountyIngest/${encodeURIComponent(options.key)}/status`,
+      { method: "POST" },
+    );
+    if (response.ok) {
+      const status = (await response.json()) as { seed?: { path?: unknown } | null };
+      if (typeof status.seed?.path === "string" && status.seed.path) {
+        return { path: status.seed.path, source: "countyingest-status" };
+      }
+    }
+  } catch {
+    // no live status
+  }
+  return null;
 }
 
 export async function loadLedger(options: {
@@ -266,6 +311,8 @@ export type ReconcileOptions = {
   jobId: string;
   ledger: LedgerSnapshot;
   seedPath?: string;
+  /** Where seedPath came from: argument, CountyIngest state, or the default. */
+  seedSource?: string;
   strict?: boolean;
   assemble?: string | null;
   rehash?: boolean;
@@ -311,7 +358,7 @@ export async function reconcileCounty(options: ReconcileOptions) {
   }
 
   // --- ledger accounting ----------------------------------------------------
-  const counts: Record<LedgerStatus, number> = { pending: 0, ready: 0, dead: 0, invalid: 0, failed: 0 };
+  const counts: Record<LedgerStatus, number> = emptyCounts();
   const reasons: Record<"dead" | "invalid" | "failed", Record<string, number>> = {
     dead: {},
     invalid: {},
@@ -393,6 +440,9 @@ export async function reconcileCounty(options: ReconcileOptions) {
     wrongParcel: [] as string[],
     eligibleWithoutStatus: 0,
     ledgerMismatches: [] as Array<{ parcel_id: string; issue: string }>,
+    // A blocked source (captcha, login, custodian-only) is harvestable later;
+    // reported apart from parcels that have no permit source at all.
+    blocked: { parcels: 0, byJurisdiction: {} as Record<string, number> },
   };
   const statusParcels = new Set<string>();
   for (const name of statusFiles) {
@@ -401,6 +451,10 @@ export async function reconcileCounty(options: ReconcileOptions) {
     statusParcels.add(status.parcel_id);
     if (`${safeKeyPart(status.parcel_id)}.json` !== name) permitStats.wrongParcel.push(name);
     bump(permitStats.harvestStatus, status.harvestStatus);
+    if (status.harvestStatus === "blocked") {
+      permitStats.blocked.parcels += 1;
+      bump(permitStats.blocked.byJurisdiction, status.jurisdictionKey ?? "unknown");
+    }
     if (status.parcelReason && status.permits.length === 0) {
       bump(permitStats.parcelsWithoutPermitsByReason, reasonCategory(status.parcelReason));
     }
@@ -539,6 +593,7 @@ export async function reconcileCounty(options: ReconcileOptions) {
     },
     seed: {
       path: seedRelative,
+      source: options.seedSource ?? (options.seedPath ? "argument" : "default"),
       present: seedIds.length > 0,
       rows: seedIds.length,
       unique: seedUnique,

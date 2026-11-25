@@ -23,7 +23,8 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       # Keep the node name stable: a changed identity breaks restoring the volume.
-      RESTATE_NODE_NAME: restate-1
+      # Override only to adopt an existing volume created under another name.
+      RESTATE_NODE_NAME: ${RESTATE_NODE_NAME:-restate-1}
     restart: unless-stopped
 volumes:
   restate-data:
