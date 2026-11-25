@@ -224,17 +224,20 @@ Decisions for `PM-5` (resource `fixture:item/item-1`, owned by `alice`):
 
 ### `user-records`
 
-Prerequisite outside Access for D\*: Persist with a user record type in its lexicon.
+Prerequisite outside Access for D\*: Persist with the user and group record types in its
+lexicon. Persist's graph is immutable, so a record is an identity (the stable identifier alone)
+and the versions joined to it by an edge; its current state is its latest version by
+`effective_at`, tie-broken by the version's id.
 
 | ID | Level | Do | Pass when |
 | --- | --- | --- | --- |
 | UR-1 | F | Create `alice` | Exactly one publication to the Persist fake, sent with Access's own service identity, containing only the fields the lexicon declares for a user |
 | UR-2 | F | Make the Persist fake fail, then sign in as `bob`, then restore it | Sign-in succeeds while Persist fails; `bob`'s record is delivered after recovery |
-| UR-3 | F | Deliver the same user event twice | One record, same identifier |
-| UR-4 | F | Change, disable and remove a user | The record is updated, marked disabled and marked removed in turn |
+| UR-3 | F | Deliver the same user event twice | One record, same identifier: Persist holds one identity and one version for it, and the second delivery creates nothing |
+| UR-4 | F | Change, disable and remove a user | Each change adds one version with a later `effective_at`, current in turn: updated, disabled, then removed without its email; the earlier versions remain |
 | UR-5 | F | Compare every published payload with the list of tokens and markers | None present |
 | UR-6 | F | Create the `viewer` role, assign it to `carol`, then unassign it | One group record for the role, sent with Access's own identity; nothing published says who holds the role, on assignment or on unassignment |
-| UR-7 | D\* | Create a user, then read the record through Persist | The record appears within five minutes with the expected identifier and fields |
+| UR-7 | D\* | Create a user, then read the record through Persist | Within five minutes Persist holds one identity for it, whose latest version has the expected identifier and fields |
 
 ### `resource-sharing`
 
