@@ -5,6 +5,23 @@ transaction, restricted to the campaign's Filter-passed debt ids and their
 supplied phones. Capture `now()`, `txid_current_snapshot()`, isolation, and
 read-only state at the start and end, then commit. Never write to Interprose.
 
+## Connect to Interprose
+
+1. Run from a SOC-network workstation or approved compute connected to a
+   SOCAPITAL VPC, such as an SSM-managed EC2 worker.
+2. Fetch secret `prod/interprose/endpoint/privatelink` from Secrets Manager in
+   `us-east-2` using the selected AWS profile.
+3. Read `host`, `port` (default `5432`), `database`, `username`, and
+   `password` at runtime; never print or persist them.
+4. Connect with PostgreSQL `sslmode=require`.
+5. Start `BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY`.
+6. Restrict queries to the campaign debt IDs, the person keys of those debts,
+   and the required `spring.*` columns.
+7. Capture transaction snapshot/isolation/read-only evidence, then commit.
+
+Never write to Interprose through SQL. If PrivateLink is unreachable, use
+approved VPC-connected compute; do not expose the database publicly.
+
 ## Reads
 
 ```sql
@@ -16,6 +33,24 @@ from spring.account where debt_id = any(:debts);
 -- sell-back worklist membership (independent of account.worklist_id)
 select distinct debt_id from spring.worklist_debt
 where worklist_id = 1151 and debt_id = any(:debts);
+
+-- person keys for the campaign debts
+select a.debt_id, a.bundle_id, d.national_id_hash
+from spring.account a
+left join spring.demographic d
+  on d.debt_id = a.debt_id and d.demographic_type = 'PRIMARY'
+where a.customer_id = 'SPRING' and a.debt_id = any(:debts);
+
+-- bankruptcies on any SPRING debt of those people, including non-campaign debts
+select a.debt_id, a.bundle_id, d.national_id_hash, b.id as bankruptcy_id,
+       upper(trim(coalesce(b.status, ''))) as status,
+       coalesce(b.dismissed, false) as dismissed
+from spring.account a
+join spring.bankruptcy b on b.id = a.bankruptcy_id
+left join spring.demographic d
+  on d.debt_id = a.debt_id and d.demographic_type = 'PRIMARY'
+where a.customer_id = 'SPRING'
+  and (a.bundle_id = any(:bundle_ids) or d.national_id_hash = any(:ssn_hashes));
 
 -- same-debt phones
 select debt_id, phone_number, active, no_contact, status,
@@ -53,16 +88,34 @@ Evaluate only the SPRING account row; the first failing reason wins:
 1. not exactly one SPRING row: `spring_account_rows_<n>`;
 2. `debt_status_code` or `last_status_code` is `SLDBCK`: `status_sldbck`;
 3. `worklist_id = 1151` or present in `worklist_debt` 1151: `worklist_1151_sell_back`;
-4. `active` not true: `account_inactive`;
-5. `debt_status_code` not `ACT`: `status_<code>`;
-6. `currentbal` not above 0: `zero_balance`;
-7. `do_not_txt` true: `do_not_txt`;
-8. `do_not_call` true: `do_not_call`.
+4. an active bankruptcy on any SPRING debt sharing the debt's `bundle_id` or
+   PRIMARY `national_id_hash`: `person_bankruptcy`;
+5. `active` not true: `account_inactive`;
+6. `debt_status_code` not `ACT`: `status_<code>`;
+7. `currentbal` not above 0: `zero_balance`;
+8. `do_not_txt` true: `do_not_txt`;
+9. `do_not_call` true: `do_not_call`.
 
-Independently of that order, report three operator-check counts: debts with
-any SPRING row in `SLDBCK`, debts with `account.worklist_id = 1151`, and debts
-in `worklist_debt` 1151. They are expected to be 0 after Filter; a non-zero
-count is still excluded and must be called out.
+Gate 4 exists because Interprose records bankruptcy on a single debt
+(`account.bankruptcy_id`) and Filter's `not_in_bankruptcy` and `in_bankruptcy`
+rules evaluate only that debt, while bankruptcy applies to the person. Drop
+every campaign debt of the person, whether the bankruptcy sits on that debt or
+on another SPRING debt outside the campaign. Remove this gate only after the
+Lexicon rules block bankruptcy per person.
+
+A bankruptcy row is cleared only when `status <> 'REINSTATED'` and
+(`dismissed = true` or `status = 'DISMISSED'`); every other row is active.
+Ignore null `bundle_id` and null `national_id_hash` keys when matching, so
+unrelated debts with missing keys never link.
+
+Independently of that order, report these operator-check counts: debts with
+any SPRING row in `SLDBCK`, debts with `account.worklist_id = 1151`, debts in
+`worklist_debt` 1151, and person-bankruptcy debts split by where the active
+bankruptcy sits (`same_debt`, `same_bundle`, `same_ssn_hash_only`). SLDBCK and
+1151 are expected to be 0 after Filter. `same_debt` is expected to be 0 after
+Filter; `same_bundle` and `same_ssn_hash_only` are not, because Filter checks
+only the debt itself. Every non-zero count is still excluded and must be
+called out.
 
 ## Phone gate order
 
