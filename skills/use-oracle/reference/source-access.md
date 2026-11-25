@@ -96,6 +96,11 @@ Decide "captured" from content, never from the title or one selector:
    `state: 'attached'` when you only need presence.
 4. Count complete captures by the readiness condition plus a size floor, not by HTTP status
    (a cleared challenge still reports 403 as the first status).
+5. Once the page is ready, store only the element that holds the data, plus `<title>`, as
+   the transform input. Keep the full page gzipped beside it, with its sha256 in the
+   capture receipt. A missing or empty container is a retryable failure. Prove it safe with
+   byte-identical transform output before adopting it. Method and checks:
+   [`../../build-county-transform/reference/html-capture-and-parsing.md`](../../build-county-transform/reference/html-capture-and-parsing.md).
 
 ## 5. Measure throughput
 

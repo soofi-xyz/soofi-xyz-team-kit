@@ -3701,7 +3701,7 @@
     }
   },
   "enact_version": "1.198.0",
-  "kit_version": "0.198.0",
+  "kit_version": "0.199.0",
   "mcp_allow_list": [
     "enact",
     "browser",

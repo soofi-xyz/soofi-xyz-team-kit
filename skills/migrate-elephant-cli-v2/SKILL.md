@@ -85,6 +85,15 @@ CLI's `node_modules` and a bundled Chromium.
   network away.
 - It starts fast. On the two counties bundled with this kit, one parcel took 0.4 s with
   Elephant CLI 2 and 2.0 to 2.7 s with 1.x, with the same CIDs after `hash`.
+- The engine is QuickJS, which has no JIT, and each script runs in a fresh runtime. So
+  HTML parsing, not startup, sets the cost on large pages: cheerio's default parser
+  (parse5) took about 270 ms per parse on a 180 KB qPublic page. Parse once per parcel
+  with `cheerio.load(html, { xml: { xmlMode: false, decodeEntities: true } })`
+  (htmlparser2, about 3× faster), and transform only the page's data container. Cobb
+  County went from 1.55 s to 0.12 s per parcel with byte-identical output. See
+  [`../build-county-transform/reference/html-capture-and-parsing.md`](../build-county-transform/reference/html-capture-and-parsing.md).
+- No WebAssembly and no native addons: npm packages with Rust bindings (napi or wasm
+  HTML parsers) cannot load in a v2 transform.
 
 **prepare**
 
