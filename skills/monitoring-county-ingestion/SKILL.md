@@ -40,15 +40,18 @@ no SQL database. `reconcile-county.mjs` (below) is the only reconciliation helpe
 ## Run progress
 
 The `CountyIngest` workflow (key `<county>-<jobId>`) fans the seed into per-chunk
-`IngestChunk` child workflows (keys `<county>-<jobId>-c<N>`) and tracks `chunksDone` (of
-`chunks` total) as parent state. Child keys derive from the parent workflow key, so a
+`IngestChunk` child workflows (keys `<county>-<jobId>-c<N>`) and tracks `phase`
+(`indexing`, `appraisal`, `permits-started` or `appraisal-done`), `chunksDone` (of
+`chunks` total), and per-status `counts` as parent state. Child keys derive from the parent workflow key, so a
 redrive pass's chunks are keyed `<county>-<jobId>-r2-c<N>`. Read it in the Web UI at `http://localhost:9070`
 (invocation → state), or via SQL:
 
 ```bash
 restate sql "SELECT * FROM state WHERE service_name = 'CountyIngest' AND service_key = '<county>-<jobId>'"
 restate sql "SELECT status, created_at, modified_at FROM sys_invocation WHERE target_service_name = 'CountyIngest'"
-curl -s localhost:8080/CountyIngest/<county>-<jobId>/status
+curl -s -X POST localhost:8080/CountyIngest/<county>-<jobId>/status
+curl -s -X POST localhost:8080/IngestChunk/<county>-<jobId>-c<N>/status   # rows, done, counts
+curl -s -X POST localhost:8080/PermitFeed/<county>-<jobId>-permits/status # phase, eligible, chunksDone
 ```
 
 Coarse percent complete = `chunksDone` ÷ `chunks`. For finer-grain progress use the
@@ -73,6 +76,7 @@ find data/artifacts/appraisal/<county>/<jobId> -name transformed.zip | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name ready.json | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name capture.zip | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name eligibility.json | wc -l
+find data/artifacts/appraisal/<county>/<jobId> -name failed.json | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name dead.json | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name invalid.json | wc -l
 find data/artifacts/permits/<county>/<jobId> -type f | wc -l
@@ -88,7 +92,9 @@ must agree with these file counts; any difference is a ledger-vs-file mismatch.
 Note: `CountyIngest` completing means the appraisal dispatch finished — permit work
 drains separately. Measure permit completion exactly: count the per-parcel status
 artifacts (one per eligible parcel, written by the harvester),
-`find data/artifacts/permits/<county>/<jobId>/status -name '*.json' | wc -l`, and
+`find data/artifacts/permits/<county>/<jobId>/status -maxdepth 1 -name '*.json' | wc -l`
+(the per-parcel `status/<parcelKey>.json`; adapter files sit one level deeper under
+`status/<jurisdiction>/`), and
 reconcile against the eligible-parcel count (the `eligibility.json` files with
 `eligible: true`); `find … -type f | wc -l` alone is not a completion measure.
 
@@ -118,22 +124,30 @@ per-parcel status (`pending`, `ready`, `dead`, `invalid`, `failed`; permit link 
 under `stage: "permits"`). Read its shared handlers through ingress:
 
 ```bash
-curl -s localhost:8080/CountyLedger/<county>-<jobId>/summary
+curl -s -X POST localhost:8080/CountyLedger/<county>-<jobId>/summary   # counts, tombstones, permits
 curl -s localhost:8080/CountyLedger/<county>-<jobId>/list --json '{"status":"failed","limit":100}'
+curl -s localhost:8080/CountyLedger/<county>-<jobId>/list --json '{"stage":"permits","status":"dead"}'
 curl -s localhost:8080/CountyLedger/<county>-<jobId>/get --json '{"parcel_id":"<parcel_id>"}'
 ```
+
+`list` pages in `parcel_id` order (pass the returned `cursor` back). `get` returns the
+`parcel` entry and the `permits` entry; each carries `stage`, `status`, `reason`,
+`artifactHash`, `transformVersion`, `detail`, and `tombstoned`.
 
 For a full reconciliation, run the reconcile command; without `--strict` it reports
 without failing, so it is safe mid-run:
 
 ```bash
 cd skills/use-oracle/runtime
-node bin/reconcile-county.mjs --county <county> --job <jobId> --restate http://localhost:9070
+npm run reconcile -- --county <county> --job <jobId> --no-rehash   # quick; drop --no-rehash for the full check
 ```
 
-It writes `data/runs/<county>/<jobId>/manifest.json`: counts by status, dead/invalid
-reasons, permits linked/unlinked by reason, ready-marker hash coverage, and
-ledger-vs-file mismatches. Ledger counts complement artifact counts; only reconciling
+It writes `data/runs/<county>/<jobId>/manifest.json` and prints the gates
+(`seed_accounted`, `seed_complete`, `no_duplicate_keys`, `ready_hash_coverage`,
+`ledger_files_agree`, `permits_linked`, `permits_complete`, `tombstones_excluded`; each
+`pass`, `fail`, or `not_started`), counts by status, dead/invalid/failed reasons, permits
+linked/unlinked by reason, ready-marker hash coverage, and ledger-vs-file mismatches.
+Mid-run, `seed_complete` and `permits_complete` fail by design. Ledger counts complement artifact counts; only reconciling
 both against the seed tells you the true missing set (see `county-ingest-run` §6).
 
 ## Wrap-up gate verification
@@ -143,10 +157,10 @@ The `county-ingest-run` wrap-up gates are verified by `reconcile-county.mjs --st
 the `PublishGroup` workflow state:
 
 ```bash
-curl -s localhost:8080/PublishGroup/<county>-<group>-<jobId>/status
+curl -s -X POST localhost:8080/PublishGroup/<county>-<group>-<jobId>/status
 ```
 
-A `PublishGroup` waiting on `approve` is healthy, not stalled; it stops before the
+A `PublishGroup` in phase `awaiting-approval` is healthy, not stalled; it stops before the
 Atlas PR, which stays a `gh` step per `use-oracle`.
 
 ## ETA
@@ -160,7 +174,8 @@ to its stage default); to stop a track, pause its invocations
 
 ## Stall diagnosis (in order)
 
-1. Services process running? (`npm run dev` on :9080; check the terminal / process.)
+1. Services process running? (`npm run services` on :9080; check the terminal /
+   process.) After a restart, `npm run register` must report no `missing` services.
 2. Invocations paused at max attempts? (Web UI → invocations; journal shows the error.)
 3. A `CONCURRENCY_*` cap in `.env` set too low? (Check the services process env;
    empty/0/garbage values fall back to the stage default, so a missing cap shows up as

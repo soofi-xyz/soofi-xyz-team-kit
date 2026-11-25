@@ -33,15 +33,17 @@ validated group directories, never from Restate state. County-level identity reg
 (Sunbiz + official DBPR) are a predecessor of this permit harvest, not a later
 enrichment join. Input is ONLY the seed CSV at `data/seeds/<county>.csv` (never
 re-derive work from run state). The `CountyIngest` workflow (keyed `<county>-<jobId>`)
-streams the seed into per-chunk `IngestChunk` children (~10k rows each, keyed
-`<county>-<jobId>-c<N>`) that dispatch `Parcel.process` in bounded windows; when
-appraisal dispatch completes it starts the `PermitFeed` workflow (keyed
-`<CountyIngest key>-permits`, so a redrive pass feeds its own `…-r2-permits`), which
-walks eligibility from the ledger and artifacts and dispatches
-`PermitHarvest.harvestParcel` in its OWN bounded windows — neither side ever queues the
-whole county. Journal replay is the only checkpoint. `CountyLedger` (virtual object keyed
-`<county>-<jobId>`) is the single writer of per-parcel status: `pending`, `ready`,
-`dead`, `invalid`, `failed`, with permit link results under `stage: "permits"`. See
+indexes the seed once and hands each ~10k-row byte range to an `IngestChunk` child
+(keyed `<CountyIngest key>-c<N>`) that dispatches `Parcel.process` in bounded windows;
+when appraisal dispatch completes it starts the `PermitFeed` workflow (keyed
+`<CountyIngest key>-permits`, so a redrive pass feeds its own `…-r2-permits`) unless the
+run passed `startPermits: false`. `PermitFeed` rebuilds the eligible index from the
+`eligibility.json` files and runs child passes of itself (`<PermitFeed key>-c<N>`) that
+dispatch `PermitHarvest.harvestParcel` in their OWN bounded windows (`permitWindow`,
+default `window`) — neither side ever queues the whole county. Journal replay is the
+only checkpoint. `CountyLedger` (virtual object keyed `<county>-<jobId>`) is the single
+writer of per-parcel status: `pending`, `ready`, `dead`, `invalid`, `failed`, with permit
+link results under `stage: "permits"`. See
 `durable-workflow-builder` patterns 1 (backpressure feeder), 2 (layered concurrency),
 8 (single-writer ledger), and 11 (chunked fan-out).
 
@@ -52,10 +54,10 @@ versioned identity resolution → identity relationship files, reconcile, and pr
 rerun → BBB/places enrichment.
 
 Everything runs locally (`bootstrap-oracle-infra`): Restate only from
-`skills/use-oracle/runtime/local/compose.yaml` (ingress :8080, admin/UI :9070), one
-services process (`services/app.ts`) on :9080, registered with
-`restate deployments register http://host.docker.internal:9080` (or
-`http://localhost:9080` with Linux host networking). Egress must be US
+`skills/use-oracle/runtime/docker-compose.yml` (ingress :8080, admin/UI :9070, loopback),
+one services process (`npm run services`) on :9080, registered with `npm run register`
+(`npm run register -- --uri http://localhost:9080` with Linux host networking). Run the
+commands below from `skills/use-oracle/runtime`. Egress must be US
 (`curl -s ipinfo.io/country` → `US`) — county portals geo-block.
 
 ## 1. Pilot (always first)
@@ -65,17 +67,21 @@ services process (`services/app.ts`) on :9080, registered with
 2. Start the workflow with a distinct pilot jobId:
 
    ```bash
-   curl localhost:8080/restate/send/CountyIngest/<county>-pilot-<date>/run \
+   curl localhost:8080/CountyIngest/<county>-pilot-<date>/run/send \
      --json '{"county":"<county>","jobId":"pilot-<date>","seedPath":"seeds/<county>-pilot.csv","chunkSize":10000,"window":25}'
    ```
 
 3. Verify one parcel end-to-end, in order: `capture.zip` on disk
-   (`data/artifacts/appraisal/<county>/<jobId>/<parcel_id>/`) → `transformed.zip` →
-   validation pass → `ready.json` (`captureHash`, `transformVersion`, `transformedHash`,
-   `validatedAt`, `cli`) → the parcel's `CountyLedger` record
+   (`data/artifacts/appraisal/<county>/<jobId>/<parcelKey>/`, where `<parcelKey>` is the
+   parcel id or its filesystem-safe form) → `transformed.zip` and `transformed.meta.json`
+   (check the Seed group was merged when the county transform emits none) → validation
+   pass (`validate-findings.csv` empty) → `ready.json` (`captureHash`,
+   `transformVersion`, `transformedHash`, `validatedAt`, `cli`, `dataGroups`) → the
+   parcel's `CountyLedger` record
    (`curl localhost:8080/CountyLedger/<county>-<jobId>/get --json '{"parcel_id":"..."}'`
-   shows `ready`) → `eligibility.json` (and, if eligible, permit artifacts under
-   `data/artifacts/permits/<county>/<jobId>/` plus a `stage: "permits"` ledger record).
+   returns `parcel.status: "ready"`) → `eligibility.json` (and, if eligible, permit
+   artifacts under `data/artifacts/permits/<county>/<jobId>/`, the link status
+   `status/<parcelKey>.json`, and a `permits` entry in the same `get` response).
 4. Verify a permit-less parcel completes cleanly and a residential parcel stops after
    archive with `eligibility.json` showing `eligible: false` and no permit artifacts.
 5. Record pilot timings per source: observed latency, safe concurrency, retry/failure
@@ -106,9 +112,14 @@ Project full-county duration from the pilot rate for every source that will be s
 Same workflow, full seed:
 
 ```bash
-curl localhost:8080/restate/send/CountyIngest/<county>-<jobId>/run \
+curl localhost:8080/CountyIngest/<county>-<jobId>/run/send \
   --json '{"county":"<county>","jobId":"<jobId>","seedPath":"seeds/<county>.csv","chunkSize":10000,"window":25}'
 ```
+
+The run checks up front that the county has a transform and a capture route (capture
+plug-in, prepare flow, `source_url` seed column, or `PREPARE_URL_TEMPLATE_<COUNTY>`) and
+fails terminally otherwise. Add `"startPermits": false` for an appraisal-only pass and
+`"permitWindow"` to bound permit dispatch separately.
 
 The workflow key `<county>-<jobId>` is the idempotency boundary: the same key is
 exactly-once — a resubmit cannot start a duplicate and is refused as "previously
@@ -123,12 +134,14 @@ reboot resumes mid-chunk with no checkpoint files and no re-streaming
 
 Watch with `monitoring-county-ingestion`: Web UI at `http://localhost:9070`,
 `restate invocations list`, `restate sql` over `sys_invocation`/`state`,
-`CountyIngest/<county>-<jobId>/status`, and `CountyLedger/<county>-<jobId>/summary`.
+`CountyIngest/<county>-<jobId>/status`, and `CountyLedger/<county>-<jobId>/summary`
+(POST to the ingress).
 
 ## 4. Ramp-up & Warm Worker Pool Optimization
 
-Raise the `CONCURRENCY_*` caps in `skills/use-oracle/runtime/.env` stepwise (`CONCURRENCY_PREPARE`,
-`CONCURRENCY_TRANSFORM`, `CONCURRENCY_PERMIT_<VENDOR>` — in-process gates per
+Raise the `CONCURRENCY_*` caps in `skills/use-oracle/runtime/.env` stepwise
+(`CONCURRENCY_PREPARE[_<COUNTY>]`, `CONCURRENCY_TRANSFORM[_<COUNTY>]`,
+`CONCURRENCY_PERMIT_<ADAPTER>` such as `ACCELA` or `TYLER_CIVIC_ACCESS` — in-process gates per
 `durable-workflow-builder` pattern 2;
 the Restate UI does not tune concurrency on this stack) and restart the services process —
 safe mid-run, in-flight invocations resume from their journals. Let each step burn in 10+
@@ -143,6 +156,11 @@ minutes, then check error rates in the UI and the portal's health before the nex
 
 ### High-Throughput Transform Optimization: Warm Worker Pool (`TransformPool`)
 
+This applies to the scripts runner in `src/core/transform-runner.mjs` (the
+`elephant-county` CLI path). The Restate `Parcel` path runs one Elephant CLI transform
+per parcel under `CONCURRENCY_TRANSFORM`; prefer Elephant CLI 2 there, which needs no
+Node process per call.
+
 When transforming 500k+ parcels locally, spawning fresh Node.js subprocesses per parcel
 (`child_process.execFile` / `execPath`) creates severe process-spawning overhead, thrashing
 CPU cores, causing excessive fan noise, and dropping throughput to ~2-5 parcels/sec.
@@ -155,6 +173,8 @@ CPU cores, causing excessive fan noise, and dropping throughput to ~2-5 parcels/
 
 ### Memory Optimization: Streaming Seed CSV Processing
 
+The shipped `CountyIngest` already streams: it indexes the seed once and each
+`IngestChunk` reads only its byte range. Keep that property in any new seed tooling.
 Never load a 500k-row CSV roll into an in-memory array (`const rows = parse(fileContent)`).
 Large 300MB+ seed files will trigger `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`.
 
@@ -192,8 +212,14 @@ the full journal. Inspect the journal, classify, act:
   seed − dead − current-invalid. A few record-heavy parcels can be unbounded-cost in
   any practical budget — document those in the dead/slow tail too, rather than letting
   them block wrap-up.
+- **FAILED** — deterministic non-source errors (no transform configured, transform or
+  capture error that is not network-shaped). Handlers write `failed.json`, record
+  `failed` with a reason, and return. Fix the cause, then redrive those parcels (§7).
 - **RETRYABLE** — transient (timeouts, 5xx, nav failures, connection refused). Fix the
   cause if needed, then `restate invocations resume <id>`.
+- **Elephant CLI exit 2** ("could not run") is classified by its message: HTTP 404/410
+  from the source → DEAD; network-shaped (connection, timeout, DNS, 5xx, schema fetch) →
+  RETRYABLE; anything else → FAILED (capture/transform) or INVALID (validate).
 - **Ambiguous 500s**: disambiguate with a couple of unloaded probes (curl the detail URL
   directly, no concurrent scrape load, ideally from more than one IP). 200 → load-induced,
   back off concurrency and resume. Consistent 500 unloaded → source-side defect, treat as
@@ -217,31 +243,43 @@ SQL. Run it during the full run to watch drift, and with `--strict` before wrap-
 
 ```bash
 cd skills/use-oracle/runtime
-node bin/reconcile-county.mjs --county <county> --job <jobId> \
-  --restate http://localhost:9070 --strict
+npm run reconcile -- --county <county> --job <jobId> --strict
+# same as: node bin/reconcile-county.mjs --county <county> --job <jobId> --strict
 ```
 
-It reads the ledger (Restate admin SQL query API first, falling back to
-`CountyLedger/summary` + `list` through ingress), the seed, and the ready markers, then
-writes the durable run manifest `data/runs/<county>/<jobId>/manifest.json`: counts by
-status, dead/invalid reasons, permits linked/unlinked by reason, ready-marker hash
-coverage, and ledger-vs-file mismatches. Restate keeps finished state only for its
-retention window, so the manifest is the record of the run. `--strict` exits non-zero on
-a failed gate. Require every gate:
+Flags: `--restate <admin-url>` (default `RESTATE_ADMIN_URL` or `:9070`), `--ingress
+<ingress-url>` (default `RESTATE_INGRESS_URL` or `:8080`), `--seed <DATA_DIR-relative
+csv>` (default `seeds/<county>.csv`), `--strict`, `--assemble <group>`, and `--no-rehash`
+(trust `ready.json` hashes instead of rehashing every `transformed.zip`; use only for a
+quick mid-run look). It reads the ledger through the Restate admin SQL query API,
+falling back to `CountyLedger/summary` + `list` through ingress, plus the seed and the
+artifact markers, then writes the durable run manifest
+`data/runs/<county>/<jobId>/manifest.json`: counts by status, dead/invalid/failed
+reasons, tombstones, permits linked/unlinked by reason, ready-marker hash coverage, and
+ledger-vs-file mismatches. The services keep finished workflow state for 14 days
+(`PublishGroup` 30), so the manifest is the record of the run. Exit codes: 0 ok, 1 a
+gate failed under `--strict`, 2 the command could not run. Require every gate:
 
-- **Seed identity:** `seed = ready + dead + invalid`; before completion the remainder is
-  `pending` or `failed`, never unaccounted.
-- **Unique keys:** no duplicate parcel keys. The key is the official folio/request
-  identifier as a string; never a digits-only normalization, which collapses distinct
-  lettered parcels. Use normalized identifiers only as bounded matching candidates.
-- **Ready-marker hash coverage:** every `ready` parcel has `ready.json` whose
-  `transformedHash` matches its `transformed.zip` and whose `transformVersion` is
-  current. A missing or mismatched marker is not ready, not an empty record.
-- **Tombstones:** a parcel that was `ready` and is now `dead` or `invalid` keeps its
-  `dead.json`/`invalid.json` and reason and is excluded from every group directory.
-- **Ledger = files:** zero mismatches between ledger status and the markers on disk.
-- **Permits:** every harvested permit is linked to its requested parcel or explicitly
-  unlinked with a reason.
+- **`seed_accounted`:** every seed parcel has exactly one ledger entry and
+  `seed = ready + dead + invalid + pending + failed`, with no ledger entry outside the
+  seed.
+- **`seed_complete`:** `seed = ready + dead + invalid` — nothing `pending` or `failed`.
+- **`no_duplicate_keys`:** no duplicate seed `parcel_id`, no artifact-key collision, no
+  marker whose `parcel_id` disagrees with its directory. The key is the official
+  folio/request identifier as a string; never a digits-only normalization, which
+  collapses distinct lettered parcels.
+- **`ready_hash_coverage`:** every ledger-ready parcel has `ready.json` whose
+  `transformedHash` matches its `transformed.zip` (rehashed by default).
+- **`ledger_files_agree`:** zero mismatches between ledger status and the markers on
+  disk.
+- **`permits_linked`:** every harvested permit is linked to its requested parcel or
+  explicitly unlinked with a reason.
+- **`permits_complete`:** every eligible ready parcel has a permit status file and the
+  status files agree with the ledger. It reports `not_started` when no permit pass has
+  run for the job; that is not a pass for a run that includes permits.
+- **`tombstones_excluded`:** a parcel that was `ready` and is now `dead` or `invalid`
+  (and any parcel not verified ready, or assembled from an older transform) is absent
+  from every group directory.
 
 ### Permit and official identity reconciliation
 
@@ -264,18 +302,26 @@ a failed gate. Require every gate:
   resolution ledger (JSONL) beside the job's permit artifacts. Keep unresolved,
   ambiguous, conflicting, stale, and orphaned identities unlinked there with reasons.
   Name, phone, address, BBB, and places matches are candidates only.
+- Gap: no bundled runtime stage emits these identity relationship files or the
+  resolution ledger yet; the Restate permit path writes permit artifacts and link status
+  only. Until one exists, produce them with a reviewed, versioned resolver and report the
+  identity edges as not generated when none ran.
 
 ### Roof age and enrichment
 
-Compute roof age from files after permit and identity reconciliation: the estimator
-(`runtime/src/roof-age/`, called from the transform) reads the transformed appraisal
-output and the job's extracted permit artifacts and writes the estimate and lineage
-into the lexicon output. Preserve accepted work and lifecycle-status mapping, the
+Roof age is a file-based step, but it is not yet wired into the Restate pipeline: the
+`Parcel` transform does not call the estimator, and nothing yet builds roof-age record
+JSONL from transformed parcels plus permit artifacts. Today the estimator
+(`runtime/src/roof-age/`) runs through the `elephant-county` scripts runner
+(`src/core/transform-runner.mjs`, optional `roofAge`; it reads transformed parcel files
+only, so it yields built-year anchors) or through
+`bin/roof-age-backfill.mjs` over a prepared JSONL file — see
+[`roof-age-and-identity-reingest.md`](../use-oracle/reference/roof-age-and-identity-reingest.md).
+Report roof age as not computed for a run that has not done one of those. Preserve accepted work and lifecycle-status mapping, the
 selected permit or built-year fallback, source profile and digest, evidence date
 precision, confidence and historical-coverage caveats, and the as-of date and terminal
 reason. Do not infer replacement from generic repair text, open permits, coatings,
-accessory roofs, or impossible dates. See
-[`roof-age-and-identity-reingest.md`](../use-oracle/reference/roof-age-and-identity-reingest.md).
+accessory roofs, or impossible dates.
 
 Run BBB, places, HOA/property management, and AVM as separate enrichment tracks with
 their own source and licence gates and their own manifests. They may add useful
@@ -285,15 +331,18 @@ never upload them or point MCP at them.
 
 ### Assemble group directories
 
-After a strict pass, assemble each data group from ready parcels only:
+Assemble each data group from verified ready parcels only:
 
 ```bash
-node bin/reconcile-county.mjs --county <county> --job <jobId> --strict \
-  --assemble <group>
+npm run reconcile -- --county <county> --job <jobId> --strict --assemble <group>
 ```
 
-This writes `data/groups/<county>/<jobId>/<group>/`. Hand those validated directories
-to `use-oracle` (or `PublishGroup`) for the Atlas sequence.
+Under `--strict` a failing gate blocks assembly and nothing partial is staged. It writes
+`data/groups/<county>/<jobId>/<group>/<parcelKey>.zip` with the index
+`<group>.assembly.json` beside the directory; each archive keeps the requested group plus
+the Seed root, which every group archive carries. `--assemble seed` is rejected: never
+publish Seed as its own group. Hand those directories to `use-oracle` (or
+`PublishGroup`) for the Atlas sequence.
 
 ## 7. Redrives
 
@@ -309,15 +358,17 @@ Two mechanisms cover every redrive case:
   transform regenerates stale output without re-scraping.
 - **After a code fix**: on this single-endpoint local topology there is no second
   deployment to resume onto — cancel the paused invocations and re-run them as a redrive
-  pass on the new code, or ship an in-place replay-compatible fix via `--force`
-  re-register (`durable-workflow-builder` authoring rule 2). Plain `resume` is for
+  pass on the new code, or ship an in-place replay-compatible fix via
+  `npm run register -- --force` (`durable-workflow-builder` authoring rule 2). Plain `resume` is for
   world-fixes (egress, portal, disk), not code fixes.
 
 Permit-scope redrives use the eligibility sentinels (see `county-appraisal-onboarding`):
-an appraisal-only run sets the eligible-usage-types env to `__NONE__`; widening to full
-permit coverage later is a re-run with `__ALL__` — skip-existing makes the appraisal side
-a no-op. Never leave the variable unset: empty silently falls back to the commercial
-default list. The services process is shared across counties — resolve the
+an appraisal-only run sets `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_<COUNTY>` to
+`__NONE__` (or passes `startPermits: false`); widening to full permit coverage later is a
+re-run with `__ALL__` — skip-existing makes the appraisal side a no-op. Unset means
+`__NONE__` (appraisal only), so a run that should harvest permits silently harvests none;
+set the variable explicitly for every county. The services process is shared across
+counties — resolve the
 county-scoped variable (`..._<COUNTY>`) first and use the bare variable only when a
 single county runs, or a redrive's sentinel change leaks into every concurrent county.
 Eligibility artifacts carry the policy fingerprint, so a same-job redrive with a changed
@@ -339,9 +390,9 @@ just has no data.
 - `CountyIngest` completing means appraisal DISPATCH is done — permit harvests sent by
   `PermitFeed` are still draining under their own caps. Wrap up only when permit status
   artifacts exist for every eligible parcel and `reconcile-county.mjs --strict` passes
-  every gate in §6 (`seed = ready + dead + invalid`, no duplicate keys, ready-marker hash
-  coverage, tombstones excluded, ledger = files, every permit linked or unlinked with a
-  reason). Keep the resulting `manifest.json`; it outlives Restate retention.
+  every gate in §6 (`seed_accounted`, `seed_complete`, `no_duplicate_keys`,
+  `ready_hash_coverage`, `ledger_files_agree`, `permits_linked`, `permits_complete` —
+  `not_started` only for an appraisal-only run — and `tombstones_excluded`). Keep the resulting `manifest.json`; it outlives Restate retention.
 - Before wrap-up, rerun the current versioned official-identity resolver over the
   harvested permits and regenerate the identity relationship files. Preserve raw names
   and omitted licenses; unresolved, ambiguous, or conflicting contacts remain unlinked

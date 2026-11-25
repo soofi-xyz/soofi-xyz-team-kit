@@ -148,7 +148,7 @@ SQL destination to prove. Before a seed, pilot, or full run, prove the stack thr
 stack:
   orchestrator: restate
   restate_admin_url: http://localhost:9070
-  services_registered: true   # Parcel, CountyIngest, CountyLedger, PermitFeed, PermitHarvest, PublishGroup visible in `restate services list`
+  services_registered: true   # `npm run register` lists all 7 services with none missing
   verified_at: "<iso8601>"
   publication:
     in_scope: false            # true when Atlas publication is authorized

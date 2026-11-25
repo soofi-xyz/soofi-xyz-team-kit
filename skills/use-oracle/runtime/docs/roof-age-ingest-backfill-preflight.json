@@ -23,8 +23,9 @@
       "install": "npm ci completed"
     },
     "queryDatabaseSchema": {
-      "status": "owned-by-query-db-package",
-      "path": "skills/query-db-loading-matching/SKILL.md"
+      "status": "retired",
+      "note": "The internal Query DB was removed; roof-age audit and backfill now read and write JSONL record files (bin/roof-age-backfill.mjs --input/--output).",
+      "path": "skills/use-oracle/reference/roof-age-and-identity-reingest.md"
     },
     "deterministicFixtures": {
       "status": "available",

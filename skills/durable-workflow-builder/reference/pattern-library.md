@@ -8,7 +8,7 @@ The distilled lessons of a production county pipeline. Apply them as written.
 
 **1. Backpressure feeder.** Never dispatch a whole county at once — the previous pipeline
 once dumped 516k messages into a queue, exceeding retention and losing all flow control.
-The `CountyIngest`/`IngestChunk` pair above IS the fix: `window` (25–100) bounds
+The shipped `CountyIngest`/`IngestChunk` pair IS the fix: `window` (25–100) bounds
 in-flight calls, per-chunk child workflows bound journal growth, and replay resumes
 mid-chunk. Crash/reboot resumes mid-county; no checkpoint files, no watchdog timers, no
 re-streaming a 282 MiB seed from row 1 on every wakeup.
@@ -20,25 +20,13 @@ control is a 1.7 preview behind experimental flags — adopt it once stable); th
 cap is an in-process gate with limits from env:
 
 ```ts
-// lib/limits.ts — one semaphore per named stage/portal, cap from CONCURRENCY_<NAME>
-import pLimit from "p-limit";
-const gates: Record<string, ReturnType<typeof pLimit>> = {};
-export const envPart = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
-export const gate = (name: string, fallback: number) => {
-  const n = Number(process.env[`CONCURRENCY_${envPart(name)}`]);
-  return (gates[name] ??= pLimit(Number.isInteger(n) && n >= 1 ? n : Math.max(1, fallback)));
-};
-// countyGate: county-scoped cap when set, else the bare stage cap — so the skeleton
-// honours CONCURRENCY_PREPARE_PALM_BEACH without edits, and falls back to CONCURRENCY_PREPARE.
-export const countyGate = (stage: string, county: string, fallback: number) =>
-  process.env[`CONCURRENCY_${envPart(stage)}_${envPart(county)}`]
-    ? gate(`${stage}_${county}`, fallback) : gate(stage, fallback);
-// empty/0/garbage env values fall back — a gate never throws or silently blocks forever;
-// envPart makes hyphenated counties safe: prepare_palm-beach → CONCURRENCY_PREPARE_PALM_BEACH
+// services/lib/limits.ts — one in-process semaphore per named stage/portal
+gate(name, fallback)            // cap from CONCURRENCY_<NAME>; empty/0/garbage → fallback
+countyGate(stage, county, fb)   // CONCURRENCY_<STAGE>_<COUNTY> when set, else CONCURRENCY_<STAGE>
+// envPart normalizes names: prepare_palm-beach → CONCURRENCY_PREPARE_PALM_BEACH
 
-// usage inside a handler step (canonical gate names: prepare, transform, permit_<vendor>):
-await ctx.run("capture", () => gate("prepare", 8)(() => capture(p, dest)));
-await ctx.run("harvest", () => gate("permit_accela", 2)(() => harvest(p)));
+// usage inside a handler step (gate names: prepare, transform, permit_<adapter>):
+await io.run("capture", () => countyGate("prepare", req.county, 4)(() => captureParcel(req, dir)));
 ```
 
 Portal politeness numbers: prepare ~50 after burn-in, transform ~100, permit portals
@@ -47,11 +35,13 @@ services process — safe mid-run, in-flight invocations resume from their journ
 one step at a time; watch error rates in the UI after every step. Each feeder's `window`
 (appraisal and permit sides alike) bounds its in-flight work, so gates only shape short local queues, never unbounded
 ones. Running two counties concurrently? Scope the gate name per county —
-``gate(`prepare_${county}`, 8)`` → `CONCURRENCY_PREPARE_PALM_BEACH` (envPart normalizes
-the hyphenated slug); the bare names imply one county at a time.
+`countyGate` already does: set `CONCURRENCY_PREPARE_PALM_BEACH` (and
+`CONCURRENCY_TRANSFORM_<COUNTY>`) per county; the bare names apply when no county-scoped
+cap is set.
 
 **3. Deterministic keys + skip-existing resume.** Artifact paths derive from
-county/jobId/folio only (`safeKeyPart()` sanitization); every writer checks before it
+county/jobId/parcel key only (`safeKeyPart()`: the parcel id when filesystem-safe,
+otherwise a sanitized form with a short hash suffix); every writer checks before it
 writes. Re-running anything is safe and cheap — resume is a property of the paths, not a
 separate redrive procedure. Redrive passes therefore reuse the SAME `jobId` payload
 under a NEW workflow key (`<county>-<jobId>-r2`): the key gives the pass exactly-once,
@@ -101,19 +91,21 @@ branch of the old pipeline skipped validation and unvalidated data was published
 locks; handlers (`Parcel`, `PermitHarvest`) never write status files that compete with
 it — they write artifacts at deterministic paths, then send one `record`. Different
 counties and jobs have different keys and run in parallel. Read handlers (`get`,
-`summary`, `list`) are `shared`, so monitoring never queues behind writes. Validate the
-key against the payload: a `record` whose `parcel_id` path or county does not match the
-object key is a `TerminalError`. Keep state small (pattern 6) and paginate `list` with a
-cursor. Restate keeps finished state only for its retention window, so
+`summary`, `list`) are `shared`, so monitoring never queues behind writes. `record`
+rejects bad input with a `TerminalError`: unknown stage or status, `ready` without a
+sha256 `artifactHash` and `transformVersion`, or `dead`/`invalid`/`failed` without a
+`reason`. State is one small entry per parcel (`p:<parcel_id>`, `permit:<parcel_id>`)
+plus counters, loaded lazily (pattern 6); `list` pages with a cursor. Restate keeps finished state only for its retention window, so
 `bin/reconcile-county.mjs` writes the durable per-run manifest
 (`data/runs/<county>/<jobId>/manifest.json`) from the ledger plus the files; prefer the
 Restate admin SQL query API for bulk ledger reads and fall back to `summary` + `list`.
 
 **9. Human approval as a durable promise.** `PublishGroup` (workflow keyed
 `<county>-<group>-<jobId>`) runs validate → hash → validate CAR → export-tables, then
-awaits a durable promise resolved by `approve({approvedBy})` or rejected by
-`reject({reason})`. Bind the approval to the immutable group digest it reviewed; a
-changed group needs a new workflow key. Only after approval does it upload the CAR and
+awaits the durable promise `approval`, resolved by `approve({approvedBy, groupDigest?})`
+or `reject({reason})`. Both are accepted only in phase `awaiting-approval`;
+`approvedBy` and `reason` are required, and a supplied `groupDigest` must equal the
+validated group's digest from `status()`. A changed group needs a new workflow key. Only after approval does it upload the CAR and
 tables with readback. It stops before the Atlas PR, which stays a human/agent `gh` step.
 No "missing parameter means approved" convention.
 
@@ -128,7 +120,7 @@ duplicate feeder invocations that deadlocked the worker.
 
 **11. Chunked fan-out.** Never run a whole county through one invocation: `window` bounds
 concurrency but NOT journal length — 516k rows in a single journal is >1M entries,
-replayed in full on every crash. The `IngestChunk` children in the skeleton bound both.
+replayed in full on every crash. The `IngestChunk` children (and `PermitFeed`'s `-c<N>` child runs) bound both.
 For independent bulk jobs (enrichment batches), same move: per-chunk workflows keyed by
 chunk id.
 
@@ -181,12 +173,12 @@ from the owning app. See `county-permit-adapter` for the permit-portal variant.
 ## Operate & debug quick reference
 
 ```bash
-docker compose -f local/compose.yaml up -d   # Restate only (from skills/use-oracle/runtime)
-npx tsx services/app.ts                   # services on :9080
-restate deployments register http://host.docker.internal:9080   # or http://localhost:9080 on Linux host networking; --force in dev only
+docker compose up -d                      # Restate only (from skills/use-oracle/runtime)
+npm run services                          # services on :9080 (npm run dev restarts on change)
+npm run register                          # admin API; -- --uri http://localhost:9080 on Linux host networking; -- --force in dev only
 
 # start a run (fire-and-forget)
-curl localhost:8080/restate/send/CountyIngest/<county>-<jobId>/run \
+curl localhost:8080/CountyIngest/lee-2026q3/run/send \
   --json '{"county":"lee","jobId":"2026q3","seedPath":"seeds/lee.csv","chunkSize":10000,"window":25}'
 
 # inspect
@@ -195,8 +187,8 @@ restate invocations describe <id>         # journal, current step, last error
 restate invocations resume <id>           # after fixing a paused invocation
 restate invocations cancel <id>           # graceful; kill <id> as last resort
 restate sql "SELECT id, target, status FROM sys_invocation WHERE status != 'completed'"
-curl -s localhost:8080/CountyLedger/lee-2026q3/summary         # per-status counts
-node bin/reconcile-county.mjs --county lee --job 2026q3        # manifest; add --strict to gate
+curl -s -X POST localhost:8080/CountyLedger/lee-2026q3/summary # per-status counts
+npm run reconcile -- --county lee --job 2026q3                 # manifest; add --strict to gate
 ```
 
 - **Web UI `http://localhost:9070`**: invocations with live journals, workflow/object

@@ -46,8 +46,7 @@ failure modes, not a list of special counties:
    stack:
      orchestrator: restate
      restate_admin_url: http://localhost:9070
-     services_registered: true   # Parcel, CountyIngest, CountyLedger, PermitFeed,
-                                 # PermitHarvest, PublishGroup in `restate services list`
+     services_registered: true   # `npm run register` reports all 7 services, none missing
      verified_at: "<iso8601>"
      publication:
        in_scope: false           # true requires upload_node

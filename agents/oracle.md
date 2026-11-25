@@ -67,21 +67,24 @@ validated group directories.
 
 ## Run tracking
 
-- Stack: Restate only (`skills/use-oracle/runtime/local/compose.yaml`, ingress :8080,
-  admin :9070) plus one services process (`services/app.ts`, :9080). Bring it up and
-  record the readiness `stack` section with `bootstrap-oracle-infra`.
-- Services: `CountyIngest` (`<county>-<jobId>`) → `IngestChunk` → `Parcel`;
+- Stack: Restate only (`skills/use-oracle/runtime/docker-compose.yml`, loopback ingress
+  :8080, admin :9070) plus one services process (`npm run services`, :9080) registered
+  with `npm run register`. Bring it up and record the readiness `stack` section with
+  `bootstrap-oracle-infra`; `services/README.md` is the runtime reference.
+- Services: `CountyIngest` (`<county>-<jobId>[-rN]`) → `IngestChunk` → `Parcel`;
   `CountyLedger` (`<county>-<jobId>`) is the single writer of per-parcel status
   (`pending`, `ready`, `dead`, `invalid`, `failed`; permits under `stage: "permits"`);
-  `PermitFeed` → `PermitHarvest`; `PublishGroup` (`<county>-<group>-<jobId>`) runs
-  validate → hash → validate CAR → export-tables, waits for `approve`, uploads with
-  readback, and stops before the Atlas PR.
+  `PermitFeed` (and its `-c<N>` child runs) → `PermitHarvest`; `PublishGroup`
+  (`<county>-<group>-<jobId>`) runs validate → hash → validate CAR → export-tables, waits
+  in `awaiting-approval` for `approve({approvedBy, groupDigest?})`, uploads with readback,
+  and stops before the Atlas PR.
 - Files live under `DATA_DIR`: `artifacts/appraisal|permits/<county>/<jobId>/`,
   `runs/<county>/<jobId>/manifest.json`, `groups/<county>/<jobId>/<group>/`, and
   `publish/<county>/<jobId>/<group>/`.
-- Reconcile with `node bin/reconcile-county.mjs --county <slug> --job <jobId> --strict`
-  from `skills/use-oracle/runtime`; add `--assemble <group>` to build a group directory
-  from ready parcels only.
+- Reconcile with `npm run reconcile -- --county <slug> --job <jobId> --strict` from
+  `skills/use-oracle/runtime` (exit 0 ok, 1 gate failed, 2 error); add
+  `--assemble <group>` to build a group directory from verified ready parcels (the group
+  plus its Seed root; `seed` itself is rejected).
 
 ## Required pipeline
 
@@ -119,12 +122,15 @@ separate, and stop. Do not continue into the pipeline below.
    `contractor_has_person` (`company` → `person`, `first_name` and `last_name`;
    no license field on the person). Relationship objects are only `from` and `to`.
 5. Reconcile with `county-ingest-run` §6. Require a strict pass of
-   `reconcile-county.mjs`: `seed = ready + dead + invalid`, no duplicate parcel keys,
-   ready-marker hash coverage, tombstoned parcels excluded from group directories, zero
-   ledger-vs-file mismatches, and every harvested permit linked to its requested parcel
-   or unlinked with a reason. Require versioned official identity relationship files,
-   roof-age lineage, and separate enrichment coverage. Keep the run manifest. This step
-   does not publish.
+   `reconcile-county.mjs`: gates `seed_accounted`, `seed_complete`
+   (`seed = ready + dead + invalid`), `no_duplicate_keys`, `ready_hash_coverage`,
+   `ledger_files_agree`, `permits_linked` (every harvested permit linked to its requested
+   parcel or unlinked with a reason), `permits_complete`, and `tombstones_excluded`. Require versioned official identity
+   relationship files, roof-age lineage, and separate enrichment coverage. The runtime
+   does not yet generate identity relationship files or roof-age estimates from a
+   pipeline run (`county-ingest-run` §6 and `roof-age-and-identity-reingest.md` list the
+   gaps): produce them with a reviewed, versioned step or report them as not generated.
+   Keep the run manifest. This step does not publish.
 6. For HOA name, fee, or frequency work, run the playbook in
    `skills/use-oracle/reference/hoa-web-ingestion.md` in order: freeze the cohort
    and gap fields, pilot 8–12 rows, pass 1, offline adjudication, pass 2 for gap

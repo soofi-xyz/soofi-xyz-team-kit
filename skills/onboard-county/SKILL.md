@@ -23,9 +23,13 @@ Ask once, then execute approved stages without repeated confirmation:
 4. Local Restate or bundled AWS execution. Verify selected AWS identity and region when
    AWS is chosen; fall back to local only with operator agreement.
 5. US egress and any login, CAPTCHA, records-request, or custodian constraints.
-6. Restate stack: local compose project and admin URL, or an existing stack to reuse.
-7. Existing flows, transforms, findings, and reusable adapters.
-8. Whether public publication is in scope. If yes, confirm an upload node that will
+6. Restate stack: compose project and ports (`COMPOSE_PROJECT_NAME`,
+   `RESTATE_INGRESS_PORT`, `RESTATE_ADMIN_PORT`) and admin URL, or an existing stack to
+   reuse.
+7. Permit eligibility for `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_<COUNTY>` (usage-type
+   CSV, `__ALL__`, or `__NONE__`); unset means appraisal only.
+8. Existing flows, transforms, findings, and reusable adapters.
+9. Whether public publication is in scope. If yes, confirm an upload node that will
    remain publicly reachable through Atlas merge and authenticated Atlas PR access.
 
 Restate the source boundary, stages, job ID, execution mode, Restate stack, and
@@ -87,7 +91,9 @@ registry, or publication input; publication reads validated group directories.
     with the stack-specific monitoring skill.
 11. **Reconciliation:** `county-ingest-run` §6 — `reconcile-county.mjs --strict`,
     identity relationship files, and the run manifest.
-12. **Roof age and enrichment:** apply the roof-age reference; run BBB, places,
+12. **Roof age and enrichment:** apply the roof-age reference (roof age is not computed
+    by the pipeline run itself; build and audit the roof-age records file it describes,
+    or report roof age as not computed); run BBB, places,
     HOA/property-management, or AVM stages within their source and licence gates.
 13. **Publication:** when in scope, follow `use-oracle` and
     `reference/car-publication.md` once per data group. Do not run another publisher.
@@ -99,14 +105,19 @@ registry, or publication input; publication reads validated group directories.
 Require all of these in `data/runs/<county>/<jobId>/manifest.json` from
 `reconcile-county.mjs --strict` before wrap-up:
 
-- `seed = ready + dead + invalid`, with no `pending` or `failed` remainder;
-- no duplicate parcel keys; the folio/request identifier is the key, never a
-  digits-only normalization;
-- every `ready` parcel's `ready.json` hash covers its validated `transformed.zip`;
-- tombstones: a parcel that was ready and is now dead/invalid is excluded from every
-  group directory;
-- zero mismatches between `CountyLedger` status and the files on disk;
-- every harvested permit is linked to its requested parcel from the harvest target
+- `seed_accounted` and `seed_complete`: `seed = ready + dead + invalid`, with no
+  `pending` or `failed` remainder;
+- `no_duplicate_keys`: the folio/request identifier is the key, never a digits-only
+  normalization;
+- `ready_hash_coverage`: every `ready` parcel's `ready.json` hash covers its validated
+  `transformed.zip`;
+- `tombstones_excluded`: a parcel that was ready and is now dead/invalid is excluded from
+  every group directory;
+- `ledger_files_agree`: zero mismatches between `CountyLedger` status and the files on
+  disk;
+- `permits_complete`: every eligible ready parcel has a permit status (`not_started` is
+  acceptable only for an appraisal-only run);
+- `permits_linked`: every harvested permit is linked to its requested parcel from the harvest target
   evidence, or explicitly unlinked with a reason — never linked to an unverified
   displayed parcel;
 - official identity edges are lexicon relationship files from DBPR/Sunbiz detail

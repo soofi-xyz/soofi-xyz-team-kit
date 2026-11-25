@@ -1,12 +1,37 @@
 ---
 name: county-appraisal-onboarding
-description: "Wire a new county's appraisal scraping into the pipeline - browser flow JSON in skills/use-oracle/runtime/flows/, per-county prepare config and Parcel concurrency, transform scripts synced from Counties-trasform-scripts, and appraisal-source throughput gates. Use when onboarding a county's property appraiser site, creating browser flows, or when prepare fails for a specific county."
+description: "Wire a new county's appraisal scraping into the pipeline - capture plug-in or browser flow, per-county prepare and transform config, Parcel concurrency, transform packages built from Counties-trasform-scripts, and appraisal-source throughput gates. Use when onboarding a county's property appraiser site, creating browser flows, or when prepare fails for a specific county."
 metadata: {"author":"elephant-xyz"}
 ---
 # County Appraisal Onboarding
 
-Goal: one parcel of the new county completes `Parcel.process` end to end — Prepare →
-Transform → Validate → Store.
+Goal: one parcel of the new county completes `Parcel.process` end to end — capture →
+transform → validate → ready marker → `CountyLedger` record → eligibility.
+
+## Per-county configuration
+
+The services process resolves each county from files and `.env` (copy `.env.example`;
+`<COUNTY>` is the slug uppercased with every non-alphanumeric run replaced by `_`, so
+`palm-beach` → `PALM_BEACH`). Restart the services process after a change. Full list:
+`skills/use-oracle/runtime/services/README.md`.
+
+| Setting | Effect |
+|---|---|
+| `src/counties/<county>/capture.mjs` or `CAPTURE_MODULE_<COUNTY>` | Custom capture plug-in exporting `capture(input, ctx)`: writes the prepared ZIP to `input.dest`, returns `{status: "captured"}` or `{status: "dead", reason}`. Wins over prepare (qPublic and other challenge-protected sources). |
+| `source_url` (or `url`) seed column, or `PREPARE_URL_TEMPLATE_<COUNTY>` | Source request for the seed ZIP `prepare` runs on; the template fills `{parcel_id}` and `{source_identifier}`. |
+| `PREPARE_BROWSER_FLOW_ZIP_<COUNTY>`, `PREPARE_MULTI_REQUEST_FLOW_<COUNTY>`, `PREPARE_BROWSER_FLOW_<COUNTY>` | Flow for `prepare`, in that precedence; otherwise `counties/<county>/flow.json` or `flows/<county>.json` (a `requests` array means multi-request). |
+| `PREPARE_USE_BROWSER_<COUNTY>`, `PREPARE_CONTINUE_BUTTON_<COUNTY>`, `PREPARE_IGNORE_CAPTCHA_<COUNTY>`, `PREPARE_PROXY_<COUNTY>` | `prepare` flags. The proxy URL may carry credentials; it is passed through, never logged. |
+| `TRANSFORM_ZIP_<COUNTY>` | Handler package; default `counties/<county>/transform-v2.zip`, then `transforms/<county>/transform-v2.zip`. |
+| `TRANSFORM_SCRIPTS_DIR_<COUNTY>` | Scripts directory when no package exists; default `counties/<county>/transforms`, then `transforms/<county>/scripts`. |
+| `TRANSFORM_DATA_GROUP_<COUNTY>` | Data-group label passed to the transform. |
+| `TRANSFORM_SEED_<COUNTY>=off` | Disable merging the CLI seed-mode output when the county transform emits no Seed root. Leave it on unless the transform emits Seed itself: `hash` needs Seed in every property. |
+| `COUNTY_NAME_<COUNTY>` | Display name when the title-cased slug is wrong. |
+| `CONCURRENCY_PREPARE[_<COUNTY>]`, `CONCURRENCY_TRANSFORM[_<COUNTY>]` | In-process caps (§2). |
+| `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES[_<COUNTY>]` | Permit eligibility (§4). |
+| `PARCEL_INACTIVITY_TIMEOUT_MS`, `PARCEL_ABORT_TIMEOUT_MS` | `Parcel` step timeouts (defaults 15 and 45 minutes). |
+
+`CountyIngest` fails terminally before dispatch when the county has no transform or no
+capture route (plug-in, flow, `source_url` column, or URL template).
 
 ## 1. Browser flow
 
@@ -32,8 +57,9 @@ condition from [`source-access.md`](../use-oracle/reference/source-access.md)) i
 capture layout `transform` expects, and use the CLI from `transform` on. Report the gap on
 `elephant-xyz/elephant-cli` rather than patching around it per county.
 
-1. Per-county flows live in `skills/use-oracle/runtime/flows/<County>.json`. Check for an existing
-   one; otherwise use another county's flow as a template.
+1. Per-county flows live in `skills/use-oracle/runtime/counties/<county>/flow.json` or
+   `skills/use-oracle/runtime/flows/<county>.json` (or the `PREPARE_*_<COUNTY>` paths).
+   Check for an existing one; otherwise use another county's flow as a template.
 2. Author the flow: navigate → fill the parcel search input (selector from discovery) →
    submit → capture detail page(s) and any media/cost-card subpages. Capture as much of
    the site's data as possible — images and secondary tabs included; the Lee run's explicit
@@ -45,18 +71,13 @@ npx elephant-cli prepare <parcel-or-url> \
   --browser-flow flows/<County>.json --browser-flow-parameters '{"parcel_id":"..."}'
 ```
 
-4. Per-county prepare settings are plain config/env on the services process (read by
-   `services/parcel.ts`): `PREPARE_USE_BROWSER_<County>`, the county's flow file path,
-   continue-button selector, captcha flags. For every county-scoped env var in this
-   skill (`..._<COUNTY>` — prepare flags, concurrency caps, eligibility lists), the
-   `<COUNTY>` segment is the county slug uppercased with every non-alphanumeric run
-   replaced by `_` (`palm-beach` → `PALM_BEACH`) — the same `envPart()` rule as
-   `durable-workflow-builder` pattern 2.
+4. Set the per-county prepare settings from the table above (read by
+   `services/lib/county-config.ts`).
 
 ## 1b. Plain-HTTP counties (native fetcher) — NOT every county needs a browser flow
 
 If the appraiser exposes a plain-HTTP JSON API (probe for this FIRST — Palm Beach and Orange
-are examples), skip the browser flow. Set `PREPARE_USE_BROWSER_<County>=false`. There
+are examples), skip the browser flow. Set `PREPARE_USE_BROWSER_<COUNTY>=false`. There
 are two plain-HTTP mechanisms, and they interact:
 
 1. **Native county-specific fetcher** — hardcoded fetch logic in `@elephant-xyz/cli`
@@ -70,7 +91,8 @@ are two plain-HTTP mechanisms, and they interact:
    county's fetcher, and after bumping, re-verify one parcel for each other onboarded
    county.
 2. **Multi-request flow** — a static list of independent templated requests (templated on
-   `{{=it.request_identifier}}`), kept as a flow file in `skills/use-oracle/runtime/flows/`. Good
+   `{{=it.request_identifier}}`), kept as `counties/<county>/flow.json` or
+   `PREPARE_MULTI_REQUEST_FLOW_<COUNTY>`. Good
    for simple "fetch N endpoints by id" APIs.
 
 ⚠️ **A multi-request flow file OVERRIDES the native fetcher** (prepare precedence). If a
@@ -81,8 +103,9 @@ bypasses the native logic and produces a shape the transform cannot read. Pick o
 
 Each county's portal tolerance is tuned independently as a concurrency cap on the `Parcel`
 service. Gates are per-stage: `CONCURRENCY_PREPARE`, `CONCURRENCY_TRANSFORM`,
-`CONCURRENCY_PERMIT_<VENDOR>`. Independent per-county tuning means county-scoped gate
-names/env (e.g. `CONCURRENCY_PREPARE_LEE`) when counties run concurrently; the bare
+`CONCURRENCY_PERMIT_<ADAPTER>`. Independent per-county tuning means county-scoped
+env (e.g. `CONCURRENCY_PREPARE_LEE`, `CONCURRENCY_TRANSFORM_LEE`) when counties run
+concurrently; the bare
 `CONCURRENCY_PREPARE` applies when one county runs at a time. Caps are NOT tunable in the Restate UI
 (server-side flow control is only a 1.7 preview behind experimental flags) — they are
 enforced as in-process semaphores in the services process, with limits from env vars. To
@@ -101,13 +124,16 @@ runtime retrieval in an owning app.
 ## 3. Transform scripts (reuse first)
 
 County transform scripts live in `github.com/elephant-xyz/Counties-trasform-scripts`
-under `<county>/scripts/` (`data_extractor.js` + mapping modules) and are synced into
-`skills/use-oracle/runtime/transforms/<county>/`. The synced sources are then BUILT into the
-county's v2 handler package `transforms/<county>/transform-v2.zip` (root `handler.js`;
-see `build-county-transform` for authoring and for wrapping legacy `data_extractor.js`
-modules), and the `Parcel` service's transform step resolves that package by county —
-it does not run the loose scripts. Re-package after every sync: the package hash
-recorded in `transformed.meta.json` is what triggers regeneration.
+under `<county>/scripts/` (`data_extractor.js` + mapping modules). Sync them into the
+runtime and prefer BUILDING the county's v2 handler package
+`counties/<county>/transform-v2.zip` (root `handler.js`; see `build-county-transform`
+for authoring and for wrapping legacy `data_extractor.js` modules), or point
+`TRANSFORM_ZIP_<COUNTY>` at it. Without a package, the `Parcel` transform zips the
+scripts directory (`counties/<county>/transforms`, `transforms/<county>/scripts`, or
+`TRANSFORM_SCRIPTS_DIR_<COUNTY>`). The transform version is the package (or scripts)
+digest plus the data-group and Seed settings, recorded in `transformed.meta.json`: a
+changed package regenerates output from the stored capture and an unchanged one is
+skipped. Re-package after every sync.
 
 1. If the county folder EXISTS: do not trust it blindly. Run the `build-county-transform`
    skill against fresh prepare captures covering data variability. Fix gaps before scaling.
@@ -128,11 +154,11 @@ recorded in `transformed.meta.json` is what triggers regeneration.
    codes from a validation run and add the missing mappings before scaling; the run must
    never abort a parcel over one code. (This is the skip-and-warn rule the transform
    handlers must follow — see `build-county-transform`.)
-4. ⚠️ **`transforms/<county>/` can be STALE vs `Counties-trasform-scripts` main — there is
+4. ⚠️ **The runtime copy of the transform can be STALE vs `Counties-trasform-scripts` main — there is
    no auto-sync.** Sync it (`git pull` in `Counties-trasform-scripts`, copy/link into
-   `transforms/`) before every run — the old pipeline shipped stale copies more than once,
+   the runtime) before every run — the old pipeline shipped stale copies more than once,
    silently running old (possibly broken) extraction logic while repo-main worked. When in
-   doubt, compare `sha256sum transforms/<county>/scripts/data_extractor.js` against the
+   doubt, compare `sha256sum` of the runtime `data_extractor.js` against the
    repo copy — a line count can match while content differs.
 
 ## 4. Usage-type eligibility
@@ -143,18 +169,17 @@ across counties, so resolution is county-scoped first:
 `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_<COUNTY>` (uppercase county), falling back to
 the bare `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES` ONLY for explicitly single-county
 operation — changing the bare variable mid-redrive leaks into every concurrent county.
-Configure the env (CSV) on the services process; the
-defaults are keyed to LEE vocabulary — a new county almost certainly needs an override.
-The value is a CSV of eligible usage types, with two sentinels: `__ALL__` makes every
-parcel eligible (full permit coverage); `__NONE__` makes it an appraisal-only run (no
-permit harvesting). **Empty/unset silently falls back to the commercial default list —
-always set it explicitly.**
+The value is a CSV of eligible transformed `property_usage_type` values, with two
+sentinels: `__ALL__` makes every parcel eligible (full permit coverage); `__NONE__` makes
+it an appraisal-only run (no permit harvesting). **Unset means `__NONE__`**: no portal
+traffic on a guessed policy, but also no permits. Set it explicitly for every county so
+the run harvests what you intend.
 
 Eligibility is computed **from the transformed output, not the seed row** — the usage
 type only exists after transform (`data/property.json` →
-`property_usage_type`). Concretely, the `Parcel` workflow's `writeEligibility` step reads
-the transformed artifact and persists `{eligible, usageType, policyFingerprint}` (the
-lib contract in `durable-workflow-builder`), which is why it runs post-transform and why
+`property_usage_type`). Concretely, the `Parcel` service's eligibility step reads the
+transformed artifact and persists `{eligible, usageType, policyFingerprint}`, which is
+why it runs post-transform and why
 `eligibility.json` appears alongside the transform outputs in the smoke test.
 
 ## 5. Smoke test
@@ -164,7 +189,7 @@ Run ONE parcel through the `Parcel` service via the Restate ingress. Use `send` 
 parcels), so a synchronous `call` would sit blocked on the curl.
 
 ```bash
-curl localhost:8080/restate/send/Parcel/process --json '{"county":"<county>","jobId":"smoke-1","parcel_id":"..."}'
+curl localhost:8080/Parcel/process/send --json '{"county":"<county>","jobId":"smoke-1","parcel_id":"..."}'
 ```
 
 Note the invocation id from the response, then check completion in the Web UI
@@ -172,9 +197,13 @@ Note the invocation id from the response, then check completion in the Web UI
 `curl localhost:8080/restate/invocation/<id>/attach` before walking the artifact
 checklist below.
 
-Verify in order: `capture.zip` → `transformed.zip` → validation pass → `ready.json` →
-`eligibility.json` under `data/artifacts/appraisal/<county>/smoke-1/<parcel_id>/` (`ls` or
-`find`), then the parcel's ledger record (status `ready`):
+Verify in order: `capture.zip` → `transformed.zip` + `transformed.meta.json` (Seed
+merged when the county transform emits none) → validation pass (`validate-findings.csv`)
+→ `ready.json` (with `dataGroups`) → `eligibility.json` under
+`data/artifacts/appraisal/<county>/smoke-1/<parcelKey>/` (`ls` or `find`; `<parcelKey>` is
+the parcel id or its filesystem-safe form). A `dead.json`, `invalid.json`, or
+`failed.json` instead carries the reason. Then check the parcel's ledger record
+(`parcel.status: "ready"`):
 
 ```bash
 curl localhost:8080/CountyLedger/<county>-smoke-1/get --json '{"parcel_id":"..."}'
@@ -193,11 +222,13 @@ one binary and need no Node, so the loop also runs in CI or a container as it is
 
 ## Deploying a fix
 
-Edit the code; in dev the services process restarts automatically (`npm run dev` runs tsx
-watch), and `--force` re-registration is fine while iterating. During a live run there is
+Edit the code; in dev the services process restarts automatically (`npm run dev` runs
+`node --watch services/app.ts`), and `npm run register -- --force` is fine while
+iterating. During a live run there is
 no "new deployment version" to hide behind — the pipeline is a single services process on
 one endpoint — so freeze the code. If a fix is unavoidable and replay-compatible (no
-journaled steps added/removed/reordered), apply it in place and `--force` re-register;
+journaled steps added/removed/reordered), apply it in place and
+`npm run register -- --force`;
 otherwise cancel the affected invocations and re-run them as a redrive pass on the new
 code — see `durable-workflow-builder` authoring rule 2.
 

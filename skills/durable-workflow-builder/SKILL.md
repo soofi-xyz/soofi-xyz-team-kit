@@ -1,31 +1,46 @@
 ---
 name: durable-workflow-builder
-description: "Author durable pipeline workflows for the skills/use-oracle/runtime project with Restate's TypeScript SDK — service topology, code skeletons, and the full pattern library (backpressure feeder, layered concurrency, deterministic keys, idempotent side effects, single-writer ledger, approval gates) distilled from running the previous county pipeline at full scale. Use when building or modifying pipeline workflows, adding a service or handler, choosing between workflow vs service vs virtual object, wiring retries, concurrency caps, or approval gates, or debugging stuck or paused invocations."
+description: "Author durable pipeline workflows for the skills/use-oracle/runtime project with Restate's TypeScript SDK — service topology, a code map of the shipped services, and the full pattern library (backpressure feeder, layered concurrency, deterministic keys, idempotent side effects, single-writer ledger, approval gates) distilled from running the previous county pipeline at full scale. Use when building or modifying pipeline workflows, adding a service or handler, choosing between workflow vs service vs virtual object, wiring retries, concurrency caps, or approval gates, or debugging stuck or paused invocations."
 metadata: {"author":"elephant-xyz"}
 ---
 # Durable Workflow Builder
 
 All pipeline orchestration lives in `skills/use-oracle/runtime/services/` as TypeScript
 Restate services in ONE Node process (`services/app.ts`, port 9080), registered with the
-local Restate server from `skills/use-oracle/runtime/local/compose.yaml` (ingress :8080,
-admin/UI :9070). Restate is the only run-state store: progress, retries, per-parcel
+local Restate server from `skills/use-oracle/runtime/docker-compose.yml` (ingress :8080,
+admin/UI :9070, loopback only). Restate is the only run-state store: progress, retries, per-parcel
 status, dedupe, and resume. Files under `DATA_DIR` (default
 `skills/use-oracle/runtime/data`) hold all data. There is no SQL database: no step writes
-rows. The shipped services are the source of truth; the skeletons below show the
-patterns to preserve when you change them. See `bootstrap-oracle-infra` for bring-up and
+rows. The shipped services and `services/README.md` are the source of truth; the code map
+below names the patterns to preserve when you change them. See `bootstrap-oracle-infra` for bring-up and
 `county-ingest-run` for operating a run.
 
 ## Topology
 
 | Name | Kind | Key | Handlers | Role |
 |---|---|---|---|---|
-| `CountyIngest` | workflow | `<county>-<jobId>` | `run({county, jobId, seedPath, chunkSize=10000, window=25})`, `status()` | Streams the seed, spawns `IngestChunk` children, then `PermitFeed`. Never enqueues the whole county. |
-| `IngestChunk` | workflow | `<county>-<jobId>-c<N>` | `run({county, jobId, rows, window})` | Dispatches `Parcel.process` in bounded windows. |
+| `CountyIngest` | workflow | `<county>-<jobId>[-rN]` | `run({county, jobId, seedPath, chunkSize=10000, window=25, startPermits=true, permitWindow?})`, `status()` | Indexes the seed once, runs one `IngestChunk` child per `chunkSize` rows (passing a seed byte range), then starts `PermitFeed` unless `startPermits: false`. Never enqueues the whole county. |
+| `IngestChunk` | workflow | `<CountyIngest key>-c<N>` | `run({county, jobId, rows \| seed, window})`, `status()` | Takes inline `rows` or a `seed` byte range; dispatches `Parcel.process` in bounded windows. |
 | `Parcel` | service | — | `process({county, jobId, parcel_id, source_identifier?, situs_address?, extra?})` | capture → transform → validate → ready marker → ledger record → eligibility. |
-| `CountyLedger` | virtual object | `<county>-<jobId>` | `record({parcel_id, stage, status, reason?, artifactHash?, transformVersion?})`, `get({parcel_id})`, `summary()` (shared), `list({status?, cursor?, limit?})` (shared) | Single writer of per-parcel status: `pending`, `ready`, `dead`, `invalid`, `failed`. Permit link results use `stage: "permits"`. |
-| `PermitFeed` | workflow | `<CountyIngest key>-permits` | `run({county, jobId, window})` | Walks eligibility and dispatches `PermitHarvest.harvestParcel` in bounded windows. |
-| `PermitHarvest` | service | — | `harvestParcel({county, jobId, parcel_id})` | Routes to the county's vendor adapters (`src/permits/adapters/*`), writes artifacts plus `status/<parcel>.json`, then records to the ledger. |
-| `PublishGroup` | workflow | `<county>-<group>-<jobId>` | `run({county, jobId, group, groupDir, atlasPage, state, fips})`, `approve({approvedBy})`, `reject({reason})`, `status()` | validate → hash → validate CAR → export-tables, waits on a durable promise for `approve`, then uploads CAR and tables with readback. Stops before the Atlas PR. |
+| `CountyLedger` | virtual object | `<county>-<jobId>` | `record({parcel_id, stage, status, reason?, artifactHash?, transformVersion?, detail?})`, `get({parcel_id})`, `summary()` (shared), `list({status?, cursor?, limit?, stage?})` (shared) | Single writer of per-parcel status. |
+| `PermitFeed` | workflow | `<CountyIngest key>-permits`; children `<PermitFeed key>-c<N>` | `run({county, jobId, window, chunkSize?})`, `status()` | Rebuilds the eligible index, then hands each `chunkSize` slice to a child run of the same workflow, which dispatches `PermitHarvest.harvestParcel` in bounded windows. |
+| `PermitHarvest` | service | — | `harvestParcel({county, jobId, parcel_id})` | Routes to the county's vendor adapters (`src/permits/adapters/*`), writes artifacts plus `status/<parcelKey>.json`, then records to the ledger. |
+| `PublishGroup` | workflow | `<county>-<group>-<jobId>` | `run({county, jobId, group, groupDir, atlasPage, state, fips})`, `approve({approvedBy, groupDigest?})`, `reject({reason})`, `status()` | validate → hash → validate CAR → export-tables, waits on the durable promise `approval`, then uploads CAR and tables with readback. Stops before the Atlas PR. |
+
+`CountyLedger` rules (`services/lib/ledger-state.ts`):
+
+- Stages: `capture`, `transform`, `validate`, `ready`, `eligibility` (the parcel entry)
+  and `permits` (a separate permit-link entry, so a permit outcome never changes the
+  appraisal status). Statuses: `pending`, `ready`, `dead`, `invalid`, `failed`.
+- `ready` requires `artifactHash` (sha256 of the validated `transformed.zip`) and
+  `transformVersion`; `dead`, `invalid`, and `failed` require a `reason`; `detail` is an
+  optional object. An identical re-record is a no-op.
+- A parcel that was ever ready and is now `dead`/`invalid` is a tombstone; a later
+  `ready` clears it. `summary()` returns counts, tombstones, and permit counts;
+  `list({stage: "permits"})` pages permit entries.
+- Permit mapping: harvest `done` → `ready` (reason `unlinked: N` when some permits are
+  unlinked); `blocked`, `unrouted`, `no_profile`, `not_eligible` → `dead`; `failed` →
+  `failed`. Transient permit failures throw and retry; they are never recorded.
 
 A redrive pass uses a new parent key `<county>-<jobId>-r<N>` with the SAME `jobId`
 payload: children and `PermitFeed` derive their keys from the parent key, while the
@@ -53,7 +68,7 @@ re-streaming, no watchdogs.
    deterministic paths with atomic tmp-file → rename, and steps skip work whose input
    hash and transform version already match.
 2. Never mutate a registered deployment under in-flight invocations — replay against
-   changed code corrupts journals. Local dev: `restate deployments register --force` and
+   changed code corrupts journals. Local dev: `npm run register -- --force` and
    wiping the `restate-data` volume are fine *until a real run is live*. This
    single-process topology has no second endpoint for a true new version, so during a
    live run: freeze code; ship an in-place fix ONLY if it is replay-compatible (no
@@ -64,166 +79,80 @@ re-streaming, no watchdogs.
    inactivity / 10 min abort** — a handler stuck inside one `ctx.run` longer than that is
    aborted and the step re-runs from its start, forever. For services with
    multi-minute steps (`Parcel` heavy captures, `PermitHarvest` detail-heavy parcels,
-   `PublishGroup` hash and upload), raise `inactivityTimeout`/`abortTimeout` in the
-   service definition's options (or per service via the UI/CLI config) AND split the work
-   into the smallest journaled steps that make sense.
+   `PublishGroup` hash and upload, `CountyIngest`/`PermitFeed` indexing) the service
+   options already raise `inactivityTimeout`/`abortTimeout`; tune them with
+   `{PARCEL,PERMIT,PUBLISH}_{INACTIVITY,ABORT}_TIMEOUT_MS`, and keep the work split into
+   the smallest journaled steps that make sense.
 
-## Skeleton
+## Code map
 
-`services/app.ts` — one endpoint binds everything:
+| File | What it holds |
+|---|---|
+| `services/app.ts` | One endpoint binding the seven services on `SERVICES_PORT` (9080). |
+| `services/county-ingest.ts` | `CountyIngest` + `IngestChunk`: key checks (`<county>-<jobId>[-rN]` else `TerminalError`), seed index in one `ctx.run`, a fail-fast check that the county has a transform and a capture route, child keys derived from the parent key. |
+| `services/parcel.ts`, `services/lib/parcel-flow.ts` | `Parcel.process` written against a small IO interface (`run` + `record`) so tests drive it with a fake. |
+| `services/lib/parcel-steps.ts` | Capture (plug-in or `elephant-cli prepare` on a seed ZIP), transform (+ Seed merge), validate, and the marker writers. |
+| `services/ledger.ts`, `services/lib/ledger-state.ts` | `CountyLedger` handlers over pure state transitions. |
+| `services/permits.ts`, `services/lib/permit-steps.ts` | `PermitFeed`, `PermitHarvest`, eligible index, ledger mapping. |
+| `services/publish.ts`, `services/lib/publish-flow.ts` | `PublishGroup` and its approval gate. |
+| `services/lib/reconcile.ts`, `bin/reconcile-county.mjs` | Completion gates, manifest, group assembly. |
+| `services/lib/limits.ts` | `countyGate(stage, county, fallback)` in-process semaphores (pattern 2). |
+| `services/lib/storage.ts`, `seed.ts`, `cli.ts`, `config.ts`, `county-config.ts` | `DATA_DIR` paths and safe keys, seed scan/range reads, CLI runner and identity, env and per-county resolution. |
 
-```ts
-import "dotenv/config";
-import * as restate from "@restatedev/restate-sdk";
-import { countyIngest, ingestChunk } from "./county-ingest";
-import { parcel } from "./parcel";
-import { countyLedger } from "./county-ledger";
-import { permitFeed, permitHarvest } from "./permit-harvest";
-import { publishGroup } from "./publish-group";
-
-restate.serve({
-  services: [countyIngest, ingestChunk, parcel, countyLedger, permitFeed,
-             permitHarvest, publishGroup],
-  port: 9080,
-});
-```
-
-`CountyIngest` streams the seed in chunk-sized slices and hands each slice to an
-`IngestChunk` child, so the parent journal grows by about one entry per chunk and each
-child journal stays ~10k entries:
+The window loop every feeder uses (from `IngestChunk`):
 
 ```ts
-export const countyIngest = restate.workflow({
-  name: "CountyIngest",
-  handlers: {
-    run: async (ctx: restate.WorkflowContext, req: RunReq) => {
-      const { county, jobId, seedPath, chunkSize = 10000, window = 25 } = req;
-      if (!SLUG.test(county) || !SLUG.test(jobId) ||
-          ![chunkSize, window].every((n) => Number.isInteger(n) && n > 0))
-        throw new TerminalError("invalid run request"); // invocation-level: never retried
-      const base = `${county}-${jobId}`;
-      if (ctx.key !== base && !new RegExp(`^${base}-r[1-9][0-9]*$`).test(ctx.key))
-        throw new TerminalError("workflow key must be <county>-<jobId>[-rN]");
-      // Index once (byte offsets next to the seed); each chunk read SEEKS, never rescans.
-      const total = await ctx.run("index-seed", () => buildSeedIndex(seedPath));
-      const chunks = Math.ceil(total / chunkSize);
-      ctx.set("chunks", chunks);
-      for (let c = 0; c < chunks; c++) {
-        const rows = await ctx.run(`read-c${c}`, () =>
-          readSeedBatch(seedPath, c * chunkSize, chunkSize));
-        await ctx.workflowClient(ingestChunk, `${ctx.key}-c${c}`)
-          .run({ county, jobId, rows, window });
-        ctx.set("chunksDone", c + 1);
-      }
-      // Appraisal dispatch done. Hand permits to the BOUNDED permit feeder — never one
-      // send per parcel from Parcel.process.
-      ctx.workflowSendClient(permitFeed, `${ctx.key}-permits`).run({ county, jobId, window });
-      return { county, jobId, total, chunks };
-    },
-    status: async (ctx: restate.WorkflowSharedContext) => ({
-      chunks: await ctx.get<number>("chunks"),
-      chunksDone: await ctx.get<number>("chunksDone"),
-    }),
-  },
-});
-
-export const ingestChunk = restate.workflow({
-  name: "IngestChunk",
-  handlers: {
-    run: async (ctx: restate.WorkflowContext, req: ChunkReq) => {
-      for (let i = 0; i < req.rows.length; i += req.window) {
-        await RestatePromise.all(req.rows.slice(i, i + req.window).map((row) =>
-          ctx.serviceClient(parcel).process(
-            { ...row, county: req.county, jobId: req.jobId }))); // canonical fields LAST
-      }
-      return {};
-    },
-  },
-});
+for (let start = 0; start < rows.length; start += window) {
+  const slice = rows.slice(start, start + window);
+  const results = await RestatePromise.all(
+    slice.map((row) => ctx.serviceClient(parcel).process(parcelPayload(row, req.county, req.jobId))),
+  );
+  // tally results; ctx.set("done", …) for status()
+}
 ```
 
-`Parcel.process` — every step a `ctx.run`; per-parcel conditions are recorded and
-returned, never thrown (pattern 5). The ledger record is the last write of each branch:
+`Parcel.process` step order (`parcel-flow.ts`) — per-parcel conditions are recorded and
+returned, never thrown (pattern 5):
 
-```ts
-export const parcel = restate.service({
-  name: "Parcel",
-  handlers: {
-    process: async (ctx: restate.Context, p: ParcelReq) => {
-      const dir = dataPath("artifacts", "appraisal", p.county, p.jobId, safeKeyPart(p.parcel_id));
-      const ledger = ctx.objectSendClient(countyLedger, `${p.county}-${p.jobId}`);
-      const captured = await ctx.run("capture", () => skipIfExists(`${dir}/capture.zip`, () =>
-        countyGate("prepare", p.county, 8)(() => capture(p, `${dir}/capture.zip`)))); // false ⇒ gone
-      if (!captured) {
-        await ctx.run("record-dead", () => markDead(dir, "gone-at-source")); // removes ready.json
-        ledger.record({ parcel_id: p.parcel_id, stage: "appraisal", status: "dead",
-                        reason: "gone-at-source" });
-        return { parcel_id: p.parcel_id, status: "dead" };
-      }
-      // Transform from the stored capture; skips only when capture hash AND transform
-      // version match; removes ready.json before regenerating.
-      const t = await ctx.run("transform", () => countyGate("transform", p.county, 16)(() =>
-        transform({ county: p.county, src: `${dir}/capture.zip`, dest: `${dir}/transformed.zip` })));
-      const v = await ctx.run("validate", () => validate(`${dir}/transformed.zip`)); // exit 0 only
-      if (!v.valid) {
-        await ctx.run("record-invalid", () => markInvalid(dir, v.errors)); // removes ready.json
-        ledger.record({ parcel_id: p.parcel_id, stage: "appraisal", status: "invalid",
-                        reason: v.summary, transformVersion: t.transformVersion });
-        return { parcel_id: p.parcel_id, status: "invalid" };
-      }
-      const ready = await ctx.run("mark-ready", () => writeReady(dir, t)); // clears dead/invalid
-      ledger.record({ parcel_id: p.parcel_id, stage: "appraisal", status: "ready",
-                      artifactHash: ready.transformedHash, transformVersion: ready.transformVersion });
-      const eligibility = await ctx.run("eligibility", () =>
-        writeEligibility(`${dir}/eligibility.json`, `${dir}/transformed.zip`, p));
-      return { parcel_id: p.parcel_id, status: "ready", eligibility };
-    },
-  },
-});
-```
+1. `record({stage: "capture", status: "pending"})`.
+2. `capture` under `countyGate("prepare", county, 4)`. `dead` (gone at source) or
+   `failed` writes `dead.json`/`failed.json` and records `capture`.
+3. `transform` under `countyGate("transform", county, 8)` from the stored capture; skipped
+   when capture hash and transform version match. Failure writes `failed.json` and records
+   `transform`/`failed`.
+4. `validate` (`elephant-cli validate --output-csv validate-findings.csv`); only exit 0
+   passes. Exit 1 writes `invalid.json` and records `validate`/`invalid`.
+5. `mark-ready` writes `ready.json` (`parcel_id`, `captureHash`, `transformVersion`,
+   `transformedHash`, `validatedAt`, `cli {version, commit}`, `dataGroups`) and clears
+   stale `dead`/`invalid`/`failed` markers.
+6. `record({stage: "ready", status: "ready", artifactHash, transformVersion})`.
+7. `eligibility` from the transformed output. No permit dispatch here: `PermitFeed`
+   walks eligibility in its own bounded windows.
 
-Capture is pluggable per county: `src/counties/<county>/capture.mjs` may export
-`capture({parcel_id, ...}, ctx)` for a custom browser capture (qPublic and similar);
-otherwise `capture()` runs `elephant-cli prepare` with the county's flow/config.
+Elephant CLI exit codes: 0 passed, 1 the input failed, 2 the command could not run. On
+exit 2 the message decides: HTTP 404/410 from the source → `dead`; a network-shaped
+failure (connection, timeout, DNS, 5xx, schema fetch) → throw and retry; anything else →
+`failed` (capture/transform) or `invalid` (validate). The v2 alpha prints no build
+commit, so set `ELEPHANT_CLI_COMMIT` to record it in ready markers.
 
-`CountyLedger` stores one small JSON status per parcel (paths and hashes only — never
-file contents, pattern 6), keeps per-status counters for `summary()`, and accepts
-`record` idempotently: the same `(parcel_id, stage, status, artifactHash)` twice is a
-no-op. `PermitFeed` is the permit-side twin of the feeder: it rebuilds an eligible-list
-index (`data/artifacts/permits/<county>/<jobId>/eligible.idx`) atomically on EVERY pass,
-stamped with the eligibility-policy fingerprint; records and skips a malformed
-`eligibility.json` instead of throwing; and dispatches `PermitHarvest.harvestParcel` in
-bounded windows. Permit portal modules live in `county-permit-adapter`.
+Capture is pluggable per county: `src/counties/<county>/capture.mjs` (or
+`CAPTURE_MODULE_<COUNTY>`) exporting `capture(input, ctx)` wins; it writes the prepared
+ZIP to `input.dest` and returns `{status: "captured"}` or `{status: "dead", reason}`.
+Otherwise `elephant-cli prepare` runs on a seed ZIP built from the row (`source_url`
+column or `PREPARE_URL_TEMPLATE_<COUNTY>`) with the county flow settings. Transform
+uses `TRANSFORM_ZIP_<COUNTY>` or `counties/<county>/transform-v2.zip`, else the scripts
+directory; when the county output has no Seed root, the CLI seed-mode output is merged
+in (`TRANSFORM_SEED_<COUNTY>=off` disables it), because `hash` needs Seed in every
+property.
 
-**Lib contracts** — the shipped helpers keep these signatures; `npm test` in
-`skills/use-oracle/runtime` must pass after any change:
+`PermitFeed` rebuilds its eligible index on every pass under
+`data/artifacts/permits/<county>/<jobId>/eligible/<PermitFeed key>/c<N>.json`, stamped
+with the eligibility-policy fingerprint; it records and skips a malformed
+`eligibility.json` instead of throwing. Permit portal modules live in
+`county-permit-adapter`.
 
-```ts
-// storage
-dataPath(...parts: string[]): string   // joins under DATA_DIR; rejects absolute + traversal
-buildSeedIndex(seedPath: string): Promise<number>  // writes <seed>.idx; returns row count
-readSeedBatch(seedPath: string, offset: number, limit: number): Promise<SeedRow[]> // seeks
-safeKeyPart(s: string): string         // fs-safe; collision-safe (short hash suffix)
-// SeedRow: parcel_id REQUIRED; source_identifier falls back to parcel_id; extra columns
-// flow through untouched; identifiers stay strings (leading zeros and letters kept).
-
-// parcel steps
-capture(p, dest: string): Promise<boolean>   // false = gone at source
-transform(req): Promise<{ captureHash: string; transformVersion: string }>
-validate(path: string): Promise<{ valid: boolean; errors?: unknown; summary?: string }>
-writeReady(dir: string, t): Promise<ReadyMarker>
-  // ready.json = {parcel_id, captureHash, transformVersion, transformedHash, validatedAt,
-  //               cli: {version, commit}}; written only after validate exit 0
-markDead(dir: string, reason: string): Promise<void>      // dead.json; removes ready.json
-markInvalid(dir: string, errors: unknown): Promise<void>  // invalid.json; removes ready.json
-writeEligibility(dest: string, transformedPath: string, p): Promise<{ eligible: boolean }>
-  // reads usage type FROM THE TRANSFORMED OUTPUT; persists { eligible, usageType,
-  // policyFingerprint }
-```
-
-Propose the experimental Elephant CLI 2 for capture, transform, and validate (skill
-`migrate-elephant-cli-v2`): one binary with `prepare` and `transform` built in, run with
-`--json`; exit 0 passed, 1 the input failed, 2 the command could not run. `ELEPHANT_CLI`
-points at the binary.
+Run `npm test` in `skills/use-oracle/runtime` (it typechecks the services first) after
+any change. Propose the experimental Elephant CLI 2 for capture, transform, and validate
+(skill `migrate-elephant-cli-v2`); `ELEPHANT_CLI` points at the binary.
 
 See the full pattern library in [`reference/pattern-library.md`](./reference/pattern-library.md).
