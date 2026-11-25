@@ -128,7 +128,22 @@ the source.
   - data: the dashboard renderer's table, chart, KPI, bar list, funnel,
     heatmap, county map, form and job-status components, restyled;
   - drawing parts for custom visuals: bars, segments, grid cells and axes, so
-    most new visuals need no new component and no raw SVG.
+    most new visuals need no new component and no raw SVG;
+  - messages (runtime 1.41.0): `FilledText` (message text with highlighted,
+    linked and missing variables), `SmsPreview` (a text message in a phone
+    frame, with its length in texts), `EmailPreview` (From, To, subject and
+    body), `Inbox` (selectable replies with channel and intent),
+    `ConversationThread` (sent and received messages with the deciding words
+    marked) and `FactsList` (labels with their values, side by side or
+    stacked). The message bubble is shadcn's `Bubble`;
+  - content (runtime 1.42.0): `CodeBlock` (scrolling code with a copy button;
+    shadcn's code-block), a step bar with phases on `Carousel`, `SectionDots`
+    and `SkipLink` (page navigation), `RuleCard` (a rule with its source,
+    check and approval), `RatingReasons` (a high, medium or low band with the
+    reasons behind it), `PersonChip` (`Avatar` with a name; no photos),
+    `LogoRow` (logos joined by "&"), `CaseCard` (a titled case with a status
+    and its facts) and `SlideSection` (a full-screen section with a next
+    button). Use `OrgChart` for a team diagram; there is no people group.
 - **Public props.** Give no component a `className`, a `style` or a DOM
   reference. Offer variants as a closed, typed list: an unknown variant
   fails compilation, with no free-string names and no silent fall-through to a
@@ -488,16 +503,31 @@ checked by a test or a type check.
   public HTML entry, so `CS-1` holds even though it reads no data. Pack sections
   (1.33.0) mount there too, after the base sections, only for a signed-in session;
   see the [component packs rules](#component-packs-implementation-rules).
+- **Origin names.** Before recording a component as "Console's own", look for
+  its name in shadcn's registry at the pinned revision; `DS-5` refuses a name
+  shadcn has (`message`, `bubble` and `code-block` are taken). Start from that
+  shadcn item instead, or pick a name it lacks.
 - **Tests.** DS checks live in `e2e/design-system.spec.ts` (fixtures project) and
   `test/design-system.test.ts`, named by ID. Drive keyboard checks with keys
   that behave the same on macOS and Linux: ArrowRight (not End) to collapse a
-  text selection, type-ahead (not ArrowDown) on a native select.
+  text selection, type-ahead (not ArrowDown) on a native select. Locally,
+  `pnpm test:e2e` reuses a server already listening on ports 4173–4192; when
+  several checkouts run at once, run a component's checks from a temporary
+  Playwright config on a free port and leave the full suite to CI.
 - **Baselines.** Screenshots are per platform in
   `e2e/design-system.spec.ts-snapshots/`; pack sections' (`CP-5`) are Linux-only
   in `e2e/component-packs.packs.spec.ts-snapshots/`. After an intended visual change,
   refresh `*-darwin.png` locally with `--update-snapshots` and `*-linux.png` from
   the **Design-system baselines** workflow artifact, and commit both. Never
   loosen a comparison threshold to make a baseline pass.
+- **Gallery order.** The gallery draws sections in `componentNames` order, so
+  add a new component at the end of the list. Inserting one in the middle moves
+  every section below it, often by a fraction of a pixel, and breaks their
+  baselines. A new component then commits only its own baselines; if a
+  baselines run changes another component's file, fix the cause and do not
+  commit the refresh. A mask or filter that creates a compositing layer can
+  still change neighbours' text rendering on Linux; draw fades as an overlay
+  instead.
 
 Applications cannot choose a token set from their manifest. An environment's
 tokens are chosen by its [design-system configuration](#design-system-configuration-implementation-rules)

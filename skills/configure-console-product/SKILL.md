@@ -45,8 +45,11 @@ The person understands the business, not software. Use plain words.
 2. Write the answer back as a short list of pages: what each shows and what a
    person can change on it. Wait for a yes.
 3. Map each page to existing design-system components and to registered data
-   operations before writing code. List what is missing; send each missing item as
-   a request (step 3.6) and tell the person which pages wait on it.
+   operations before writing code. When rebuilding an existing page or
+   prototype, use the matching component listed under
+   [Console's own components](../build-console-product/reference/design-system.md#design-system)
+   instead of copying its HTML. List what is missing; send each missing item as a request (step 3.6) and tell
+   the person which pages wait on it.
 
 ## 3. Build the app
 
