@@ -184,8 +184,14 @@ archive keeps the group plus its Seed root, and `seed` is rejected as a group).
 validate CAR → export-tables durably, then wait in phase `awaiting-approval`. Read
 `status()` for the `groupDigest`, then call `approve({approvedBy, groupDigest})` (a
 supplied digest must match) or `reject({reason})`; both are refused in any other phase.
-After approval it uploads with readback. It rejects group `seed`. It stops before the
-Atlas PR; open the PR yourself as below:
+Before approval, `export-tables --atlas-page` writes only a STAGED copy of the county
+page (`status().atlasPage.staged`, under `data/publish/<county>/<jobId>/<group>/atlas/`);
+the given Atlas checkout is untouched. After approval it uploads with readback, then
+copies the staged page onto `atlasPage` — and fails if that checkout page changed after
+export (rerun under a new key). It rejects group `seed`. It stops before the Atlas PR;
+open the PR yourself as below. Today only the County group (or another
+appraisal-transform group) is publishable this way: no Restate stage yet turns permit
+artifacts into a `property_improvement` group, nor emits official identity edges.
 
 ```bash
 curl localhost:8080/PublishGroup/<county>-<group>-<jobId>/run/send --json \

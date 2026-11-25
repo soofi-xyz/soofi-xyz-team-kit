@@ -93,20 +93,23 @@ it — they write artifacts at deterministic paths, then send one `record`. Diff
 counties and jobs have different keys and run in parallel. Read handlers (`get`,
 `summary`, `list`) are `shared`, so monitoring never queues behind writes. `record`
 rejects bad input with a `TerminalError`: unknown stage or status, `ready` without a
-sha256 `artifactHash` and `transformVersion`, or `dead`/`invalid`/`failed` without a
-`reason`. State is one small entry per parcel (`p:<parcel_id>`, `permit:<parcel_id>`)
+sha256 `artifactHash` and `transformVersion`, `dead`/`invalid`/`failed`/`blocked` without a
+`reason`, or `blocked` outside `stage: "permits"`. State is one small entry per parcel (`p:<parcel_id>`, `permit:<parcel_id>`)
 plus counters, loaded lazily (pattern 6); `list` pages with a cursor. Restate keeps finished state only for its retention window, so
 `bin/reconcile-county.mjs` writes the durable per-run manifest
 (`data/runs/<county>/<jobId>/manifest.json`) from the ledger plus the files; prefer the
 Restate admin SQL query API for bulk ledger reads and fall back to `summary` + `list`.
 
 **9. Human approval as a durable promise.** `PublishGroup` (workflow keyed
-`<county>-<group>-<jobId>`) runs validate → hash → validate CAR → export-tables, then
-awaits the durable promise `approval`, resolved by `approve({approvedBy, groupDigest?})`
+`<county>-<group>-<jobId>`) runs validate → hash → validate CAR → export-tables (the
+Atlas page entry goes to a staged copy under `data/publish/…/atlas/`, never the
+checkout), then awaits the durable promise `approval`, resolved by `approve({approvedBy, groupDigest?})`
 or `reject({reason})`. Both are accepted only in phase `awaiting-approval`;
 `approvedBy` and `reason` are required, and a supplied `groupDigest` must equal the
 validated group's digest from `status()`. A changed group needs a new workflow key. Only after approval does it upload the CAR and
-tables with readback. It stops before the Atlas PR, which stays a human/agent `gh` step.
+tables with readback, then copy the staged page onto the Atlas checkout path — refused
+when that page changed after export. It stops before the Atlas PR, which stays a
+human/agent `gh` step.
 No "missing parameter means approved" convention.
 
 **10. Self-scheduling reconciliation loop.** Recurring internal work is a virtual-object
@@ -135,7 +138,10 @@ old pipeline, in filesystem form.
 `find data/artifacts/appraisal/<county>/<jobId> -name transformed.zip | wc -l`.
 
 **14. Raw-first capture.** Always store the raw capture next to the extraction so
-re-transform never re-scrapes. Transform reads `capture.zip`, never a live page.
+re-transform never re-scrapes. Transform reads `capture.zip`, never a live page. Keep the
+capture's `source_http_request` whole (base URL + `multiValueQueryString`, `json`/`body`
++ `content-type`): every derived group, the Seed group included, must carry the parcel's
+own request, never a bare base URL shared by every parcel.
 
 **15. 48-hour source-feasibility gate.** Probe source throughput before any full run
 (pilot of ~100 parcels; measure latency, failure rate, safe concurrency). If full

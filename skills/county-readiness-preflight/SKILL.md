@@ -56,7 +56,11 @@ failure modes, not a list of special counties:
    PASS requires `orchestrator: restate`, `services_registered: true`, and
    `verified_at`. When `publication.in_scope` is true, `upload_node` must name the
    publicly reachable node. A leftover `destination:` section from the retired Query DB
-   only adds a non-blocking WARN; delete it.
+   only adds a non-blocking WARN; delete it. The catalog alone is a claim: run with
+   `--probe` before a pilot or full run so the gate also queries
+   `<restate_admin_url>/services` and BLOCKS unless all seven services (`CountyIngest`,
+   `IngestChunk`, `Parcel`, `CountyLedger`, `PermitFeed`, `PermitHarvest`,
+   `PublishGroup`) are registered.
 5. **Blocked, custodian-only, and manual-only permit rows need a complete
    `records_request`.** Name the recipient office, portal or email, system/date scope,
    and `api-first` or `records-first`. “Request a bulk export” without a recipient is
@@ -70,7 +74,13 @@ failure modes, not a list of special counties:
 ```bash
 python3 skills/use-oracle/scripts/validate-county-readiness.py \
   skills/use-oracle/runtime/docs/<county>-sources.yaml
+# live stack check (admin URL from stack.restate_admin_url, or override it):
+python3 skills/use-oracle/scripts/validate-county-readiness.py --probe \
+  [--restate-admin-url http://localhost:19070] \
+  skills/use-oracle/runtime/docs/<county>-sources.yaml
 ```
+
+`--self-test` stays offline (the probe is exercised with an injected response).
 
 Exit **0** only when `overall` is `PASS` and `seed_allowed` / `ingest_allowed` are true.
 Exit **1** when any gate is `BLOCKED` (or the catalog file is missing). Print the JSON

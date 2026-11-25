@@ -65,7 +65,8 @@ data/publish/<county>/<jobId>/<group>/                                      # ha
 `docker-compose.yml` runs one service: `restatedev/restate:1.7.2` with ingress and
 admin/UI bound to loopback (`127.0.0.1:${RESTATE_INGRESS_PORT:-8080}` and
 `127.0.0.1:${RESTATE_ADMIN_PORT:-9070}`), the `restate-data` volume, `extra_hosts:
-["host.docker.internal:host-gateway"]`, a fixed `RESTATE_NODE_NAME`, and
+["host.docker.internal:host-gateway"]`, `RESTATE_NODE_NAME` (default `restate-1`,
+override only to adopt a volume created under another name), and
 `restart: unless-stopped`; the project name is `${COMPOSE_PROJECT_NAME:-oracle-local}`.
 Keep the node name stable — a changed identity breaks restoring the persisted
 `restate-data` volume.
@@ -81,12 +82,15 @@ scripts load it with `node --env-file-if-exists=.env`. Per-county names take the
 | `DATA_DIR` | Data root; relative paths resolve against `skills/use-oracle/runtime` (default `data`). |
 | `ELEPHANT_CLI`, `ELEPHANT_CLI_COMMIT` | CLI binary (Elephant CLI 2 preferred). Set the commit when the binary prints none (the v2 alpha does not), so ready markers and gates record it. |
 | `SERVICES_PORT`, `SERVICES_URL` | Services process port (9080) and the URI `npm run register` registers (default `http://host.docker.internal:9080`). |
+| `SERVICES_HOST` | Listen addresses. `auto` (default): `127.0.0.1` plus the Docker default-bridge gateway (`docker0`, usually `172.17.0.1`), where `host.docker.internal:host-gateway` lands from the compose Restate on Linux — never the public interfaces. `127.0.0.1` when Restate runs on the host; `0.0.0.0` only with identity keys. |
+| `RESTATE_IDENTITY_KEYS` | Optional hardening: the `publickeyv1_…` key(s) Restate logs at startup when it has a request-identity private key; unsigned requests then get 401. |
 | `RESTATE_ADMIN_URL`, `RESTATE_INGRESS_URL` | Admin (9070) and ingress (8080) URLs for register and reconcile. |
 | `COMPOSE_PROJECT_NAME`, `RESTATE_INGRESS_PORT`, `RESTATE_ADMIN_PORT` | Compose overrides when another stack holds the default ports. |
 | `CONCURRENCY_PREPARE[_<COUNTY>]`, `CONCURRENCY_TRANSFORM[_<COUNTY>]`, `CONCURRENCY_PERMIT_<ADAPTER>` | In-process gates (`durable-workflow-builder` pattern 2); restart the services process to apply. |
-| `CAPTURE_MODULE_<COUNTY>`, `PREPARE_URL_TEMPLATE_<COUNTY>`, `PREPARE_{MULTI_REQUEST_FLOW,BROWSER_FLOW,BROWSER_FLOW_ZIP,USE_BROWSER,CONTINUE_BUTTON,IGNORE_CAPTCHA,PROXY}_<COUNTY>` | Capture route; see `county-appraisal-onboarding`. |
+| `CAPTURE_MODULE_<COUNTY>`, `CAPTURE_TIMEOUT_MS[_<COUNTY>]`, `PREPARE_{URL_TEMPLATE,METHOD,JSON_TEMPLATE,BODY_TEMPLATE,CONTENT_TYPE}_<COUNTY>`, `PREPARE_{MULTI_REQUEST_FLOW,BROWSER_FLOW,BROWSER_FLOW_ZIP,USE_BROWSER,CONTINUE_BUTTON,IGNORE_CAPTCHA,PROXY}_<COUNTY>` | Capture route and source request; see `county-appraisal-onboarding`. |
 | `TRANSFORM_{ZIP,SCRIPTS_DIR,DATA_GROUP,SEED}_<COUNTY>`, `COUNTY_NAME_<COUNTY>` | Transform package, data-group label, Seed merge (`off` disables), display name. |
 | `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES[_<COUNTY>]` | Permit eligibility: CSV of usage types, `__ALL__`, or `__NONE__`. Unset means `__NONE__` (appraisal only); set it explicitly anyway. |
+| `PERMIT_BULK_DIR_<COUNTY>`, `PERMIT_ROUTING_MODULE_<COUNTY>`, `PERMIT_{TIMEOUT_MS,MAX_ATTEMPTS,CHROMIUM_PATH,HEADLESS,ADAPTER_OPTIONS}_<COUNTY>` | Permit bulk snapshots, routing hook and adapter options; see `county-permit-adapter`. |
 | `{PARCEL,PERMIT,PUBLISH}_{INACTIVITY,ABORT}_TIMEOUT_MS` | Long-step Restate timeouts (defaults 15/45 min, 20/60 min, 60/360 min). |
 | `IPFS_API`, `IPFS_API_TOKEN`, `ELEPHANT_CAR_GATEWAY`, `FILEBASE_*` | Upload credentials, only when publication is in scope. Never print them. |
 
@@ -125,7 +129,19 @@ npm run register -- --force                         # after handler changes (dev
 `npm run register` exits non-zero and lists `missing` unless every service is visible:
 `CountyIngest`, `IngestChunk`, `Parcel`, `CountyLedger`, `PermitFeed`, `PermitHarvest`,
 `PublishGroup`. `restate deployments register <uri>` and `restate services list` are
-equivalent when the restate CLI is installed.
+equivalent when the restate CLI is installed. With the default `SERVICES_HOST=auto` the
+compose Restate reaches the endpoint through `host.docker.internal` → the docker0
+gateway; if registration reports `Connection refused`, check the services log line
+`oracle_services_listening` for its `hosts` (docker0 must be listed) or set
+`SERVICES_HOST` to the bridge gateway (`docker network inspect bridge`).
+
+Optional request identity: generate an ed25519 key
+(`openssl genpkey -algorithm ed25519 -out request-identity.pem`), mount it into the
+Restate container with a compose override file setting
+`RESTATE_REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE=/identity/request-identity.pem`, read the
+`publickeyv1_…` key Restate logs at startup, set `RESTATE_IDENTITY_KEYS` to it, restart
+the services process, and `npm run register -- --force`. Required before
+`SERVICES_HOST=0.0.0.0`.
 
 The long-step services already raise their timeouts (`Parcel`, `PermitHarvest`,
 `PublishGroup`, plus `CountyIngest`/`PermitFeed` for indexing); tune them with the
@@ -139,7 +155,8 @@ on. Do NOT unset the policy — unset means unlimited retries and nothing ever p
 ## Record the stack proof
 
 After `npm run register` reports no missing services, write the proof into the county catalog
-`skills/use-oracle/runtime/docs/<county>-sources.yaml` for `county-readiness-preflight`:
+`skills/use-oracle/runtime/docs/<county>-sources.yaml` for `county-readiness-preflight`
+(whose `--probe` flag re-checks the seven services on `restate_admin_url` itself):
 
 ```yaml
 stack:

@@ -68,16 +68,20 @@ validated group directories.
 ## Run tracking
 
 - Stack: Restate only (`skills/use-oracle/runtime/docker-compose.yml`, loopback ingress
-  :8080, admin :9070) plus one services process (`npm run services`, :9080) registered
+  :8080, admin :9070) plus one services process (`npm run services`, :9080, bound to
+  loopback and the Docker bridge gateway; optional `RESTATE_IDENTITY_KEYS`) registered
   with `npm run register`. Bring it up and record the readiness `stack` section with
   `bootstrap-oracle-infra`; `services/README.md` is the runtime reference.
 - Services: `CountyIngest` (`<county>-<jobId>[-rN]`) → `IngestChunk` → `Parcel`;
   `CountyLedger` (`<county>-<jobId>`) is the single writer of per-parcel status
-  (`pending`, `ready`, `dead`, `invalid`, `failed`; permits under `stage: "permits"`);
-  `PermitFeed` (and its `-c<N>` child runs) → `PermitHarvest`; `PublishGroup`
-  (`<county>-<group>-<jobId>`) runs validate → hash → validate CAR → export-tables, waits
-  in `awaiting-approval` for `approve({approvedBy, groupDigest?})`, uploads with readback,
-  and stops before the Atlas PR.
+  (`pending`, `ready`, `dead`, `invalid`, `failed`; permits under `stage: "permits"`,
+  where `blocked` is a blocked source); `PermitFeed` (and its `-c<N>` child runs) →
+  `PermitHarvest`; `PublishGroup` (`<county>-<group>-<jobId>`) runs validate → hash →
+  validate CAR → export-tables onto a staged Atlas page, waits in `awaiting-approval`
+  for `approve({approvedBy, groupDigest?})`, uploads with readback, copies the staged
+  page onto the Atlas checkout only then, and stops before the Atlas PR. Only the County
+  group is publishable this way today; no stage yet produces a `property_improvement`
+  group.
 - Files live under `DATA_DIR`: `artifacts/appraisal|permits/<county>/<jobId>/`,
   `runs/<county>/<jobId>/manifest.json`, `groups/<county>/<jobId>/<group>/`, and
   `publish/<county>/<jobId>/<group>/`.
@@ -98,7 +102,8 @@ run `elephant-county capture-raw`, return the body byte-for-byte, keep the recei
 separate, and stop. Do not continue into the pipeline below.
 
 1. Run `onboard-county` intake, `county-discovery`, and
-   `county-readiness-preflight`. Stop seed, pilot, and full ingest on a non-zero gate.
+   `county-readiness-preflight` (with `--probe` once the stack is up). Stop seed, pilot,
+   and full ingest on a non-zero gate.
 2. Build the parcel backbone with `county-seed-data`,
    `county-appraisal-onboarding`, and `build-county-transform`.
 3. Load the official corporate registry and licensing authority before writing
@@ -127,8 +132,8 @@ separate, and stop. Do not continue into the pipeline below.
    `ledger_files_agree`, `permits_linked` (every harvested permit linked to its requested
    parcel or unlinked with a reason), `permits_complete`, and `tombstones_excluded`. Require versioned official identity
    relationship files, roof-age lineage, and separate enrichment coverage. The runtime
-   does not yet generate identity relationship files or roof-age estimates from a
-   pipeline run (`county-ingest-run` §6 and `roof-age-and-identity-reingest.md` list the
+   does not yet generate identity relationship files, a publishable
+   `property_improvement` group, or roof-age estimates from a pipeline run (`county-ingest-run` §6 and `roof-age-and-identity-reingest.md` list the
    gaps): produce them with a reviewed, versioned step or report them as not generated.
    Keep the run manifest. This step does not publish.
 6. For HOA name, fee, or frequency work, run the playbook in

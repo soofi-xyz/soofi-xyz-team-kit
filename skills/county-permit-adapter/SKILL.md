@@ -42,9 +42,15 @@ parcel would queue the whole eligible county.
 
 **Jurisdiction routing.** A county spans dozens of municipal jurisdictions and
 potentially SEVERAL permit vendors — the sources catalog models exactly this.
-`PermitHarvest` loads the county permit profile, resolves each parcel's jurisdiction
-from the routing fields in `eligibility.json` (situs city or address), and dispatches to
-the matching adapter — multiple adapters per county are normal. A county with no profile
+`PermitHarvest` loads the county permit profile, resolves each parcel's jurisdiction,
+and dispatches to the matching adapter — multiple adapters per county are normal.
+Routing order: the county routing hook
+`src/counties/<county>/permit-routing.mjs` (or `PERMIT_ROUTING_MODULE_<COUNTY>`)
+exporting `resolveJurisdiction({seedRow, routing, profile})`, which returns a
+permit-profile jurisdiction key from any seed column (tax district, municipality code)
+or null; then the default city routing on `eligibility.json` (seed `city`,
+`situs_city`, `address_city`, then the situs address). `eligibility.json` keeps the full
+seed row for the hook. A county with no profile
 records `no_profile`; an ambiguous or unmatched jurisdiction records `unrouted` (falling
 back to the county-level portal only when the profile defines one); a parcel that is not
 ready or not eligible records `not_eligible`. Per-jurisdiction coverage lives in the
@@ -160,8 +166,10 @@ When deep permit enrichment exceeds local single-IP bandwidth (e.g. 500k+ permit
    Adapters write `{raw,extracted,status}/<jurisdiction>/<key>.json`; `PermitHarvest`
    adds `status/<parcelKey>.json` (every permit `linked` or `unlinked` with a reason),
    then records to the `CountyLedger` (key `<county>-<jobId>`) under `stage: "permits"`:
-   `done` → `ready` (reason `unlinked: N` when some permits are unlinked); `blocked`,
-   `unrouted`, `no_profile`, `not_eligible` → `dead`; `failed` → `failed`. A transient
+   `done` → `ready` (reason `unlinked: N` when some permits are unlinked); `blocked`
+   (the jurisdiction's source is blocked or unavailable: harvestable later) →
+   `blocked`, reported per jurisdiction apart from dead parcels; `unrouted`,
+   `no_profile`, `not_eligible` → `dead`; `failed` → `failed`. A transient
    failure is never recorded: the handler throws, retries with backoff, then pauses. It writes no
    SQL and publishes nothing. Atlas publication begins only after group validation.
 5. **Permit → parcel link** — map extracted permits to lexicon permit output
@@ -176,6 +184,27 @@ When deep permit enrichment exceeds local single-IP bandwidth (e.g. 500k+ permit
 6. **Browser session where required** — some portals block curl entirely (Palm Beach's
    ePZB guest endpoints need a Playwright/Puppeteer session bootstrap first). Session
    setup belongs in the module; keep it reusable across parcels.
+
+**Adapter options and bulk snapshots.** `PermitHarvest` passes the county's options to
+every adapter: the profile's `countyKey`/`countyName`, `PERMIT_TIMEOUT_MS_<COUNTY>`,
+`PERMIT_MAX_ATTEMPTS_<COUNTY>`, `PERMIT_CHROMIUM_PATH_<COUNTY>` (else
+`CHROME_EXECUTABLE_PATH`), `PERMIT_HEADLESS_<COUNTY>`, and
+`PERMIT_ADAPTER_OPTIONS_<COUNTY>` (a JSON object of scalars). When a source is better
+enumerated once than searched per parcel (a bulk export, a GIS extract behind a
+login-gated portal), write it as a linked snapshot and point
+`PERMIT_BULK_DIR_<COUNTY>` (DATA_DIR-relative or absolute) at it:
+
+```
+<bulkDir>/<jurisdiction key or adapter-route key>/
+  linked-permits.jsonl   # one normalized permit record per line, bound to its parcel_identifier
+  summary.json           # {jurisdictionKey, routeKey?, adapterKey?, snapshotSha256?, completedAt?}
+```
+
+`PermitHarvest` then reads each parcel's records from the snapshot (no portal traffic,
+same raw/extracted/status artifacts, a fingerprint over the linked file for resume) and
+falls back to the live adapter for a jurisdiction without one; a blocked primary portal
+is still covered by its snapshot. Link records to parcels inside the snapshot tool with
+the same rules as live harvest (exact parcel first); never guess.
 
 Artifact layout: `data/artifacts/permits/<county>/<jobId>/{raw,extracted,status}/…`.
 Accela date-window backfills also write a vendor-specific `permit-lists/` dir beside

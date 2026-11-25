@@ -6,7 +6,8 @@ metadata: {"author":"elephant-xyz"}
 # Durable Workflow Builder
 
 All pipeline orchestration lives in `skills/use-oracle/runtime/services/` as TypeScript
-Restate services in ONE Node process (`services/app.ts`, port 9080), registered with the
+Restate services in ONE Node process (`services/app.ts`, port 9080, bound to loopback
+plus the Docker bridge gateway by default — `SERVICES_HOST`), registered with the
 local Restate server from `skills/use-oracle/runtime/docker-compose.yml` (ingress :8080,
 admin/UI :9070, loopback only). Restate is the only run-state store: progress, retries, per-parcel
 status, dedupe, and resume. Files under `DATA_DIR` (default
@@ -19,28 +20,31 @@ below names the patterns to preserve when you change them. See `bootstrap-oracle
 
 | Name | Kind | Key | Handlers | Role |
 |---|---|---|---|---|
-| `CountyIngest` | workflow | `<county>-<jobId>[-rN]` | `run({county, jobId, seedPath, chunkSize=10000, window=25, startPermits=true, permitWindow?})`, `status()` | Indexes the seed once, runs one `IngestChunk` child per `chunkSize` rows (passing a seed byte range), then starts `PermitFeed` unless `startPermits: false`. Never enqueues the whole county. |
+| `CountyIngest` | workflow | `<county>-<jobId>[-rN]` | `run({county, jobId, seedPath, chunkSize=10000, window=25, startPermits=true, permitWindow?})`, `status()` | Indexes the seed once, runs one `IngestChunk` child per `chunkSize` rows (passing a seed byte range), then runs and awaits `PermitFeed` unless `startPermits: false`; `status()` phase `indexing` → `appraisal` → `permits` → `done` (or `appraisal-done`) with permit counts. Never enqueues the whole county. |
 | `IngestChunk` | workflow | `<CountyIngest key>-c<N>` | `run({county, jobId, rows \| seed, window})`, `status()` | Takes inline `rows` or a `seed` byte range; dispatches `Parcel.process` in bounded windows. |
 | `Parcel` | service | — | `process({county, jobId, parcel_id, source_identifier?, situs_address?, extra?})` | capture → transform → validate → ready marker → ledger record → eligibility. |
 | `CountyLedger` | virtual object | `<county>-<jobId>` | `record({parcel_id, stage, status, reason?, artifactHash?, transformVersion?, detail?})`, `get({parcel_id})`, `summary()` (shared), `list({status?, cursor?, limit?, stage?})` (shared) | Single writer of per-parcel status. |
 | `PermitFeed` | workflow | `<CountyIngest key>-permits`; children `<PermitFeed key>-c<N>` | `run({county, jobId, window, chunkSize?})`, `status()` | Rebuilds the eligible index, then hands each `chunkSize` slice to a child run of the same workflow, which dispatches `PermitHarvest.harvestParcel` in bounded windows. |
 | `PermitHarvest` | service | — | `harvestParcel({county, jobId, parcel_id})` | Routes to the county's vendor adapters (`src/permits/adapters/*`), writes artifacts plus `status/<parcelKey>.json`, then records to the ledger. |
-| `PublishGroup` | workflow | `<county>-<group>-<jobId>` | `run({county, jobId, group, groupDir, atlasPage, state, fips})`, `approve({approvedBy, groupDigest?})`, `reject({reason})`, `status()` | validate → hash → validate CAR → export-tables, waits on the durable promise `approval`, then uploads CAR and tables with readback. Stops before the Atlas PR. |
+| `PublishGroup` | workflow | `<county>-<group>-<jobId>` | `run({county, jobId, group, groupDir, atlasPage, state, fips})`, `approve({approvedBy, groupDigest?})`, `reject({reason})`, `status()` | validate → hash → validate CAR → export-tables onto a STAGED Atlas page under `data/publish/…/atlas/`, waits on the durable promise `approval`, uploads CAR and tables with readback, then copies the staged page onto `atlasPage` (only if that page is unchanged since export). Stops before the Atlas PR. |
 
 `CountyLedger` rules (`services/lib/ledger-state.ts`):
 
 - Stages: `capture`, `transform`, `validate`, `ready`, `eligibility` (the parcel entry)
   and `permits` (a separate permit-link entry, so a permit outcome never changes the
-  appraisal status). Statuses: `pending`, `ready`, `dead`, `invalid`, `failed`.
+  appraisal status). Statuses: `pending`, `ready`, `dead`, `invalid`, `failed`, plus
+  `blocked` for `permits` only.
 - `ready` requires `artifactHash` (sha256 of the validated `transformed.zip`) and
-  `transformVersion`; `dead`, `invalid`, and `failed` require a `reason`; `detail` is an
+  `transformVersion`; `dead`, `invalid`, `failed`, and `blocked` require a `reason`; `detail` is an
   optional object. An identical re-record is a no-op.
 - A parcel that was ever ready and is now `dead`/`invalid` is a tombstone; a later
   `ready` clears it. `summary()` returns counts, tombstones, and permit counts;
   `list({stage: "permits"})` pages permit entries.
 - Permit mapping: harvest `done` → `ready` (reason `unlinked: N` when some permits are
-  unlinked); `blocked`, `unrouted`, `no_profile`, `not_eligible` → `dead`; `failed` →
-  `failed`. Transient permit failures throw and retry; they are never recorded.
+  unlinked); `blocked` (the jurisdiction's source is blocked: captcha, login,
+  custodian-only — harvestable later) → `blocked`; `unrouted`, `no_profile`,
+  `not_eligible` → `dead`; `failed` → `failed`. Transient permit failures throw and
+  retry; they are never recorded.
 
 A redrive pass uses a new parent key `<county>-<jobId>-r<N>` with the SAME `jobId`
 payload: children and `PermitFeed` derive their keys from the parent key, while the
@@ -136,10 +140,16 @@ failure (connection, timeout, DNS, 5xx, schema fetch) → throw and retry; anyth
 commit, so set `ELEPHANT_CLI_COMMIT` to record it in ready markers.
 
 Capture is pluggable per county: `src/counties/<county>/capture.mjs` (or
-`CAPTURE_MODULE_<COUNTY>`) exporting `capture(input, ctx)` wins; it writes the prepared
-ZIP to `input.dest` and returns `{status: "captured"}` or `{status: "dead", reason}`.
-Otherwise `elephant-cli prepare` runs on a seed ZIP built from the row (`source_url`
-column or `PREPARE_URL_TEMPLATE_<COUNTY>`) with the county flow settings. Transform
+`CAPTURE_MODULE_<COUNTY>`) exporting `capture(input, ctx)` wins. `input.parcelDir`
+exists before the call; `ctx` is `{signal, timeoutMs, parcelDir}`, and `signal` aborts at
+`CAPTURE_TIMEOUT_MS[_<COUNTY>]` (default 10 min, below the Parcel inactivity timeout;
+the step then throws and retries). The plug-in writes the prepared ZIP to `input.dest`
+and returns `{status: "captured"}` or `{status: "dead", reason}`. Otherwise
+`elephant-cli prepare` runs on a seed ZIP built from the row (`source_url` column or
+`PREPARE_URL_TEMPLATE_<COUNTY>`) with the county flow settings. The source request is
+kept whole end to end — method, base URL, `multiValueQueryString`, and `json`/`body`
+with `content-type` (`services/lib/source-request.ts`); a query string never stays in
+the URL, and the merged Seed group takes the request the capture stored. Transform
 uses `TRANSFORM_ZIP_<COUNTY>` or `counties/<county>/transform-v2.zip`, else the scripts
 directory; when the county output has no Seed root, the CLI seed-mode output is merged
 in (`TRANSFORM_SEED_<COUNTY>=off` disables it), because `hash` needs Seed in every
@@ -148,8 +158,11 @@ property.
 `PermitFeed` rebuilds its eligible index on every pass under
 `data/artifacts/permits/<county>/<jobId>/eligible/<PermitFeed key>/c<N>.json`, stamped
 with the eligibility-policy fingerprint; it records and skips a malformed
-`eligibility.json` instead of throwing. Permit portal modules live in
-`county-permit-adapter`.
+`eligibility.json` instead of throwing. `PermitHarvest` routes through the county
+routing hook (`src/counties/<county>/permit-routing.mjs`, `resolveJurisdiction`) before
+city routing, passes `resolvePermitAdapterOptions` (env) to the adapters, and reads linked
+bulk snapshots from `PERMIT_BULK_DIR_<COUNTY>` before the live adapter. Permit portal
+modules live in `county-permit-adapter`.
 
 Run `npm test` in `skills/use-oracle/runtime` (it typechecks the services first) after
 any change. Propose the experimental Elephant CLI 2 for capture, transform, and validate

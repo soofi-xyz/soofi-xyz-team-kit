@@ -35,15 +35,16 @@ enrichment join. Input is ONLY the seed CSV at `data/seeds/<county>.csv` (never
 re-derive work from run state). The `CountyIngest` workflow (keyed `<county>-<jobId>`)
 indexes the seed once and hands each ~10k-row byte range to an `IngestChunk` child
 (keyed `<CountyIngest key>-c<N>`) that dispatches `Parcel.process` in bounded windows;
-when appraisal dispatch completes it starts the `PermitFeed` workflow (keyed
+when appraisal dispatch completes it runs and awaits the `PermitFeed` workflow (keyed
 `<CountyIngest key>-permits`, so a redrive pass feeds its own `…-r2-permits`) unless the
-run passed `startPermits: false`. `PermitFeed` rebuilds the eligible index from the
+run passed `startPermits: false`; `CountyIngest/status` then shows phase `permits` and,
+at the end, `done` with the permit counts (`appraisal-done` without permits). `PermitFeed` rebuilds the eligible index from the
 `eligibility.json` files and runs child passes of itself (`<PermitFeed key>-c<N>`) that
 dispatch `PermitHarvest.harvestParcel` in their OWN bounded windows (`permitWindow`,
 default `window`) — neither side ever queues the whole county. Journal replay is the
 only checkpoint. `CountyLedger` (virtual object keyed `<county>-<jobId>`) is the single
 writer of per-parcel status: `pending`, `ready`, `dead`, `invalid`, `failed`, with permit
-link results under `stage: "permits"`. See
+link results under `stage: "permits"` (where `blocked` marks a blocked permit source). See
 `durable-workflow-builder` patterns 1 (backpressure feeder), 2 (layered concurrency),
 8 (single-writer ledger), and 11 (chunked fan-out).
 
@@ -249,14 +250,17 @@ npm run reconcile -- --county <county> --job <jobId> --strict
 
 Flags: `--restate <admin-url>` (default `RESTATE_ADMIN_URL` or `:9070`), `--ingress
 <ingress-url>` (default `RESTATE_INGRESS_URL` or `:8080`), `--seed <DATA_DIR-relative
-csv>` (default `seeds/<county>.csv`), `--strict`, `--assemble <group>`, and `--no-rehash`
+csv>` (default: the `seedPath` the run was started with, read from the `CountyIngest`
+`<county>-<jobId>` state through the admin API or its `status` handler, then
+`seeds/<county>.csv`; the manifest records `seed.source`), `--strict`, `--assemble <group>`, and `--no-rehash`
 (trust `ready.json` hashes instead of rehashing every `transformed.zip`; use only for a
 quick mid-run look). It reads the ledger through the Restate admin SQL query API,
 falling back to `CountyLedger/summary` + `list` through ingress, plus the seed and the
 artifact markers, then writes the durable run manifest
 `data/runs/<county>/<jobId>/manifest.json`: counts by status, dead/invalid/failed
-reasons, tombstones, permits linked/unlinked by reason, ready-marker hash coverage, and
-ledger-vs-file mismatches. The services keep finished workflow state for 14 days
+reasons, tombstones, permits linked/unlinked by reason, blocked permit sources by
+jurisdiction (apart from dead parcels), ready-marker hash coverage, and ledger-vs-file
+mismatches. The services keep finished workflow state for 14 days
 (`PublishGroup` 30), so the manifest is the record of the run. Exit codes: 0 ok, 1 a
 gate failed under `--strict`, 2 the command could not run. Require every gate:
 
@@ -303,8 +307,10 @@ gate failed under `--strict`, 2 the command could not run. Require every gate:
   ambiguous, conflicting, stale, and orphaned identities unlinked there with reasons.
   Name, phone, address, BBB, and places matches are candidates only.
 - Gap: no bundled runtime stage emits these identity relationship files or the
-  resolution ledger yet; the Restate permit path writes permit artifacts and link status
-  only. Until one exists, produce them with a reviewed, versioned resolver and report the
+  resolution ledger yet, and none turns the permit artifacts into a publishable
+  `property_improvement` group either: the Restate permit path writes permit artifacts
+  and link status only, so today only the County group (or another appraisal-transform
+  group) is publishable through `PublishGroup`. Until one exists, produce them with a reviewed, versioned resolver and report the
   identity edges as not generated when none ran.
 
 ### Roof age and enrichment

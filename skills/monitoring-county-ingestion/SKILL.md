@@ -41,8 +41,9 @@ no SQL database. `reconcile-county.mjs` (below) is the only reconciliation helpe
 
 The `CountyIngest` workflow (key `<county>-<jobId>`) fans the seed into per-chunk
 `IngestChunk` child workflows (keys `<county>-<jobId>-c<N>`) and tracks `phase`
-(`indexing`, `appraisal`, `permits-started` or `appraisal-done`), `chunksDone` (of
-`chunks` total), and per-status `counts` as parent state. Child keys derive from the parent workflow key, so a
+(`indexing`, `appraisal`, `permits` while it awaits its `PermitFeed`, then `done`; or
+`appraisal-done` with `startPermits: false`), `chunksDone` (of `chunks` total),
+per-status `counts`, `permitFeed`, and the final `permits` counts as parent state. Child keys derive from the parent workflow key, so a
 redrive pass's chunks are keyed `<county>-<jobId>-r2-c<N>`. Read it in the Web UI at `http://localhost:9070`
 (invocation → state), or via SQL:
 
@@ -121,12 +122,14 @@ an expected total (see `county-permit-adapter` for the split-tree semantics).
 
 `CountyLedger` (virtual object keyed `<county>-<jobId>`) is the single writer of
 per-parcel status (`pending`, `ready`, `dead`, `invalid`, `failed`; permit link results
-under `stage: "permits"`). Read its shared handlers through ingress:
+under `stage: "permits"`, where `blocked` is a blocked source — captcha, login,
+custodian-only — counted apart from `dead`). Read its shared handlers through ingress:
 
 ```bash
 curl -s -X POST localhost:8080/CountyLedger/<county>-<jobId>/summary   # counts, tombstones, permits
 curl -s localhost:8080/CountyLedger/<county>-<jobId>/list --json '{"status":"failed","limit":100}'
 curl -s localhost:8080/CountyLedger/<county>-<jobId>/list --json '{"stage":"permits","status":"dead"}'
+curl -s localhost:8080/CountyLedger/<county>-<jobId>/list --json '{"stage":"permits","status":"blocked"}'
 curl -s localhost:8080/CountyLedger/<county>-<jobId>/get --json '{"parcel_id":"<parcel_id>"}'
 ```
 
