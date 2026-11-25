@@ -262,6 +262,8 @@ not do those steps by hand.
    with the version the prompt's `@prism (prism)` line names, as
    [the kit bump](reference/edit-mode.md#bump-the-app-kit-when-the-registry-lacks-its-version)
    describes; a different major version is refused, so end the turn as `FAILED`.
+   Bump only to recover from that 404: when the frozen install succeeds, go on
+   without one. With no `kit_version` in the prompt, end as `FAILED`.
    Change only the app's `console-app.json` and regular files under its `src/`,
    within the [guardrails](../build-console-product/reference/app-kit.md#guardrails).
    Commit.

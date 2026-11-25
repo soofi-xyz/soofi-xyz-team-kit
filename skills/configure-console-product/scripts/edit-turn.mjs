@@ -210,7 +210,21 @@ const compareVersions = (a, b) => {
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const canonical = (value) =>
   JSON.stringify(value, (_, v) => (isObject(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : v));
-const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// What Build's kit gate refuses (prismteam-ai/build src/configuration/console-app.ts), plus `.npmrc`:
+// files that would let pnpm install from somewhere else, or with another tool.
+const REFUSED_FILES = new Set([
+  ".npmrc",
+  ".pnpmfile.cjs",
+  "pnpm-workspace.yaml",
+  "package-lock.json",
+  "npm-shrinkwrap.json",
+  "yarn.lock",
+  "bun.lock",
+  "bun.lockb",
+]);
+const REFUSED_LOCKFILE_SECTIONS = ["overrides", "patchedDependencies", "pnpmfileChecksum", "packageExtensionsChecksum"];
+const LOCKFILE_VERSION = "9.0";
 
 /**
  * `{ from, to }` when package.json changes only by moving the kit's exact pin from a version before
@@ -238,14 +252,215 @@ const kitBump = (beforeText, afterText) => {
   return { from, to };
 };
 
-/** Whether a pnpm lockfile pins the app's kit at `version`. */
-const lockPins = (text, version) =>
-  new RegExp(`^\\s+'?${escapeRegExp(KIT)}'?:\\n\\s+specifier: ${escapeRegExp(version)}\\n\\s+version: ${escapeRegExp(version)}(?:\\(|$)`, "m").test(text ?? "");
+/**
+ * Reads the YAML subset pnpm writes for a lockfile: block mappings, `- ` lists of scalars, flow
+ * `{…}` and `[…]`, and plain or quoted scalars, all kept as strings. Anything else throws, so the
+ * gate refuses a lockfile it cannot read instead of guessing.
+ */
+const parseLockfile = (text) => {
+  const lines = [];
+  for (const [index, raw] of text.split("\n").entries()) {
+    if (/^\s*(#.*)?$/.test(raw)) continue;
+    const indent = raw.match(/^ */)[0].length;
+    if (raw[indent] === "\t") throw new Error(`line ${index + 1}: a tab`);
+    lines.push({ number: index + 1, indent, text: raw.slice(indent).replace(/\s+$/, "") });
+  }
+  const scalar = (source, at, stops) => {
+    const quote = source[at];
+    if (quote === "'" || quote === '"') {
+      let out = "";
+      for (let i = at + 1; i < source.length; i += 1) {
+        if (source[i] === quote) {
+          if (quote === "'" && source[i + 1] === "'") {
+            out += "'";
+            i += 1;
+            continue;
+          }
+          return [out, i + 1];
+        }
+        if (quote === '"' && source[i] === "\\") throw new Error(`an escape in "${source}"`);
+        out += source[i];
+      }
+      throw new Error(`an unterminated string in ${source}`);
+    }
+    let end = at;
+    while (end < source.length && !stops.test(source.slice(end))) end += 1;
+    return [source.slice(at, end).trim(), end];
+  };
+  const flow = (source, at) => {
+    const skip = (i) => {
+      while (source[i] === " ") i += 1;
+      return i;
+    };
+    at = skip(at);
+    const open = source[at];
+    if (open !== "{" && open !== "[") return scalar(source, at, /^(?:,|\}|\]|$)/);
+    const close = open === "{" ? "}" : "]";
+    const value = open === "{" ? {} : [];
+    let i = skip(at + 1);
+    if (source[i] === close) return [value, i + 1];
+    for (;;) {
+      if (open === "{") {
+        const [key, afterKey] = scalar(source, i, /^(?::\s|:$|,|\})/);
+        i = skip(afterKey);
+        if (source[i] !== ":") throw new Error(`a flow mapping without ":" in ${source}`);
+        const [item, afterItem] = flow(source, i + 1);
+        if (Object.hasOwn(value, key)) throw new Error(`a repeated key ${key}`);
+        value[key] = item;
+        i = skip(afterItem);
+      } else {
+        const [item, afterItem] = flow(source, i);
+        value.push(item);
+        i = skip(afterItem);
+      }
+      if (source[i] === close) return [value, i + 1];
+      if (source[i] !== ",") throw new Error(`unexpected "${source[i] ?? "end"}" in ${source}`);
+      i = skip(i + 1);
+    }
+  };
+  const value = (source, number) => {
+    const [item, end] = flow(source, 0);
+    if (end !== source.length) throw new Error(`line ${number}: trailing text after a value`);
+    return item;
+  };
+  const block = (start, indent) => {
+    if (lines[start].text.startsWith("- ")) {
+      const list = [];
+      let i = start;
+      while (i < lines.length && lines[i].indent === indent && lines[i].text.startsWith("- ")) {
+        list.push(value(lines[i].text.slice(2), lines[i].number));
+        i += 1;
+      }
+      return [list, i];
+    }
+    const map = {};
+    let i = start;
+    while (i < lines.length && lines[i].indent === indent) {
+      const { text: line, number } = lines[i];
+      const [key, afterKey] = scalar(line, 0, /^(?::\s|:$)/);
+      if (line[afterKey] !== ":" || key === "") throw new Error(`line ${number}: not a "key: value" line`);
+      if (Object.hasOwn(map, key)) throw new Error(`line ${number}: a repeated key ${key}`);
+      const rest = line.slice(afterKey + 1).trim();
+      i += 1;
+      if (rest) {
+        map[key] = value(rest, number);
+      } else if (i < lines.length && lines[i].indent > indent) {
+        [map[key], i] = block(i, lines[i].indent);
+      } else if (i < lines.length && lines[i].indent === indent && lines[i].text.startsWith("- ")) {
+        [map[key], i] = block(i, indent);
+      } else {
+        map[key] = null;
+      }
+    }
+    if (i < lines.length && lines[i].indent > indent) throw new Error(`line ${lines[i].number}: unexpected indentation`);
+    return [map, i];
+  };
+  if (!lines.length) throw new Error("it is empty");
+  const [document, end] = block(0, lines[0].indent);
+  if (end !== lines.length) throw new Error(`line ${lines[end].number}: unexpected indentation`);
+  return document;
+};
+
+/** A lockfile dependency version that is not a registry version: `link:`, `file:`, a URL or a path. */
+const isLocalOrRemote = (version) =>
+  /^(link|file|git|git\+[a-z]+|https?|github|gitlab|bitbucket|npm):/.test(version) || version.includes("://") || version.startsWith(".") || version.startsWith("/");
+
+/**
+ * Why a bumped `pnpm-lock.yaml` is not one Build's kit gate would install: the same checks, from
+ * prismteam-ai/build src/configuration/console-app.ts, plus a lockfileVersion that stays as the
+ * installed commit has it.
+ */
+const lockfileProblems = (file, text, baseText, version) => {
+  const read = (source) => {
+    try {
+      const parsed = parseLockfile(source ?? "");
+      return isObject(parsed) ? { lock: parsed } : { error: "it is not a mapping" };
+    } catch (error) {
+      return { error: error.message };
+    }
+  };
+  const { lock, error } = read(text);
+  if (!lock) return [`${file} is not a pnpm lockfile this gate can read (${error})`];
+  const problems = [];
+  const base = read(baseText).lock;
+  if (String(lock.lockfileVersion) !== LOCKFILE_VERSION || String(base?.lockfileVersion) !== LOCKFILE_VERSION) {
+    problems.push(`${file} must keep lockfileVersion '${LOCKFILE_VERSION}', as the installed commit has it, not '${lock.lockfileVersion}'`);
+  }
+  for (const section of REFUSED_LOCKFILE_SECTIONS) {
+    if (lock[section] !== undefined) problems.push(`${file} has ${section}, which could change what the app kit resolves to`);
+  }
+  const importers = isObject(lock.importers) ? lock.importers : {};
+  const extra = Object.keys(importers).filter((name) => name !== ".");
+  if (extra.length) problems.push(`${file} has other importers (${extra.join(", ")}); an app is one package`);
+  const root = isObject(importers["."]) ? importers["."] : {};
+  for (const field of ["dependencies", "devDependencies", "optionalDependencies"]) {
+    for (const [name, entry] of Object.entries(isObject(root[field]) ? root[field] : {})) {
+      const resolved = isObject(entry) ? String(entry.version) : "";
+      if (isLocalOrRemote(resolved)) problems.push(`${file}: ${name} resolves to ${resolved}, not to a registry version`);
+    }
+  }
+  const kit = isObject(root.dependencies) ? root.dependencies[KIT] : undefined;
+  if (!isObject(kit) || kit.specifier !== version || String(kit.version) !== version) {
+    problems.push(`${file} must pin ${KIT} to ${version} (specifier and version), as package.json does`);
+  }
+  const packages = isObject(lock.packages) ? lock.packages : {};
+  for (const [key, entry] of Object.entries(packages)) {
+    const resolution = isObject(entry) ? entry.resolution : undefined;
+    const keys = isObject(resolution) ? Object.keys(resolution) : [];
+    if (keys.length !== 1 || keys[0] !== "integrity" || !String(resolution.integrity).startsWith("sha512-")) {
+      const from = keys.filter((name) => name !== "integrity").join(", ") || "no integrity";
+      problems.push(`${file}: ${key} resolves from ${from}, not from the registry with a sha512 integrity`);
+    }
+  }
+  for (const [key, entry] of Object.entries(isObject(lock.snapshots) ? lock.snapshots : {})) {
+    for (const field of ["dependencies", "optionalDependencies"]) {
+      for (const [name, edge] of Object.entries(isObject(entry) && isObject(entry[field]) ? entry[field] : {})) {
+        if (isLocalOrRemote(String(edge))) problems.push(`${file}: ${key} depends on ${name} at ${String(edge)}, not a registry version`);
+      }
+    }
+  }
+  if (!isObject(packages[`${KIT}@${version}`])) problems.push(`${file} has no ${KIT}@${version} package from the registry`);
+  return problems;
+};
+
+/**
+ * Files Build refuses that pnpm would read for this app: anywhere in the app's folder, or in a
+ * folder above it, in the tree at `rev`.
+ */
+const refusedTrackedFiles = (dir, state, rev) =>
+  run("git", ["ls-tree", "-r", "-z", "--name-only", rev], { cwd: dir })
+    .stdout.split("\0")
+    .filter(Boolean)
+    .filter((file) => {
+      if (!REFUSED_FILES.has(path.posix.basename(file))) return false;
+      const folder = path.posix.dirname(file);
+      const app = state.appRoot || ".";
+      return app === "." || folder === "." || `${app}/`.startsWith(`${folder}/`) || `${folder}/`.startsWith(`${app}/`);
+    });
+
+/** Untracked files Build refuses anywhere in the clone, outside node_modules and .git. */
+const refusedUntrackedFiles = (dir) => {
+  const tracked = new Set(run("git", ["ls-files", "-z"], { cwd: dir }).stdout.split("\0").filter(Boolean));
+  const found = [];
+  const walk = (relative) => {
+    for (const entry of readdirSync(path.join(dir, relative), { withFileTypes: true })) {
+      const file = relative ? `${relative}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (entry.name !== "node_modules" && entry.name !== ".git") walk(file);
+      } else if (REFUSED_FILES.has(entry.name) && !tracked.has(file)) {
+        found.push(file);
+      }
+    }
+  };
+  walk("");
+  return found.sort();
+};
 
 /**
  * Why package.json and the lockfile at `sha` are not an allowed kit bump: an empty list when they
- * are exactly what `bump-kit` left in this turn, or what an earlier turn of the session pushed;
- * null when the kit pin did not move, so the change is no kit bump at all.
+ * are exactly what `bump-kit` left in this turn, or what an earlier turn of the session pushed,
+ * and the lockfile passes Build's kit gate; null when the kit pin did not move, so the change is
+ * no kit bump at all.
  */
 const kitBumpProblems = (dir, state, sha) => {
   const manifest = appFile(state, "package.json");
@@ -260,8 +475,10 @@ const kitBumpProblems = (dir, state, sha) => {
   const pushedEarlier =
     Boolean(state.startSha) && blobAt(dir, state.startSha, manifest) === blobs.manifest && blobAt(dir, state.startSha, lockfile) === blobs.lockfile;
   if (!madeThisTurn && !pushedEarlier) return [`${manifest} and ${lockfile} are not as \`edit-turn.mjs bump-kit\` left them`];
-  if (!lockPins(showFile(dir, sha, lockfile), bump.to)) return [`${lockfile} does not pin ${KIT} ${bump.to}`];
-  return [];
+  return [
+    ...lockfileProblems(lockfile, showFile(dir, sha, lockfile), showFile(dir, state.baseSha, lockfile), bump.to),
+    ...refusedTrackedFiles(dir, state, sha).map((file) => `${file} could change what pnpm installs`),
+  ];
 };
 
 const bumpKit = (options) => {
@@ -271,6 +488,7 @@ const bumpKit = (options) => {
   const manifest = appFile(state, "package.json");
   const lockfile = appFile(state, "pnpm-lock.yaml");
   for (const file of [manifest, lockfile]) {
+    if (blobAt(dir, state.baseSha, file) === null) refuse(`the installed commit ${state.baseSha} has no ${file}`);
     if (blobAt(dir, "HEAD", file) !== blobAt(dir, state.baseSha, file)) refuse(`${file} already differs from the installed commit ${state.baseSha}`);
     if (git(dir, "status", "--porcelain", "--", file)) refuse(`${file} has uncommitted changes; restore it with git checkout HEAD -- ${file}`);
   }
@@ -280,20 +498,39 @@ const bumpKit = (options) => {
   planned.dependencies[KIT] = version;
   const plan = kitBump(before, JSON.stringify(planned));
   if (plan.problem) refuse(`no kit bump: ${plan.problem}`);
+  const refusedFiles = [...refusedTrackedFiles(dir, state, "HEAD"), ...refusedUntrackedFiles(dir)];
+  if (refusedFiles.length) refuse(`no kit bump: ${refusedFiles.join(", ")} could change what pnpm installs; remove them first`);
 
-  const added = runVisible("pnpm", ["add", "-E", `${KIT}@${version}`], { cwd: path.join(dir, state.appRoot) });
-  if (added.error || added.status !== 0) refuse(`pnpm add -E ${KIT}@${version} failed${added.error ? `: ${added.error.message}` : ` (exit ${added.status})`}`);
+  // From here on, whatever pnpm changed in tracked files is put back unless the bump is accepted.
+  const restore = () => {
+    const changed = run("git", ["status", "--porcelain", "-z", "--untracked-files=no"], { cwd: dir })
+      .stdout.split("\0")
+      .filter(Boolean)
+      .map((entry) => entry.slice(3));
+    if (changed.length) run("git", ["checkout", "HEAD", "--", ...changed], { cwd: dir });
+    return changed;
+  };
+  const fail = (message) => {
+    restore();
+    refuse(`${message}; ${manifest} and ${lockfile} are back as they were`);
+  };
+  // The kit and the console-app command need no install scripts; Build installs apps the same way.
+  const added = runVisible("pnpm", ["add", "-E", "--ignore-scripts", `${KIT}@${version}`], { cwd: path.join(dir, state.appRoot) });
+  if (added.error || added.status !== 0) fail(`pnpm add -E --ignore-scripts ${KIT}@${version} failed${added.error ? `: ${added.error.message}` : ` (exit ${added.status})`}`);
 
   const changed = run("git", ["status", "--porcelain", "-z", "--untracked-files=no"], { cwd: dir })
     .stdout.split("\0")
     .filter(Boolean)
     .map((entry) => entry.slice(3));
   const others = changed.filter((file) => file !== manifest && file !== lockfile);
-  if (others.length) refuse(`pnpm add changed ${others.join(", ")} as well; restore them with git checkout HEAD -- <path>`);
-  const after = readFileSync(path.join(dir, manifest), "utf8");
-  const made = kitBump(before, after);
-  if (made.problem) refuse(`pnpm add left ${manifest} unlike a kit bump: ${made.problem}`);
-  if (!lockPins(readFileSync(path.join(dir, lockfile), "utf8"), version)) refuse(`pnpm add left ${lockfile} without ${KIT} ${version}`);
+  if (others.length) fail(`pnpm add changed ${others.join(", ")} as well`);
+  const made = kitBump(before, readFileSync(path.join(dir, manifest), "utf8"));
+  if (made.problem) fail(`pnpm add left ${manifest} unlike a kit bump: ${made.problem}`);
+  const problems = lockfileProblems(lockfile, readFileSync(path.join(dir, lockfile), "utf8"), showFile(dir, state.baseSha, lockfile), version);
+  if (problems.length) {
+    report(problems);
+    fail(`pnpm add left ${lockfile} unlike Build's kit gate accepts`);
+  }
   state.kitBump = { version, manifest: git(dir, "hash-object", "--", manifest), lockfile: git(dir, "hash-object", "--", lockfile) };
   saveState(dir, state);
   console.log(JSON.stringify({ from: made.from, to: made.to, files: [manifest, lockfile] }));
@@ -334,22 +571,26 @@ const pathProblems = (dir, state, sha) => {
   const fields = run("git", ["diff-tree", "-r", "-z", "--no-renames", state.baseSha, sha], { cwd: dir }).stdout.split("\0");
   const problems = [];
   const bumpFiles = new Set([appFile(state, "package.json"), appFile(state, "pnpm-lock.yaml")]);
+  const bumped = [];
   let bumpReasons;
   for (let index = 0; index + 1 < fields.length; index += 2) {
     const [, newMode, , , status] = fields[index].slice(1).split(" ");
     const file = fields[index + 1];
     // package.json and the lockfile are outside the editable paths too, except for the kit bump
-    // `bump-kit` makes.
+    // `bump-kit` makes; its reasons are reported once, below, for both files.
     if (bumpFiles.has(file) && status !== "D" && (bumpReasons ??= kitBumpProblems(dir, state, sha)) !== null) {
-      for (const reason of bumpReasons) {
-        problems.push(`${file}: outside the editable paths, and not an allowed kit bump: ${reason}; restore it to the installed commit`);
-      }
+      bumped.push(file);
     } else if (!isEditable(state, file)) {
       problems.push(`${file}: outside the editable paths (${settings} and ${source}**); restore it to the installed commit`);
+    } else if (status !== "D" && REFUSED_FILES.has(path.posix.basename(file))) {
+      problems.push(`${file}: could change what pnpm installs; remove it`);
     }
     if (status !== "D" && newMode !== REGULAR_FILE) {
       problems.push(`${file}: is ${MODE_NAMES[newMode] ?? `git mode ${newMode}`}; only regular files (git mode ${REGULAR_FILE}) are allowed`);
     }
+  }
+  for (const reason of bumped.length ? bumpReasons : []) {
+    problems.push(`${bumped.join(" and ")}: outside the editable paths, and not an allowed kit bump: ${reason}; restore ${bumped.length > 1 ? "them" : "it"} to the installed commit`);
   }
   return problems;
 };

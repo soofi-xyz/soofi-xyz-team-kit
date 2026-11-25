@@ -77,22 +77,70 @@ done
 exit 0
 `;
 
-// Stands in for `pnpm add -E <package>@<version>` against the environment's registry: pins the
-// package in package.json, writes the lockfile pnpm would and installs the stand-in check.
+// The lockfile pnpm 10 writes for an app pinning the kit at `version`, in lockfileVersion 9.0.
+// `variant` makes the one Build's kit gate refuses: a tarball URL, another lockfileVersion or
+// overrides. Written into the pnpm stand-in as source, so it takes no outside names.
+const lockfileText = (version, variant = "") => {
+  const kit = "@prism/console-app-kit";
+  const integrity = `sha512-${"A".repeat(86)}==`;
+  const tarball = variant === "tarball" ? `, tarball: https://registry.example.com/${kit}/-/console-app-kit-${version}.tgz` : "";
+  return [
+    `lockfileVersion: '${variant === "lockfile-6" ? "6.0" : "9.0"}'`,
+    "",
+    "settings:",
+    "  autoInstallPeers: true",
+    "  excludeLinksFromLockfile: false",
+    "",
+    ...(variant === "overrides" ? ["overrides:", "  zod: 4.0.0", ""] : []),
+    "importers:",
+    "",
+    "  .:",
+    "    dependencies:",
+    `      '${kit}':`,
+    `        specifier: ${version}`,
+    `        version: ${version}`,
+    "",
+    "packages:",
+    "",
+    `  '${kit}@${version}':`,
+    `    resolution: {integrity: ${integrity}${tarball}}`,
+    "    engines: {node: '>=22'}",
+    "    hasBin: true",
+    "",
+    "  zod@4.1.5:",
+    `    resolution: {integrity: ${integrity}}`,
+    "",
+    "snapshots:",
+    "",
+    `  '${kit}@${version}':`,
+    "    dependencies:",
+    "      zod: 4.1.5",
+    "    transitivePeerDependencies:",
+    "      - '@types/node'",
+    "",
+    "  zod@4.1.5: {}",
+    "",
+  ].join("\n");
+};
+
+// Stands in for `pnpm add -E --ignore-scripts <package>@<version>` against the environment's
+// registry: pins the package in package.json, writes the lockfile pnpm would (or the refused one
+// PNPM_VARIANT names) and installs the stand-in check.
 const PNPM = `#!/usr/bin/env node
 const fs = require("node:fs");
 const args = process.argv.slice(2);
 fs.appendFileSync(process.env.PNPM_LOG, args.join(" ") + "\\n");
-if (args[0] !== "add" || args[1] !== "-E" || args.length !== 3) {
-  console.error("pnpm stand-in: only add -E <package>@<version>");
+if (args[0] !== "add" || args[1] !== "-E" || args[2] !== "--ignore-scripts" || args.length !== 4) {
+  console.error("pnpm stand-in: only add -E --ignore-scripts <package>@<version>");
   process.exit(2);
 }
-const at = args[2].lastIndexOf("@");
-const [name, version] = [args[2].slice(0, at), args[2].slice(at + 1)];
+const at = args[3].lastIndexOf("@");
+const [name, version] = [args[3].slice(0, at), args[3].slice(at + 1)];
 const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
 manifest.dependencies[name] = version;
 fs.writeFileSync("package.json", JSON.stringify(manifest, null, 2) + "\\n");
-fs.writeFileSync("pnpm-lock.yaml", "lockfileVersion: '9.0'\\n\\nimporters:\\n\\n  .:\\n    dependencies:\\n      '" + name + "':\\n        specifier: " + version + "\\n        version: " + version + "\\n");
+const lockfileText = ${lockfileText.toString()};
+fs.writeFileSync("pnpm-lock.yaml", lockfileText(version, process.env.PNPM_VARIANT));
 fs.mkdirSync("node_modules/.bin", { recursive: true });
 fs.copyFileSync(process.env.CONSOLE_APP_SOURCE, "node_modules/.bin/console-app");
 fs.chmodSync("node_modules/.bin/console-app", 0o755);
@@ -165,6 +213,7 @@ class World {
       PATH: `${this.bin}${path.delimiter}${process.env.PATH}`,
       PNPM_LOG: this.pnpmLog,
       CONSOLE_APP_SOURCE: path.join(this.root, "console-app"),
+      PNPM_VARIANT: this.pnpmVariant ?? "",
       HOME: this.home,
       GIT_CONFIG_NOSYSTEM: "1",
       GIT_TERMINAL_PROMPT: "0",
@@ -732,7 +781,7 @@ test("PASS: a pre-1.44.0 kit pin is bumped to the registry's kit by bump-kit, pu
   const bumped = await w.turn(["bump-kit", "--kit-version", "1.44.0"]);
   assert.equal(bumped.status, 0, bumped.stderr);
   assert.deepEqual(bumped.json, { from: "1.34.0", to: "1.44.0", files: ["apps/demo/package.json", "apps/demo/pnpm-lock.yaml"] });
-  assert.deepEqual(readFileSync(w.pnpmLog, "utf8").trim().split("\n"), [`add -E ${KIT}@1.44.0`]);
+  assert.deepEqual(readFileSync(w.pnpmLog, "utf8").trim().split("\n"), [`add -E --ignore-scripts ${KIT}@1.44.0`]);
 
   write(w.app("src/app.tsx"), 'export default function App() {\n  return "Bumped";\n}\n');
   const head = w.commit("Bump the kit and edit");
@@ -778,17 +827,21 @@ test("BLOCK: a cross-major kit bump, by bump-kit or by hand", async (t) => {
   const manifest = JSON.parse(readFileSync(w.app("package.json"), "utf8"));
   manifest.dependencies[KIT] = "2.0.0";
   write(w.app("package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  write(w.app("pnpm-lock.yaml"), `lockfileVersion: '9.0'\n\nimporters:\n\n  .:\n    dependencies:\n      '${KIT}':\n        specifier: 2.0.0\n        version: 2.0.0\n`);
+  write(w.app("pnpm-lock.yaml"), lockfileText("2.0.0"));
   w.commit("Cross-major bump");
   const blocked = await w.turn(["push"]);
-  assertBlocked(w, blocked, /apps\/demo\/package\.json: outside the editable paths, and not an allowed kit bump: .*changes the major version/);
+  assertBlocked(
+    w,
+    blocked,
+    /apps\/demo\/package\.json and apps\/demo\/pnpm-lock\.yaml: outside the editable paths, and not an allowed kit bump: .*changes the major version/,
+  );
+  assert.equal(blocked.stderr.match(/changes the major version/g).length, 1, "each reason is reported once");
   assert.deepEqual(w.checks(), []);
 });
 
 test("BLOCK: package.json or the lockfile changed other than as bump-kit left them", async (t) => {
   const w = await world(t);
-  const lockfile = (version) =>
-    `lockfileVersion: '9.0'\n\nimporters:\n\n  .:\n    dependencies:\n      '${KIT}':\n        specifier: ${version}\n        version: ${version}\n`;
+  const lockfile = lockfileText;
   for (const [name, change, reason] of [
     [
       "a same-major bump written by hand",
@@ -827,4 +880,50 @@ test("BLOCK: package.json or the lockfile changed other than as bump-kit left th
     assertBlocked(w, await w.turn(["push"]), reason);
   }
   assert.deepEqual(w.checks(), []);
+});
+
+test("BLOCK: bump-kit refuses a lockfile Build's kit gate would refuse, and leaves nothing changed", async (t) => {
+  const w = await world(t);
+  await w.begin({ install: false });
+  for (const [variant, reason] of [
+    ["tarball", /@prism\/console-app-kit@1\.44\.0 resolves from tarball, not from the registry with a sha512 integrity/],
+    ["lockfile-6", /must keep lockfileVersion '9\.0', as the installed commit has it, not '6\.0'/],
+    ["overrides", /has overrides, which could change what the app kit resolves to/],
+  ]) {
+    w.pnpmVariant = variant;
+    const refused = await w.turn(["bump-kit", "--kit-version", "1.44.0"]);
+    assert.notEqual(refused.status, 0, variant);
+    assert.match(refused.stderr, reason);
+    assert.match(refused.stderr, /are back as they were/);
+    assert.equal(refused.stdout, "");
+    assert.equal(w.git(w.clone, "status", "--porcelain"), "", `${variant}: package.json and the lockfile are restored`);
+  }
+  assert.equal(readFileSync(w.pnpmLog, "utf8").trim().split("\n").length, 3, "pnpm ran once per attempt");
+
+  // Nothing was recorded, so the refused lockfile committed by hand meets the gate.
+  w.pnpmVariant = "";
+  write(path.join(w.clone, w.appRoot, "node_modules", ".bin", "console-app"), CONSOLE_APP, 0o755);
+  const manifest = JSON.parse(readFileSync(w.app("package.json"), "utf8"));
+  manifest.dependencies[KIT] = "1.44.0";
+  write(w.app("package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  write(w.app("pnpm-lock.yaml"), lockfileText("1.44.0", "tarball"));
+  w.commit("Tarball lockfile");
+  assertBlocked(w, await w.turn(["push"]), /not as `edit-turn\.mjs bump-kit` left them/);
+});
+
+test("BLOCK: a registry or pnpm hook file stops bump-kit before pnpm runs, and the gate refuses one under src/", async (t) => {
+  const w = await world(t);
+  for (const file of [".npmrc", "src/.pnpmfile.cjs", "../../.npmrc", "../../pnpm-workspace.yaml"]) {
+    await w.begin({ install: false });
+    write(w.app(file), "registry=https://registry.example.com/\n");
+    const refused = await w.turn(["bump-kit", "--kit-version", "1.44.0"]);
+    assert.notEqual(refused.status, 0, file);
+    assert.match(refused.stderr, /could change what pnpm installs; remove them first/);
+  }
+  assert.equal(readFileSync(w.pnpmLog, "utf8"), "", "pnpm never ran");
+
+  await w.begin();
+  write(w.app("src/.npmrc"), "registry=https://registry.example.com/\n");
+  w.commit("A registry file under src/");
+  assertBlocked(w, await w.turn(["push"]), /apps\/demo\/src\/\.npmrc: could change what pnpm installs/);
 });
