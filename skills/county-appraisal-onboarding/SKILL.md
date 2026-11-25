@@ -94,8 +94,9 @@ after burn-in. See `durable-workflow-builder` pattern 2 (the gate helper).
 
 Before scaling beyond smoke tests, use the `county-discovery` source-feasibility estimate
 or pilot timings from `county-ingest-run`. If the full appraisal download is estimated
-above 48 hours, ask the operator whether to continue the scrape, ingest records into
-the query DB, or move this source to runtime retrieval in an owning app.
+above 48 hours, ask the operator whether to continue the scrape, ingest an official bulk
+export or records extract as artifact files instead of scraping, or move this source to
+runtime retrieval in an owning app.
 
 ## 3. Transform scripts (reuse first)
 
@@ -171,10 +172,16 @@ Note the invocation id from the response, then check completion in the Web UI
 `curl localhost:8080/restate/invocation/<id>/attach` before walking the artifact
 checklist below.
 
-Verify in order: `capture.zip` → `transformed.zip` → validation pass → DB row →
-`eligibility.json` under `data/artifacts/appraisal/<county>/smoke-1/<folio>/` (`ls` or
-`find`). Debug via the invocation journal in the Web UI (`localhost:9070`)
-and the services process logs.
+Verify in order: `capture.zip` → `transformed.zip` → validation pass → `ready.json` →
+`eligibility.json` under `data/artifacts/appraisal/<county>/smoke-1/<parcel_id>/` (`ls` or
+`find`), then the parcel's ledger record (status `ready`):
+
+```bash
+curl localhost:8080/CountyLedger/<county>-smoke-1/get --json '{"parcel_id":"..."}'
+```
+
+Debug via the invocation journal in the Web UI (`localhost:9070`) and the services
+process logs.
 
 ## Local repair loop
 

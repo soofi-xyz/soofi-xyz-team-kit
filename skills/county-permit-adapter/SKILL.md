@@ -7,14 +7,14 @@ metadata: {"author":"elephant-xyz"}
 
 **Harvest order.** Build the vendor module as soon as the portal is fingerprinted.
 Do not start county permit harvest until the identity baseline (official corporate
-registry plus an **adequate** official contractor-licensing snapshot) is loaded and
+registry plus an **adequate** official contractor-licensing snapshot) is acquired and
 reconciled. In Florida use `sunbiz-corporate-ingest` plus `dbpr-license-ingest`; elsewhere
 use the official equivalents named in the county profile. If licensing data is
 inadequate, acquire it before harvest; do not start under a recorded gap. Capture contacts
-raw; preserve omitted `license_number` values; never write an inferred license into
-raw `permit_contacts.license_number`; never stamp `companies.company_id` from portal
-name/regex matching. Identity resolution is
-`skills/use-oracle/reference/permit-evidence-preflight.md` after harvest.
+raw; preserve omitted license values; never write an inferred license onto a raw permit
+contact; never emit a company or contractor edge from portal name/regex matching.
+Identity resolution is `skills/use-oracle/reference/permit-evidence-preflight.md` after
+harvest, and it emits official identity edges as lexicon relationship files.
 
 The `PermitHarvest` Restate service (`services/permit-harvest.ts`) exposes
 `harvestParcel({county, jobId, parcel_id})` and dispatches to the county's vendor module — a plain
@@ -29,9 +29,8 @@ flow: a `PermitFeed` workflow (key `<CountyIngest key>-permits` — so a redrive
 completes, scans the eligibility artifacts (`eligible: true`), rebuilds the eligible-list
 index (`data/artifacts/permits/<county>/<jobId>/eligible.idx`) atomically on every
 PermitFeed pass — the index is stamped with the eligibility-policy fingerprint and never
-reused across policy changes — and spawns `PermitFeedChunk` children (keyed
-`<PermitFeed key>-c<N>`) that dispatch
-`PermitHarvest.harvestParcel` in bounded windows. A malformed `eligibility.json` is
+reused across policy changes — and dispatches `PermitHarvest.harvestParcel` itself in
+bounded windows. A malformed `eligibility.json` is
 recorded and skipped, never thrown — one bad manifest must not poison the feeder.
 `Parcel.process` does NOT send permit invocations directly — one send per
 parcel would queue the whole eligible county.
@@ -150,25 +149,27 @@ When deep permit enrichment exceeds local single-IP bandwidth (e.g. 500k+ permit
      artifact digest needed by the versioned identity resolver.
 4. **Stable keys + resume** — deterministic artifact keys (`safeKeyPart()` for parcel
    ids), `skipExisting`/`skipCompleted` checks, and a per-parcel status JSON
-   (`status/<folio>.json` — monitoring counts these against the eligible total). Work
+   (`status/<parcel>.json` — monitoring counts these against the eligible total). Work
    must be re-runnable without duplication (see `durable-workflow-builder` pattern 3).
-   The harvester writes artifacts + `status/<folio>.json` only — it never merges into
-   the DB or publishes. DB merging and watermarks happen via `PermitFeed` → the
-   county-keyed `Loader`. Atlas publication begins only after group validation.
-5. **DB row mapping** — MAP extracted permits to `@elephant-xyz/query-db` (the npm
-   package published from the `elephant-query-db` repo) row CSVs staged under the job
-   dir. The actual merge runs via `Loader.load({jobId, tracks:["permits"],
-   step:"incremental"})`, submitted per completed chunk by `PermitFeed` — the `Loader`
-   is the single writer; never merge inline from the harvester.
-   Link permits to the REQUESTED parcel via explicit target
-   evidence (`propertyFirstTarget`), never via whatever parcel the detail page happens to
-   display — Accela detail pages sometimes show a different parcel, which corrupted early
-   Lee loads.
+   The harvester writes artifacts + `status/<parcel>.json`, then records its result to
+   the `CountyLedger` (key `<county>-<jobId>`) under `stage: "permits"`. It writes no
+   SQL and publishes nothing. Atlas publication begins only after group validation.
+5. **Permit → parcel link** — map extracted permits to lexicon permit output
+   (`property_improvement` records) under the job's `extracted/` dir, and link each
+   permit to the REQUESTED parcel via explicit target evidence (`propertyFirstTarget`),
+   never via whatever parcel the detail page happens to display — Accela detail pages
+   sometimes show a different parcel, which corrupted early Lee runs. A permit that
+   cannot be linked to the requested parcel stays in the output, unlinked, with an
+   explicit reason in the status JSON and the ledger record. Reconciliation counts
+   every harvested permit as linked or unlinked-with-reason (reconcile section of
+   `county-ingest-run`).
 6. **Browser session where required** — some portals block curl entirely (Palm Beach's
    ePZB guest endpoints need a Playwright/Puppeteer session bootstrap first). Session
    setup belongs in the module; keep it reusable across parcels.
 
-Artifact layout: `data/artifacts/permits/<county>/<jobId>/{permit-lists,raw,extracted,status}/…`.
+Artifact layout: `data/artifacts/permits/<county>/<jobId>/{raw,extracted,status}/…`.
+Accela date-window backfills also write a vendor-specific `permit-lists/` dir beside
+them.
 
 **Date-window backfill (Accela).** Accela list searches cap at ~100 results per query, so
 harvest permit LISTS by date window with binary splitting; workers truncate after page 1
@@ -208,8 +209,10 @@ exceeds the window.
   capture, session bootstrap, retry/failure rate, and bytes written for a representative
   sample. Estimate countywide elapsed time from eligible parcel count, expected permits
   per parcel, measured latency, safe concurrency, delays, and retry overhead.
-- Smoke test the deployed service: `docker compose up -d`, `npm run dev`,
-  `restate deployments register http://host.docker.internal:9080`, then invoke ONE parcel.
+- Smoke test the deployed service:
+  `docker compose -f skills/use-oracle/runtime/local/compose.yaml up -d` (Restate only),
+  `npm run dev`, `restate deployments register http://host.docker.internal:9080` (or
+  `http://localhost:9080` on Linux host networking), then invoke ONE parcel.
   Use a one-way `send`, not `call` — a harvest takes minutes, so a synchronous call times
   out client-side:
 
@@ -220,16 +223,15 @@ curl localhost:8080/restate/send/PermitHarvest/harvestParcel \
 
   Capture the invocation id from the response, watch that invocation in the Web UI
   (`http://localhost:9070`) until it completes, then verify the parcel's status artifact
-  (`data/artifacts/permits/<county>/<jobId>/status/<folio>.json`) and the other artifacts
-  (`find data/artifacts/permits/<county>/ -type f`). The handler writes artifacts and
-  status only — no DB rows exist yet. To check DB rows, run the merge explicitly:
+  (`data/artifacts/permits/<county>/<jobId>/status/<parcel>.json`), the other artifacts
+  (`find data/artifacts/permits/<county>/ -type f`), and the ledger's permit record:
 
 ```bash
-curl localhost:8080/restate/send/Loader/<county>/load \
-  --json '{"jobId":"smoke-1","tracks":["permits"],"step":"incremental"}'
+curl localhost:8080/CountyLedger/lee-smoke-1/get --json '{"parcel_id":"..."}'
 ```
 
-  wait for that invocation to complete in the UI, THEN inspect DB rows.
+  The record must show `stage: "permits"` with the link result (linked, or unlinked with
+  a reason). There is no merge step to run.
 
 ## Throughput rules
 
@@ -247,8 +249,9 @@ curl localhost:8080/restate/send/Loader/<county>/load \
   IP gets rate-limited or blocked over a long harvest.
 - Before scaling beyond the pilot, record the portal's safe concurrency and the estimated
   full permit-download time in the county findings doc. If the estimate is more than
-  48 hours, stop and ask whether permits should be downloaded anyway, ingested into the
-  query DB, or retrieved at runtime. For runtime retrieval, ask which app/service owns it
+  48 hours, stop and ask whether permits should be downloaded anyway, ingested from an
+  official bulk export or records extract as artifact files instead of scraping, or
+  retrieved at runtime. For runtime retrieval, ask which app/service owns it
   and whether lookup should use direct portal/API calls, server-side scraping, cache,
   queued background fetch, or another pattern.
 

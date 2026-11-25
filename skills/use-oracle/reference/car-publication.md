@@ -125,7 +125,7 @@ and one per entity file. `hash --linked` still writes it, byte for byte.
 `export-tables` reads a validated archive and writes the derived per-class index next to it.
 The archive stays canonical; the tables are a convenience for consumers who want one class
 at a time. **Only this command produces them.** Never hand-build, patch, or export a
-per-class table from the query DB or from the hashed ZIPs.
+per-class table from run state, working artifacts, or the hashed ZIPs.
 
 - **One table per lexicon class present** (`<tables-dir>/property/part-00000.parquet`, ...),
   one per relationship type, and a `properties` table from the county index.
@@ -320,5 +320,6 @@ counties into one archive; the index is a county index.
   both in the run evidence until the CLI carries them.
 - A raw IPFS node cannot discover inner blocks from the network. Consumers that need that
   must pin the archive on a node they control.
-- The internal Query DB may produce working Parquet or coverage artifacts for
-  reconciliation and enrichment. Never register, upload, or serve those intermediates.
+- Reconciliation and enrichment may produce working Parquet, coverage, ledger, or manifest
+  files. Never register, upload, or serve those intermediates; publish only from validated
+  group directories.

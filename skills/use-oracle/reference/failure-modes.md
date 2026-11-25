@@ -37,10 +37,10 @@ submit a query whose required controls are absent.
 **Stalled worker vs healthy cooldown.** A live PID with an unchanged checkpoint is not proof
 of health. A process sleeping until a durable `nextAttemptAt` after a classified source error
 is healthy. Treat work as stale only after its heartbeat/lease deadline expires. Reacquire
-atomically with a higher fencing token, an absent advisory lock, matching signatures, and a
+atomically with a higher fencing token, no in-flight invocation for the same key, matching signatures, and a
 remaining retry budget. Resume only pending work. Do not duplicate a valid writer.
 
-**Watchdog.** Persist heartbeat, lease expiry, fencing token, advisory lock, checkpoint
+**Watchdog.** Persist heartbeat, lease expiry, fencing token, invocation key, checkpoint
 signature, attempt budget, and `nextAttemptAt` in the durable run manifest. Resume the
 identical command with no reset. Never use `--start-row` on a hash-backed pipeline. Exhausted
 work becomes `FAILED_EXHAUSTED` with an owner and exact recovery action while independent
@@ -84,7 +84,7 @@ may have meant a small contractor set (for example roofing, HVAC, and solar only
 leaf categories on a bureau index can be thousands of slugs and many days. Match the
 declared scope.
 
-**Skip lists.** When adding categories, skip profile URLs already harvested so later loads
+**Skip lists.** When adding categories, skip profile URLs already harvested so later runs
 dedupe instead of overwriting.
 
 ## HOA web enrichment
@@ -162,10 +162,11 @@ temporary dirty worktree is a different runtime. Before dispatch, freeze reposit
 identity, branch, commit/tree digest, runtime image, and redacted configuration/registry/schema
 digests in the run manifest. Reject mismatches instead of silently continuing.
 
-## Load, dashboard, publication
+## Reconciliation, dashboard, publication
 
-**Local capture ≠ Query DB load ≠ publication.** Completed artifacts on disk are not
-reconciled. Loaded Query DB rows are internal and never become Donphan's source. Public
+**Local capture ≠ reconciliation ≠ publication.** Completed artifacts on disk are not
+reconciled until `reconcile-county.mjs --strict` passes and writes the run manifest. Restate
+run state and the `CountyLedger` are internal and never become Donphan's source. Public
 visibility requires validated CARs and CLI-exported tables, upload readback, an Atlas merge,
 global Atlas IPNS, and MCP SQL synchronization.
 
@@ -174,17 +175,18 @@ MCP to read it. At intake, verify upload-node credentials and Atlas repository a
 request missing access immediately. Move frozen CAR/table artifacts, not live checkpoints
 or browser sessions, to the upload step.
 
-**Never mutate a published snapshot.** Later loads produce new validated group output and a
-new CAR/table root. Compare loaded and published watermarks continuously. Publish changes
+**Never mutate a published snapshot.** Later runs produce new validated group output and a
+new CAR/table root. Compare the latest reconciled manifest with the one the published group
+was built from continuously. Publish changes
 through a replacement Atlas group entry; only the global Atlas workflow moves its IPNS.
 
 **Unsupported access must not look like zero.** If a county/data group/table is absent from
 the synchronized Atlas index, report it as unpublished. Do not represent it as an empty
 dataset.
 
-**Dashboard.** Do not rescan large tables per `/api/status`. Use durable rollups, a
-reconnecting pool, query deadlines, and a last-good snapshot. `ERR_CONNECTION_REFUSED` is
-often a missing port forward, not a dead writer.
+**Dashboard.** Do not rescan artifact trees per `/api/status`. Use durable rollups (the
+`CountyLedger` summary and the run manifest), request deadlines, and a last-good snapshot.
+`ERR_CONNECTION_REFUSED` is often a missing port forward, not a dead worker.
 
 **Lexicon gaps.** Do not invent required facts the source lacks (for example monthly tax
 amount on an assessment roll). Document the gap; keep `county_complete` false.
@@ -198,7 +200,7 @@ geometry. Do not use the easiest geometry feed as the canonical census.
 Keep these distinct: `pilot`, `enumerating`, `running`, `cooling_down`, `paused`,
 `source_cap`, `source_missing`, `checkpoint_stale`, `manual_captcha_required`,
 `login_required`, `no_anonymous_search`, `custodian_only`, `software_transport`,
-`captured_complete`, `loaded_complete`, `supported_partial`, `supported_full`.
+`captured_complete`, `reconciled_complete`, `supported_partial`, `supported_full`.
 
 HOA web rows use the diagnostics in `hoa-web-ingestion.md` (`confirmed_match`,
 `partial_match`, `source_conflict`, `insufficient_evidence`, `fetch_error`, and the

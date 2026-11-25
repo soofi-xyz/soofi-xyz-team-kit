@@ -34,10 +34,10 @@ those license fields or these edges, record the gap and do not substitute anothe
 edge.
 
 Do not invent a generic SID, a license field on the person, or a separate contractor
-class. Do not load DBPR records into BBB reputation-license tables. For the Query DB
-working store, load only columns the deployed schema has; retain unsupported official
-records in the private snapshot and resolution ledger and report schema gaps. The
-lexicon archive still writes the three edges above from the DBPR record.
+class. Do not mix DBPR records into BBB reputation output. Write only the classes and
+fields the live lexicon manifest has; retain unsupported official records in the private
+snapshot and resolution ledger and report schema gaps. The lexicon output still carries
+the three edges above from the DBPR record, as relationship files, never SQL rows.
 
 ## Inputs and outputs
 
@@ -46,7 +46,7 @@ Require:
 - `<county>` and ingest-window/as-of rule;
 - official DBPR source URL and posted/refreshed time;
 - a private artifact root outside Git;
-- Query DB destination proof and current schema inventory;
+- the live lexicon manifest URL;
 - prior DBPR manifest, when re-ingesting.
 
 Produce:
@@ -55,7 +55,8 @@ Produce:
 - SHA-256 digests, source URL, retrieval time, posted time, row counts, and field profile;
 - reconciliation for licenses, qualifier/person relationships, qualified-business
   relationships, statuses, and effective periods;
-- supported Query-DB load receipts and an immutable resolver handoff;
+- lexicon output files (`classes/` + `relationships/`) for supported structures and an
+  immutable resolver handoff (the resolution ledger JSONL);
 - one terminal adequacy result and explicit gap codes.
 
 ## 1. Run the adequacy gate
@@ -64,7 +65,8 @@ On every ingest or re-ingest, fail the gate unless the snapshot is all of:
 
 1. official DBPR data, not BBB, Sunbiz, a permit portal, or a name list;
 2. dated and fresh enough for the declared as-of rule;
-3. immutable, digested, parsed, loaded into the operating snapshot, and reconciled;
+3. immutable, digested, parsed, written to the private normalized snapshot, and
+   reconciled;
 4. inclusive of license number/type, status, licensee/qualifier records,
    qualified-business relationships, and applicable effective start/end dates;
 5. able to support the permit attribution dates in scope.
@@ -125,9 +127,8 @@ Quarantine malformed, future, or impossible dates and conflicting overlapping
 relationships.
 
 Use a checked-in runtime helper when one exists. On the current bundled baseline there is
-no dedicated DBPR importer; do not mislabel
-`src/permits/private-company-match.mjs` as one because it uses BBB/name/phone candidates
-and is not authoritative DBPR temporal resolution. If a helper is later added, require:
+no dedicated DBPR importer; do not mislabel a BBB/name/phone candidate matcher as one,
+because it is not authoritative DBPR temporal resolution. If a helper is later added, require:
 
 ```bash
 cd skills/use-oracle/runtime
@@ -146,21 +147,21 @@ Verify:
 - status and relationship coverage satisfy the declared attribution window;
 - identical inputs and normalizer version reproduce identical output digests.
 
-## 4. Load supported structures only
+## 4. Write supported lexicon structures only
 
-Inspect the deployed Query DB schema before writing working-store rows. Load legal
-companies into that store only through the existing company/Sunbiz identity path when
-an exact official relationship resolves to an existing
-`business_registrations.document_number` and `companies.company_id`. The lexicon
-archive is separate: persist company, person, and license from the DBPR record and
-write `property_improvement_has_contractor`, `contractor_has_license`, and
-`contractor_has_person`. Keep statuses and effective periods in the private normalized
-snapshot and immutable resolver ledger when the Query DB has no column for them.
+Read the live lexicon manifest before writing output. Persist company, person, and
+license from the DBPR record as lexicon class files, and link a company to its Sunbiz
+company only when an exact official relationship resolves to one Sunbiz
+`document_number`. Write `property_improvement_has_contractor`,
+`contractor_has_license`, and `contractor_has_person` as relationship files. Keep
+statuses and effective periods in the private normalized snapshot and the immutable
+resolution ledger when the lexicon has no field for them.
 
-Never populate `business_reputation_license_id`, synthesize
-`permit_contacts.license_number`, or write `permit_contacts.person_id` from a name.
-Do not stamp permit company edges in this stage; `query-db-loading-matching` performs the
-versioned resolver/backfill after permit capture.
+Never copy a BBB reputation license onto a DBPR license, synthesize a license number
+on a raw permit contact, or link a person from a name. Do not emit permit company edges
+in this stage; the permit identity stage emits them with the versioned resolver after
+permit capture, recording resolver version and snapshot digests in the resolution
+ledger beside the job's permit artifacts (reconcile section of `county-ingest-run`).
 
 ## Gap codes and acceptance
 
@@ -184,7 +185,7 @@ manifest lacks `contractor_has_license`, `property_improvement_has_contractor`, 
 codes. `dbpr_resolver_provenance_unsupported` remains a schema-capability gap. None of
 these codes excuse acquisition, and none authorize a permit-portal copy or a
 substitute edge. Return snapshot revision/digests, source boundary, posted/retrieved
-dates, counts, quarantines, relationship-window coverage, supported rows loaded,
+dates, counts, quarantines, relationship-window coverage, supported records written,
 adequacy result, gap codes, and the next automated action. Read permits that already
 print a license number through the official license-detail lookup without waiting for
 this extract. Historical qualification of permits with no license number proceeds

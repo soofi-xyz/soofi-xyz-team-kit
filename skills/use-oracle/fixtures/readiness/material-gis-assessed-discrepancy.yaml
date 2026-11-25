@@ -26,12 +26,12 @@ permits:
       status: supported
       vendor: accela
       historical_records: true
-destination:
-  writes_in_scope: true
-  proven: true
-  project: elephant-pipeline
-  environment: non-production
-  independent_identity_sources:
-    - neon_console_project_and_branch
-    - configured_branch_and_endpoint_ids
+stack:
+  orchestrator: restate
+  restate_admin_url: http://localhost:9070
+  services_registered: true
+  verified_at: "2026-01-01T00:00:00Z"
+  publication:
+    in_scope: false
+    upload_node: null
 approved_exceptions: []

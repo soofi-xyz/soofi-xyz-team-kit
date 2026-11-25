@@ -86,4 +86,4 @@ a pre-2.0 consolidated document; discover tables first.
   matched that exact scope and filter.
 - `queryAtlas` caps results at 1000 rows; paginate deterministically.
 - Atlas reflects its synchronized index revision, not live county portals.
-- Ingestion query DB rows not published through Atlas are intentionally unavailable.
+- Ingested records not published through Atlas are intentionally unavailable.

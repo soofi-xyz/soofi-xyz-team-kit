@@ -47,8 +47,8 @@ Write findings to `skills/use-oracle/runtime/docs/<county>-county-findings.md`. 
    probe. Follow `use-oracle/reference/hoa-property-management.md`.
 7. **Source feasibility** — for every source that needs scraping/downloading, record the
    total record/page/request estimate, probe timings, safe concurrency, failure rate,
-   estimated full-download time, and recommended mode: bulk artifact download, query-DB
-   ingestion, or runtime retrieval.
+   estimated full-download time, and recommended mode: bulk artifact download, ingestion
+   of an official bulk export or records extract as artifact files, or runtime retrieval.
 8. **Source comparison** — for overlapping sources (county GIS layer, appraiser site,
    tax roll, permit portals), list what each one adds that the others lack, so a blocked
    source is judged by what is actually lost (for example: the GIS layer gives the parcel
@@ -108,8 +108,9 @@ their `data/artifacts/...` path or `downloads/` location.
      - *Local Execution*: Free compute, but bound by single-IP egress rate limits (e.g., Accela returns 429/500 above 6 req/sec from a single IP; total ETA can exceed 40-50 hours for 500k+ permits).
      - *AWS Lambda Distributed Scraping*: Spreads requests across hundreds of transient IP addresses, allowing concurrency of 60-120 workers, reducing run time to 1-3 hours while keeping AWS compute cost low ($3-$15). Includes automated cost tracking, in-flight self-healing retry buffers, and end-of-stream dead-letter sweeps.
    - If the local estimate is more than 48 hours for that source, stop treating full download as
-     the default. Ask the operator whether to run distributed cloud harvesting, ingest into
-     the query DB only, or retrieve at runtime.
+     the default. Ask the operator whether to run distributed cloud harvesting, ingest an
+     official bulk export or records extract as artifact files instead of scraping, or
+     retrieve at runtime.
 5. Identify the permit vendor and municipal portals by URL shape:
    - `*.accela.com/<AGENCY>/...` → Accela Citizen Access (e.g. `HCFL`, `TAMPA`). Record agency code, module, and `altId` deep link structures (`CapDetail.aspx?Module=Building&TabName=Building&altId=<PERMIT>`).
    - `*aspgov.com/Click2GovBP/...` → Click2Gov (e.g. Temple Terrace). Requires session cookie bootstrap and application year/number parsing.

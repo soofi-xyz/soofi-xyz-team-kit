@@ -153,6 +153,6 @@ question
 
 - Treat unpublished scope, missing table, and missing column as different errors.
 - On sync failure, report the accepted index state and gateway error; do not fall back
-  to direct IPFS or the ingestion query DB.
+  to direct IPFS or Oracle's ingestion artifacts.
 - On row-cap truncation, narrow the query or paginate by deterministic fields.
 - Treat empty rows as empty only within the exact scope and filter used.
