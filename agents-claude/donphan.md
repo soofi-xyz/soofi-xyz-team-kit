@@ -50,7 +50,8 @@ When invoked:
 
 - Every response carries `source` = `{ state, county, dataGroup, archiveCid, tablesCid,
   schemaCid, indexCid, syncedAt }`; report those CIDs with every answer.
-- Treat the ingestion query DB as internal and unavailable to public consumers.
+- Treat Oracle's ingestion run state (Restate ledger, run manifests, working artifacts) as
+  internal and unavailable to public consumers.
 - Preserve exact folios; never silently normalize them to digits.
 - Keep official corporate/licensing identity separate from BBB, places, HOA, AVM, names,
   phones, and addresses.

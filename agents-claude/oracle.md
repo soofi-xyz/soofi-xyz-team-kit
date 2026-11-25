@@ -51,16 +51,40 @@ read `skills/use-oracle/reference/operating-in-vm.md`.
 
 Treat these as separate planes:
 
-- **Ingestion and internal reconciliation:** capture, transform, Query DB loading,
-  folio reconciliation, watermarks, tombstones, permit/property matching, official
-  identity edges, roof-age derivation, and enrichment.
+- **Ingestion and reconciliation:** capture, transform, validation, run tracking in
+  Restate, folio reconciliation from the `CountyLedger` plus the artifact files into a
+  durable run manifest, tombstones, permit/property linking, official identity
+  relationship files, roof-age derivation, and enrichment.
 - **Public publication:** validated lexicon output → one CAR per county/data group →
   validated CAR → CLI-exported tables → archive/table upload and readback → one Atlas
   county-page PR → merged global Atlas IPNS → MCP 2.0 sync.
 
-Atlas is the only public registry and publication path. The Query DB is an internal
-working store. Never publish from it, expose its credentials to consumers, generate a
-per-county public pointer, or wire a public MCP map from it.
+Atlas is the only public registry and publication path. Restate holds run state only
+(progress, retries, per-parcel status, dedupe, resume); files hold all data. There is no
+SQL database. Never publish from run state, run manifests, or working artifacts, generate
+a per-county public pointer, or wire a public MCP map from them. Publication reads
+validated group directories.
+
+## Run tracking
+
+- Stack: Restate only (`skills/use-oracle/runtime/docker-compose.yml`, loopback ingress
+  :8080, admin :9070) plus one services process (`npm run services`, :9080) registered
+  with `npm run register`. Bring it up and record the readiness `stack` section with
+  `bootstrap-oracle-infra`; `services/README.md` is the runtime reference.
+- Services: `CountyIngest` (`<county>-<jobId>[-rN]`) → `IngestChunk` → `Parcel`;
+  `CountyLedger` (`<county>-<jobId>`) is the single writer of per-parcel status
+  (`pending`, `ready`, `dead`, `invalid`, `failed`; permits under `stage: "permits"`);
+  `PermitFeed` (and its `-c<N>` child runs) → `PermitHarvest`; `PublishGroup`
+  (`<county>-<group>-<jobId>`) runs validate → hash → validate CAR → export-tables, waits
+  in `awaiting-approval` for `approve({approvedBy, groupDigest?})`, uploads with readback,
+  and stops before the Atlas PR.
+- Files live under `DATA_DIR`: `artifacts/appraisal|permits/<county>/<jobId>/`,
+  `runs/<county>/<jobId>/manifest.json`, `groups/<county>/<jobId>/<group>/`, and
+  `publish/<county>/<jobId>/<group>/`.
+- Reconcile with `npm run reconcile -- --county <slug> --job <jobId> --strict` from
+  `skills/use-oracle/runtime` (exit 0 ok, 1 gate failed, 2 error); add
+  `--assemble <group>` to build a group directory from verified ready parcels (the group
+  plus its Seed root; `seed` itself is rejected).
 
 ## Required pipeline
 
@@ -97,10 +121,16 @@ separate, and stop. Do not continue into the pipeline below.
    (`company` → `license`, `license_identifier` on class `license`), and
    `contractor_has_person` (`company` → `person`, `first_name` and `last_name`;
    no license field on the person). Relationship objects are only `from` and `to`.
-5. Run `query-db-loading-matching` for internal reconciliation. Require folio counts,
-   content-aware watermarks, tombstone consumption, deterministic permit/property
-   links, versioned official identity edges, roof-age lineage, and separate enrichment
-   coverage. This step does not publish.
+5. Reconcile with `county-ingest-run` §6. Require a strict pass of
+   `reconcile-county.mjs`: gates `seed_accounted`, `seed_complete`
+   (`seed = ready + dead + invalid`), `no_duplicate_keys`, `ready_hash_coverage`,
+   `ledger_files_agree`, `permits_linked` (every harvested permit linked to its requested
+   parcel or unlinked with a reason), `permits_complete`, and `tombstones_excluded`. Require versioned official identity
+   relationship files, roof-age lineage, and separate enrichment coverage. The runtime
+   does not yet generate identity relationship files or roof-age estimates from a
+   pipeline run (`county-ingest-run` §6 and `roof-age-and-identity-reingest.md` list the
+   gaps): produce them with a reviewed, versioned step or report them as not generated.
+   Keep the run manifest. This step does not publish.
 6. For HOA name, fee, or frequency work, run the playbook in
    `skills/use-oracle/reference/hoa-web-ingestion.md` in order: freeze the cohort
    and gap fields, pilot 8–12 rows, pass 1, offline adjudication, pass 2 for gap
@@ -128,7 +158,7 @@ separate, and stop. Do not continue into the pipeline below.
    7. Resolve the global `elephant-atlas` IPNS, verify the accepted index changed to
       the merged Atlas revision, run MCP 2.0 `sync`, then verify the county/data groups
       with `listAtlasCounties` and `getAtlasDatasetInfo` (`state`, `county`, `dataGroup`).
-7. Report every gate and CID. Do not call a county published before the global IPNS and
+8. Report every gate and CID. Do not call a county published before the global IPNS and
    synchronized MCP snapshot contain it.
 
 ## Invariants
@@ -147,10 +177,11 @@ separate, and stop. Do not continue into the pipeline below.
   Atlas PR, and verify global IPNS after merge.
 - Compare CID digests across codecs; do not compare raw CID strings when codecs differ.
 - Re-mine pre-lexicon data. Do not fabricate provenance during conversion.
-- Preserve Query DB behavior as internal reconciliation only: folio is the parcel key;
-  loaders are idempotent and single-writer per county; watermarks include path and
-  artifact hash; tombstones remove or downgrade stale rows; unresolved identity stays
-  unlinked.
+- Reconcile only from the `CountyLedger` and the artifact files, never SQL: folio is the
+  parcel key (never digits-only); every step is idempotent and `CountyLedger` is the
+  single status writer per county/job; ready markers carry the validated output hash;
+  tombstoned parcels never enter a group directory; unresolved identity stays unlinked.
+- Write official identity edges and roof age as lexicon output files, never SQL rows.
 - Resolve permit companies from official license/corporate evidence with temporal
   validity. Name, phone, BBB, and address matches are candidates, not legal identity.
 - Stamp each Sunbiz company from `search.sunbiz.org` by document number. Do not
@@ -179,10 +210,10 @@ separate, and stop. Do not continue into the pipeline below.
   caches, checkpoints, cohort files, or real addresses.
 - A raw single-property request is capture only: exactly one seed row, official
   adapter, byte-preserved body, separate receipt, and no transform, reconciliation,
-  Query DB load, hash, export, Atlas registration, or publication.
+  hash, export, Atlas registration, or publication.
 - Never solve or bypass CAPTCHA. Use only the approved browser profile on challenge-
   protected sources (`reference/failure-modes.md`). Never commit captures, CARs, Parquet,
-  secrets, or database URLs.
+  `.env` files, or secrets.
 
 ## Routing
 
@@ -200,7 +231,10 @@ separate, and stop. Do not continue into the pipeline below.
   adjudication, or Prism-vs-NetSuite accuracy:
   `use-oracle/reference/hoa-web-ingestion.md`. Official HOA/manager identity:
   `use-oracle/reference/hoa-property-management.md`.
-- Load, matching, stale rows, identity edges, or roof age: `query-db-loading-matching`.
+- Stack bring-up, registration, or the readiness `stack` gate: `bootstrap-oracle-infra`.
+- Reconciliation, permit/parcel links, tombstones, identity edges, or roof age:
+  `county-ingest-run` §6, `use-oracle/reference/permit-evidence-preflight.md`, and
+  `use-oracle/reference/roof-age-and-identity-reingest.md`.
 - Public publish: `use-oracle` and `car-publication.md` only.
 - MCP deployment or synchronization: `deploy-open-data-mcp`.
 - Public data exploration: `use-elephant-mcp`.
@@ -240,8 +274,11 @@ For ingestion or publication work, return:
   and therefore no contractor, person, or license written; Sunbiz companies stamped
   with the document-number detail URL; public-records extract used only where a
   permit had no license number;
-- internal reconciliation by folio, per-track watermark, tombstones consumed,
-  linked/unresolved/conflicting identities, roof-age coverage, and enrichment counts;
+- the run manifest path and its gates: counts by status (`seed = ready + dead +
+  invalid`), dead/invalid reasons, tombstoned parcels excluded, ready-marker hash
+  coverage, ledger-vs-file mismatches, permits linked/unlinked by reason,
+  linked/unresolved/conflicting identities with resolver version, roof-age coverage,
+  and enrichment counts;
 - HOA web coverage by evidence scope, raw-receipt coverage, 7.5% gap count, explicit
   frequency coverage, input-vs-transformation diagnostics, and NetSuite paid-day
   MAE/RMSE/bias before and after the shadow run, plus the HOA web enrichment fields

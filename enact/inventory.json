@@ -994,13 +994,13 @@
     "donphan": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 7423,
+      "bytes": 7482,
       "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.5-high",
-      "library_pinned_bytes": 18563,
+      "library_pinned_bytes": 18616,
       "library_skills": [
         "use-elephant-mcp"
       ],
@@ -3300,7 +3300,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 51783,
+      "bytes": 51997,
       "files": 9,
       "flag_counts": {
         "aws-profile": 1,
@@ -3310,7 +3310,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": "gpt-5.4-high",
-      "library_pinned_bytes": 220095,
+      "library_pinned_bytes": 220148,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-ai-agents",
@@ -3700,8 +3700,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.197.0",
-  "kit_version": "0.197.0",
+  "enact_version": "1.198.0",
+  "kit_version": "0.198.0",
   "mcp_allow_list": [
     "enact",
     "browser",
@@ -3867,7 +3867,7 @@
       ]
     },
     "build-elephant-hero-facts": {
-      "bytes": 30023,
+      "bytes": 30118,
       "files": 7,
       "flags": {},
       "omitted": [],
@@ -4420,7 +4420,7 @@
       ]
     },
     "deploy-open-data-mcp": {
-      "bytes": 4979,
+      "bytes": 5036,
       "files": 1,
       "flags": {},
       "omitted": [],
@@ -4679,7 +4679,7 @@
       "references": []
     },
     "use-elephant-mcp": {
-      "bytes": 17617,
+      "bytes": 17670,
       "files": 4,
       "flags": {},
       "omitted": [],
