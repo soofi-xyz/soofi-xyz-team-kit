@@ -4,14 +4,17 @@
 //
 //   node edit-turn.mjs begin --repository <owner/repo> --app-id <appId> --session-id <sessionId> \
 //                            --base-sha <installed app's commit> [--dir <clone>]
+//   node edit-turn.mjs bump-kit --kit-version <version> [--dir <clone>]
+//                                                # the one allowed package.json and lockfile change
 //   node edit-turn.mjs check  [--dir <clone>]    # the gate on HEAD, without pushing
 //   node edit-turn.mjs push   [--dir <clone>] [--title <text>] [--body <text>] [--base <branch>]
 //   node edit-turn.mjs result [--dir <clone>]    # the turn's result without pushing
 //   node edit-turn.mjs pre-push <remote> <url>   # the git hook `begin` installs; not run by hand
 //
-// `begin`, `push` and `result` print one JSON object on stdout; everything else goes to stderr.
-// Exit 0 on success, 1 when the gate or a step refuses. Needs only Node.js and git; it reads the
-// GitHub token for the pull request from git's own credential helper and never prints it.
+// `begin`, `bump-kit`, `push` and `result` print one JSON object on stdout; everything else goes to stderr.
+// Exit 0 on success, 1 when the gate or a step refuses. Needs only Node.js and git, and pnpm for
+// `bump-kit`; it reads the GitHub token for the pull request from git's own credential helper and
+// never prints it.
 //
 // Node standard library only.
 import { spawnSync } from "node:child_process";
@@ -27,6 +30,11 @@ const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const FULL_SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const ABSENT = /^0+$/;
+const KIT = "@prism/console-app-kit";
+// The first kit version published to each environment's own package registry: an app pinning an
+// earlier one cannot install there, so its turn may move the pin to the registry's kit.
+const FIRST_REGISTRY_KIT = "1.44.0";
+const EXACT_VERSION = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 
 class Refusal extends Error {}
 const refuse = (message) => {
@@ -82,12 +90,20 @@ const loadTurn = (from) => {
 
 // ---- begin
 
+/** A file's text at a commit, or undefined when the commit has no such file. */
+const showFile = (dir, rev, file) => {
+  const result = run("git", ["show", `${rev}:${file}`], { cwd: dir, check: false });
+  return result.status === 0 ? result.stdout : undefined;
+};
+/** A file's blob id at a commit, or null when the commit has no such file. */
+const blobAt = (dir, rev, file) => {
+  const result = run("git", ["rev-parse", "--verify", "--quiet", `${rev}:${file}`], { cwd: dir, check: false });
+  return result.status === 0 ? result.stdout.trim() : null;
+};
+
 /** The app's folder in the repository, read from the installed commit, never from the worktree. */
 const findAppRoot = (dir, baseSha, appId) => {
-  const show = (file) => {
-    const result = run("git", ["show", `${baseSha}:${file}`], { cwd: dir, check: false });
-    return result.status === 0 ? parseJson(result.stdout) : undefined;
-  };
+  const show = (file) => parseJson(showFile(dir, baseSha, file) ?? "");
   const roots = [];
   for (const entry of show("bundle.json")?.configurations ?? []) {
     if (entry?.product !== "console" || entry?.kind !== "app" || typeof entry.source !== "string") continue;
@@ -183,6 +199,106 @@ const begin = (options) => {
   console.log(JSON.stringify({ branch, startSha, baseSha, appRoot: appRoot || ".", dir }));
 };
 
+// ---- The kit bump: the one change to package.json and the lockfile a turn may make
+
+const appFile = (state, name) => (state.appRoot ? `${state.appRoot}/${name}` : name);
+const versionParts = (version) => EXACT_VERSION.exec(version)?.slice(1).map(Number);
+const compareVersions = (a, b) => {
+  const [x, y] = [versionParts(a), versionParts(b)];
+  return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+};
+const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const canonical = (value) =>
+  JSON.stringify(value, (_, v) => (isObject(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : v));
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * `{ from, to }` when package.json changes only by moving the kit's exact pin from a version before
+ * the registry's first kit to a same-major version the registry has; otherwise `{ problem }`.
+ */
+const kitBump = (beforeText, afterText) => {
+  const [before, after] = [parseJson(beforeText ?? ""), parseJson(afterText ?? "")];
+  if (!isObject(before) || !isObject(after)) return { problem: "package.json is not a JSON object" };
+  const from = before.dependencies?.[KIT];
+  const to = after.dependencies?.[KIT];
+  if (typeof from !== "string" || !EXACT_VERSION.test(from) || compareVersions(from, FIRST_REGISTRY_KIT) >= 0) {
+    return { problem: `the installed commit pins ${KIT} ${from ?? "nowhere in dependencies"}; only an exact pin before ${FIRST_REGISTRY_KIT} may be bumped` };
+  }
+  if (typeof to !== "string" || !EXACT_VERSION.test(to)) return { problem: `the new ${KIT} pin must be an exact version, not ${to}` };
+  if (compareVersions(to, FIRST_REGISTRY_KIT) < 0) return { problem: `the new ${KIT} pin ${to} must be ${FIRST_REGISTRY_KIT} or later` };
+  if (versionParts(to)[0] !== versionParts(from)[0]) {
+    return { problem: `${KIT} ${from} to ${to} changes the major version; a kit bump stays in the same major` };
+  }
+  const rest = (manifest) => {
+    const copy = structuredClone(manifest);
+    delete copy.dependencies[KIT];
+    return canonical(copy);
+  };
+  if (rest(before) !== rest(after)) return { problem: `package.json changes more than the ${KIT} pin` };
+  return { from, to };
+};
+
+/** Whether a pnpm lockfile pins the app's kit at `version`. */
+const lockPins = (text, version) =>
+  new RegExp(`^\\s+'?${escapeRegExp(KIT)}'?:\\n\\s+specifier: ${escapeRegExp(version)}\\n\\s+version: ${escapeRegExp(version)}(?:\\(|$)`, "m").test(text ?? "");
+
+/**
+ * Why package.json and the lockfile at `sha` are not an allowed kit bump: an empty list when they
+ * are exactly what `bump-kit` left in this turn, or what an earlier turn of the session pushed;
+ * null when the kit pin did not move, so the change is no kit bump at all.
+ */
+const kitBumpProblems = (dir, state, sha) => {
+  const manifest = appFile(state, "package.json");
+  const lockfile = appFile(state, "pnpm-lock.yaml");
+  const [beforeText, afterText] = [showFile(dir, state.baseSha, manifest), showFile(dir, sha, manifest)];
+  const pin = (text) => parseJson(text ?? "")?.dependencies?.[KIT];
+  if (pin(afterText) === pin(beforeText)) return null;
+  const bump = kitBump(beforeText, afterText);
+  if (bump.problem) return [bump.problem];
+  const blobs = { manifest: blobAt(dir, sha, manifest), lockfile: blobAt(dir, sha, lockfile) };
+  const madeThisTurn = state.kitBump?.manifest === blobs.manifest && state.kitBump?.lockfile === blobs.lockfile;
+  const pushedEarlier =
+    Boolean(state.startSha) && blobAt(dir, state.startSha, manifest) === blobs.manifest && blobAt(dir, state.startSha, lockfile) === blobs.lockfile;
+  if (!madeThisTurn && !pushedEarlier) return [`${manifest} and ${lockfile} are not as \`edit-turn.mjs bump-kit\` left them`];
+  if (!lockPins(showFile(dir, sha, lockfile), bump.to)) return [`${lockfile} does not pin ${KIT} ${bump.to}`];
+  return [];
+};
+
+const bumpKit = (options) => {
+  const { dir, state } = loadTurn(options.dir);
+  const version = options["kit-version"];
+  if (!version || !EXACT_VERSION.test(version)) refuse(`--kit-version must be an exact version such as ${FIRST_REGISTRY_KIT}, not ${version ?? "(none)"}`);
+  const manifest = appFile(state, "package.json");
+  const lockfile = appFile(state, "pnpm-lock.yaml");
+  for (const file of [manifest, lockfile]) {
+    if (blobAt(dir, "HEAD", file) !== blobAt(dir, state.baseSha, file)) refuse(`${file} already differs from the installed commit ${state.baseSha}`);
+    if (git(dir, "status", "--porcelain", "--", file)) refuse(`${file} has uncommitted changes; restore it with git checkout HEAD -- ${file}`);
+  }
+  const before = showFile(dir, state.baseSha, manifest);
+  const planned = parseJson(before ?? "");
+  if (!isObject(planned) || !isObject(planned.dependencies) || !(KIT in planned.dependencies)) refuse(`${manifest} has no ${KIT} in dependencies`);
+  planned.dependencies[KIT] = version;
+  const plan = kitBump(before, JSON.stringify(planned));
+  if (plan.problem) refuse(`no kit bump: ${plan.problem}`);
+
+  const added = runVisible("pnpm", ["add", "-E", `${KIT}@${version}`], { cwd: path.join(dir, state.appRoot) });
+  if (added.error || added.status !== 0) refuse(`pnpm add -E ${KIT}@${version} failed${added.error ? `: ${added.error.message}` : ` (exit ${added.status})`}`);
+
+  const changed = run("git", ["status", "--porcelain", "-z", "--untracked-files=no"], { cwd: dir })
+    .stdout.split("\0")
+    .filter(Boolean)
+    .map((entry) => entry.slice(3));
+  const others = changed.filter((file) => file !== manifest && file !== lockfile);
+  if (others.length) refuse(`pnpm add changed ${others.join(", ")} as well; restore them with git checkout HEAD -- <path>`);
+  const after = readFileSync(path.join(dir, manifest), "utf8");
+  const made = kitBump(before, after);
+  if (made.problem) refuse(`pnpm add left ${manifest} unlike a kit bump: ${made.problem}`);
+  if (!lockPins(readFileSync(path.join(dir, lockfile), "utf8"), version)) refuse(`pnpm add left ${lockfile} without ${KIT} ${version}`);
+  state.kitBump = { version, manifest: git(dir, "hash-object", "--", manifest), lockfile: git(dir, "hash-object", "--", lockfile) };
+  saveState(dir, state);
+  console.log(JSON.stringify({ from: made.from, to: made.to, files: [manifest, lockfile] }));
+};
+
 // ---- The gate
 
 const editablePaths = (state) => {
@@ -217,10 +333,18 @@ const pathProblems = (dir, state, sha) => {
   const { settings, source } = editablePaths(state);
   const fields = run("git", ["diff-tree", "-r", "-z", "--no-renames", state.baseSha, sha], { cwd: dir }).stdout.split("\0");
   const problems = [];
+  const bumpFiles = new Set([appFile(state, "package.json"), appFile(state, "pnpm-lock.yaml")]);
+  let bumpReasons;
   for (let index = 0; index + 1 < fields.length; index += 2) {
     const [, newMode, , , status] = fields[index].slice(1).split(" ");
     const file = fields[index + 1];
-    if (!isEditable(state, file)) {
+    // package.json and the lockfile are outside the editable paths too, except for the kit bump
+    // `bump-kit` makes.
+    if (bumpFiles.has(file) && status !== "D" && (bumpReasons ??= kitBumpProblems(dir, state, sha)) !== null) {
+      for (const reason of bumpReasons) {
+        problems.push(`${file}: outside the editable paths, and not an allowed kit bump: ${reason}; restore it to the installed commit`);
+      }
+    } else if (!isEditable(state, file)) {
       problems.push(`${file}: outside the editable paths (${settings} and ${source}**); restore it to the installed commit`);
     }
     if (status !== "D" && newMode !== REGULAR_FILE) {
@@ -411,14 +535,15 @@ const main = async () => {
   const { values } = parseArgs({
     args: rest,
     options: Object.fromEntries(
-      ["repository", "app-id", "session-id", "base-sha", "dir", "title", "body", "base"].map((name) => [name, { type: "string" }]),
+      ["repository", "app-id", "session-id", "base-sha", "kit-version", "dir", "title", "body", "base"].map((name) => [name, { type: "string" }]),
     ),
   });
   if (command === "begin") return begin(values);
+  if (command === "bump-kit") return bumpKit(values);
   if (command === "check") return check(values);
   if (command === "push") return push(values);
   if (command === "result") return result(values);
-  refuse(`unknown command ${command ?? "(none)"}: use begin, check, push or result`);
+  refuse(`unknown command ${command ?? "(none)"}: use begin, bump-kit, check, push or result`);
 };
 
 try {
