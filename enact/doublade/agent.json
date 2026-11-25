@@ -11,7 +11,7 @@
     },
     {
       "name": "build-access-product",
-      "version": "1.0.0-sha256-f130acb360a9244b"
+      "version": "1.0.0-sha256-3d264006a306fe36"
     },
     {
       "name": "build-marketplace-puller",
@@ -59,5 +59,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.193.0"
+  "version": "1.194.0"
 }

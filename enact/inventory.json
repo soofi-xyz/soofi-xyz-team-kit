@@ -54,7 +54,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 605182,
+      "library_pinned_bytes": 605634,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-access-product",
@@ -911,7 +911,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 667633,
+      "library_pinned_bytes": 675603,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1043,7 +1043,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 605182,
+      "library_pinned_bytes": 605634,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-access-product",
@@ -1401,7 +1401,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 667633,
+      "library_pinned_bytes": 675603,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -1518,7 +1518,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 1162908,
+      "library_pinned_bytes": 1170878,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -2650,7 +2650,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 2196198,
+      "library_pinned_bytes": 2204168,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-lexicon-product",
@@ -3700,8 +3700,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.193.0",
-  "kit_version": "0.193.0",
+  "enact_version": "1.194.0",
+  "kit_version": "0.194.0",
   "mcp_allow_list": [
     "enact",
     "browser",
@@ -3744,7 +3744,7 @@
       ]
     },
     "build-access-product": {
-      "bytes": 80256,
+      "bytes": 80705,
       "files": 5,
       "flags": {
         "curl": [
@@ -4285,8 +4285,8 @@
       ]
     },
     "configure-model-product": {
-      "bytes": 84451,
-      "files": 5,
+      "bytes": 92235,
+      "files": 6,
       "flags": {},
       "omitted": [],
       "references": [
