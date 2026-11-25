@@ -72,6 +72,7 @@ jobs:
           python3 -m py_compile scripts/test-model-kpi-contract.py
           python3 -m py_compile scripts/test-enact-packaging.py
           node --check scripts/sync-enact-agents.mjs
+          node --check skills/configure-console-product/scripts/edit-turn.mjs
 
       - name: Install Oracle runtime dependencies
         # `cd` (not `npm ci --prefix`): some npm releases (observed on 11.13.0)
@@ -87,6 +88,9 @@ jobs:
 
       - name: Test agent memory hooks
         run: node --test hooks/agent-memory/test/memory.test.mjs hooks/agent-memory/test/release.test.mjs
+
+      - name: Test Console Edit Mode turn gate
+        run: node --test scripts/test-console-edit-turn.mjs
 
       - name: Check Enact test data
         run: node scripts/run-enact-tests.mjs --dry-run

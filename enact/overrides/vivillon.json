@@ -1,0 +1,5 @@
+{
+  "appendix": [
+    "**Edit Mode turns.** In a Console Edit Mode turn, `.claude/skills/configure-console-product/scripts/edit-turn.mjs push` pushes the branch and finds or opens the draft pull request itself, with this run's token for that repository: do not call `open_pull_request` as well. The sandbox's own pre-push hook still runs after the turn's gate and still refuses the default branch."
+  ]
+}
