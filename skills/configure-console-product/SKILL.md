@@ -25,21 +25,27 @@ and skip sections 1, 2 and 6. It is not an edit batch (section 7).
 
 When the person has not built a Console app before, or asks how it works, take
 them through three stages in plain words, one stage at a time, and wait for them
-before the next. Items marked "to confirm" are not confirmed: say so, and never
-present a guess as the answer.
+before the next.
 
 1. **Create.**
-   - They reach you through Enact in their Claude: the Enact address is
-     `https://<shared domain>/enact/mcp`, and they link their own Claude plan once
-     on Anthropic's site (where that step is: to confirm; how to start Vivillon
-     from Claude: to confirm).
-   - The app lives in its own repository in the prismteam-ai organization. Enact
-     cannot yet create a repository or install the app kit in its sandbox; a
-     separate Enact change is in progress. Say so plainly, and until then ask
-     them to create the repository from prismteam-ai/configuration-bundle-template
-     (**Use this template**) and an owner of the organization to add it to the
-     Enact GitHub app and Enact's allowed list (who adds it to that list: to
-     confirm). Never say you created it or ran a check you could not run.
+   - They need two Access roles: `enact-agent-user` to run you and
+     `console-editor` for Console's edit mode; an Access administrator gives them.
+   - They reach you through Enact in their Claude: they add
+     `https://<shared domain>/enact/mcp` as an MCP server and, in Claude Code, type
+     `/mcp`, pick Enact and sign in with Google. There is no key to paste and no
+     Claude plan to link: you run on Prism's own model account. They ask Claude to
+     use the `ask_vivillon` tool; while you are still working, they ask Claude to
+     keep waiting on the same run.
+   - The app lives in its own private repository in the prismteam-ai
+     organization. Create it yourself with the `create_repository` tool from
+     `prismteam-ai/configuration-bundle-template`, with a short lowercase name for
+     the app, and build there; tell the person its name. When the tool refuses
+     (for example because Enact's GitHub App may not create repositories yet, or
+     the name is taken), say so plainly and ask an owner of the organization to
+     create the repository from the template (**Use this template**) and add it to
+     the Enact GitHub app, which is all Enact needs; then the person names it on
+     the next run. Never say you created a repository or ran a check you could
+     not run.
    - Agree on the pages (section 2), then build and show one page at a time
      (section 3). Open one pull request in their repository and never merge it.
      Its description says what was added, the check's result line, that the
@@ -51,15 +57,17 @@ present a guess as the answer.
      as an on/off switch with a bar for how many accounts it holds back"; each
      change comes back as a new pull request.
 2. **Review in Console's edit mode**, on an app already on Console.
-   - Apps open in view mode. A person whose role allows editing sees an **Edit
-     mode** switch above the app (which role the team gets: to confirm).
+   - Apps open in view mode. With `console-editor`, an **Edit mode** switch shows
+     above the app.
    - They pin sticky notes on the exact spot they mean, draw markup with the pen
      (mouse, finger or Apple Pencil), change or delete them (they survive a
-     reload), then click **Run fixes** to send the whole batch.
-   - You review the batch and open a fix pull request (section 7). Its status goes
-     "submitted", "reviewing", then "pr-open", or "needs-info" when you ask a
-     question (whether review is switched on in their environment and where they
-     see the status: to confirm).
+     reload), then click **Run fixes** to send the whole batch; the page says the
+     batch was submitted for review.
+   - Sending batches to you is off on soofi-safavi until an operator sets
+     `/console/edit-review`, so today no pull request follows **Run fixes**: until
+     then they ask you in Claude for the same changes. Once it is on, you open a
+     fix pull request per batch (section 7). The page shows no progress, so they
+     watch their repository.
 3. **Deliver.**
    - Merging the pull request delivers the app: Build checks it, Marketplace
      publishes it, Deploy installs it. Nothing reaches Console before that. The
@@ -69,8 +77,9 @@ present a guess as the answer.
    - Have the app's viewer role, such as `mayo-clinic-viewer`, given to the people
      who should open it; people without it cannot.
    - They open it at `https://<shared domain>/console/app/?appId=<appId>`, for
-     example `?appId=agent-usage`. The two reference apps are not merged yet and
-     still need their delivery setup before a merge publishes them (to confirm).
+     example `?appId=agent-usage`. Neither reference app is published yet: the
+     debt app's draft pull request has its delivery files and Marketplace entry,
+     and Mayo's is getting them.
 
 ## 1. Discover the Console
 
@@ -116,7 +125,16 @@ The person understands the business, not software. Use plain words.
 ## 3. Build the app
 
 1. Scaffold from [the app kit](../build-console-product/reference/app-kit.md#app-kit).
-   Leave its build settings as generated.
+   Leave its build settings as generated. To install the kit on Enact: when
+   `REGISTRY_AWS_ACCESS_KEY_ID` and `REGISTRY_AWS_SECRET_ACCESS_KEY` are set, sign
+   npm in to Build's registry for the working copy only with
+   `AWS_ACCESS_KEY_ID="$REGISTRY_AWS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$REGISTRY_AWS_SECRET_ACCESS_KEY" aws codeartifact login --tool npm --domain buildworkflow --domain-owner 848665034107 --repository npm --namespace prism --region <registry region>`
+   and install the exact kit version. Otherwise build the kit from
+   `prismteam-ai/console`'s `main` (`pnpm install --frozen-lockfile`,
+   `pnpm app-kit:build`, `pnpm pack` in `app-kit/`) and install the tarball in
+   the working copy only; that needs the person to name `prismteam-ai/console`
+   on the run, so ask for it when it is missing. Commit no `.npmrc`, tarball or
+   `file:` dependency, and never print a credential.
 2. Assemble each page only from design-system components and their typed style
    props. Use an app-level theme choice only where the environment's design-system
    configuration permits it. To show the Prism logo and the signed-in person's
