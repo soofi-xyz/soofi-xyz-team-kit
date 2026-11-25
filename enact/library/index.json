@@ -15,7 +15,7 @@
       ]
     }
   },
-  "kit_version": "0.193.0",
+  "kit_version": "0.194.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -126,17 +126,17 @@
       "version": "1.0.0-sha256-1c10240d042d78cd"
     },
     "build-access-product": {
-      "bytes": 80256,
-      "digest": "sha256:4b9eac99fbb5a54b5263ce850c70244858ac4f07dc0d28c99ed670adbf8a822f",
-      "encoded_bytes": 83685,
+      "bytes": 80705,
+      "digest": "sha256:309178a7e8453277ab840dcc028b329aafa1fd25bb012fc6ae461e1ab5895393",
+      "encoded_bytes": 84140,
       "files": 5,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 82181,
+      "stored_bytes": 82633,
       "used_by": [
         "aegislash",
         "doublade"
       ],
-      "version": "1.0.0-sha256-f130acb360a9244b"
+      "version": "1.0.0-sha256-3d264006a306fe36"
     },
     "build-ai-agents": {
       "bytes": 94063,
@@ -755,19 +755,19 @@
       "version": "1.0.0-sha256-afdc3780a728c0ed"
     },
     "configure-model-product": {
-      "bytes": 85769,
-      "digest": "sha256:596904a06c23755a1ace5ef604b1bd6be337a968c016cb7e86b98897917bc27c",
-      "encoded_bytes": 91777,
-      "files": 5,
+      "bytes": 92235,
+      "digest": "sha256:91b96e8913cb4d27242acf30e359adb4480dedc5ceabd3f83faeee9da471f2b3",
+      "encoded_bytes": 98542,
+      "files": 6,
       "reason": "used by 4 packaged agents",
-      "stored_bytes": 88836,
+      "stored_bytes": 95462,
       "used_by": [
         "dialga",
         "jirachi",
         "kecleon",
         "silvally"
       ],
-      "version": "1.0.0-sha256-33197c52c918caa2"
+      "version": "1.0.0-sha256-9622ac3184dcd088"
     },
     "configure-persist-product": {
       "bytes": 77654,

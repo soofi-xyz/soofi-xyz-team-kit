@@ -39,7 +39,7 @@
     },
     {
       "name": "configure-model-product",
-      "version": "1.0.0-sha256-33197c52c918caa2"
+      "version": "1.0.0-sha256-9622ac3184dcd088"
     },
     {
       "name": "guide-product-work",
@@ -64,5 +64,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.193.0"
+  "version": "1.194.0"
 }
