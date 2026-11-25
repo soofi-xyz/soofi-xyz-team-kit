@@ -256,13 +256,24 @@ not do those steps by hand.
    `sessionId` and the installed app's provenance commit. It works on
    `edit/<appId>/<sessionId>`, started from that commit, and begins every turn with
    `git fetch` and `git reset --hard origin/<branch>`.
-2. Install the app's dependencies as its lockfile pins them. Change only the app's
-   `console-app.json` and regular files under its `src/`, within the
-   [guardrails](../build-console-product/reference/app-kit.md#guardrails). Commit.
+2. Install the app's dependencies as its lockfile pins them. When the app pins
+   an exact `@prism/console-app-kit` that the environment's registry answers with 404
+   for it, run `node scripts/edit-turn.mjs bump-kit --kit-version <kit_version>`
+   with the version the prompt's line `- @prism (prism): the latest
+   @prism/console-app-kit published here is <kit_version>` names, as
+   [the kit bump](reference/edit-mode.md#bump-the-app-kit-when-the-registry-lacks-its-version)
+   describes. Only a later version of the same major, 1.49.0 or above, is accepted;
+   for anything else end the turn as `FAILED`.
+   Bump only to recover from that 404: when the frozen install succeeds, go on
+   without one. With no `kit_version` in the prompt, end as `FAILED`.
+   Change only the app's `console-app.json` and regular files under its `src/`,
+   within the [guardrails](../build-console-product/reference/app-kit.md#guardrails).
+   Commit.
 3. Run `node scripts/edit-turn.mjs push`. Its gate is mandatory: `console-app check`
    passes, and every changed path is `console-app.json` or under `src/` as a regular
    file (git mode `100644`), with no symbolic link, submodule, `package.json`,
-   lockfile, build-settings or other configuration edit. Fix a refusal in the turn or
+   lockfile, build-settings or other configuration edit; the one exception is the
+   `package.json` and lockfile change `bump-kit` made. Fix a refusal in the turn or
    end the turn without pushing. Never bypass the gate.
 4. It pushes once per turn with `git push --force-with-lease=<branch>:<startSha>` and
    finds or opens the session's **draft** pull request.

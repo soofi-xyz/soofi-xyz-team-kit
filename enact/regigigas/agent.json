@@ -27,7 +27,7 @@
     },
     {
       "name": "guide-product-work",
-      "version": "1.0.0-sha256-4947e18d37b59b5c"
+      "version": "1.0.0-sha256-4491d51cbb0b3d51"
     },
     {
       "name": "operate-marketplace",
@@ -48,5 +48,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.196.0"
+  "version": "1.197.0"
 }
