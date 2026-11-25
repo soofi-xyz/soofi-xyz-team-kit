@@ -165,6 +165,7 @@ python3 scripts/test-product-catalog.py
 python3 scripts/test-build-system-product-contract.py
 python3 scripts/test-system-acceptance.py
 node scripts/sync-enact-agents.mjs sync && python3 scripts/test-enact-packaging.py
+node --test scripts/test-console-edit-turn.mjs
 ```
 
 If you touched `skills/use-oracle/runtime/`, also install and test it (Node **22.18+**), and

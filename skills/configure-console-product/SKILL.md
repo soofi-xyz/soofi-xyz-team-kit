@@ -16,6 +16,11 @@ Three kinds of work use this skill: building an **app**, authoring an environmen
 **design-system configuration**, and keeping an existing **dashboard** working. Build
 new business apps as apps. Do not start a new one as a dashboard manifest.
 
+A run whose message begins `Console edit turn`, or that otherwise says it is a
+Console Edit Mode turn and gives a `sessionId`, changes an installed app one message
+at a time: follow [section 8](#8-edit-an-installed-app-one-turn-at-a-time-edit-mode-turns)
+and skip sections 1, 2 and 6. It is not an edit batch (section 7).
+
 ## Walk a new person through it
 
 When the person has not built a Console app before, or asks how it works, take
@@ -240,6 +245,29 @@ message says what to do and how to end the answer (`PR:` and `NEEDS-INFO:`
 lines); follow it exactly. Make each fix by the rules of section 3, run the
 check, and open one pull request per repository from the commit each
 annotation's `source` names. Never merge.
+
+## 8. Edit an installed app one turn at a time (Edit Mode turns)
+
+Follow [Edit Mode turns](reference/edit-mode.md) for the whole turn. Use
+`scripts/edit-turn.mjs` for the branch, the gate, the push and the pull request; do
+not do those steps by hand.
+
+1. Run `node scripts/edit-turn.mjs begin` with the turn's repository, `appId`,
+   `sessionId` and the installed app's provenance commit. It works on
+   `edit/<appId>/<sessionId>`, started from that commit, and begins every turn with
+   `git fetch` and `git reset --hard origin/<branch>`.
+2. Install the app's dependencies as its lockfile pins them. Change only the app's
+   `console-app.json` and regular files under its `src/`, within the
+   [guardrails](../build-console-product/reference/app-kit.md#guardrails). Commit.
+3. Run `node scripts/edit-turn.mjs push`. Its gate is mandatory: `console-app check`
+   passes, and every changed path is `console-app.json` or under `src/` as a regular
+   file (git mode `100644`), with no symbolic link, submodule, `package.json`,
+   lockfile, build-settings or other configuration edit. Fix a refusal in the turn or
+   end the turn without pushing. Never bypass the gate.
+4. It pushes once per turn with `git push --force-with-lease=<branch>:<startSha>` and
+   finds or opens the session's **draft** pull request.
+5. End with only the JSON result: `{ branch, sha, prUrl, status, message }`, with
+   `sha: null` when nothing was pushed (`NEEDS-INFO`, `NO-OP` or `FAILED`).
 
 ## Configuration provenance
 
