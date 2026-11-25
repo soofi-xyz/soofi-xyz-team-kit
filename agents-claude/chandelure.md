@@ -35,6 +35,51 @@ Read [the map's Status table](../skills/guide-product-work/reference/iterations/
 19. Give one copyable configuration/API invocation, expected result and at most three steps to inspect the correlated AWS resources or logs. Have the user run the baseline and variant, then report redacted request IDs and observations. Wait for that evidence before the next piece; distinguish schema validity, deployed runtime health and upstream product readiness.
 20. Close a full build with the [reference app](../skills/build-console-product/reference/app-kit.md#reference-app): the debt-collection demo's Rules step built by `vivillon` from the app kit alone, delivered through Build, Marketplace and Deploy and opened behind sign-in. When it needs a component the design system lacks, add the component; never let the app improvise one.
 
+## Console design-system rules
+
+Apply these to every component, gallery entry and review scene. The full rules, accepted exceptions and per-component decisions are `docs/design-review-rules.md` and `docs/design-review-checklist.md` in `prismteam-ai/console` ([pull request 85](https://github.com/prismteam-ai/console/pull/85)); read them before changing a component's look, and record any new exception there.
+
+**Color: one meaning per color**
+- Iris (`primary`, `iris-text`): what can be changed or selected, the current step, progress, the primary action and the text channel. Blue-purple `iris-line`: the email channel and thin lines.
+- Brand green (`go`): go only (cleared, delivered, paid, on schedule); never done, decoration or a number that went up. Yellow-gold (`wait`): waiting on a person. Crimson (`stop`/`destructive`): legal stop, failure, error, opt-out. No brand orange in data UI. Teal: people in charts and diagrams.
+- Use light gray for lower hierarchy or disabled only; gray is never data. Draw low or other steps as light steps of the same hue, and neutral scales as steps of iris.
+- Done is not go: done steps iris outline, current solid iris, planned light outline.
+- Let a tone name a category, never a direction. Never use color as the only cue.
+- Use saturated fills and outlines with darker text; a badge is darker text with a saturated outline and no fill.
+- Keep channels in their color by kind (text iris, email blue-purple) and status colors for statuses only.
+- Give hover and active states a light purple wash (`accent`), never gray. A selected mark glows in its own color, with no outline.
+
+**Shape**
+- Use rounded squares from the radius tokens, not circles; the Spinner ring is the only exception.
+- Round every chart mark; keep joins sharp; round a bar only at its free end.
+- Bend connectors with rounded elbows, 1px `iris-line`, touching both ends and reaching every child.
+- Let badges hug their content.
+
+**Hierarchy and type**
+- Make labels lighter or smaller than values; give tables three levels.
+- Put secondary facts and supporting text (a card's aside, item and page descriptions) directly under the title (4px), never pushed to the far end.
+- Put a status badge beside the name of what it describes, never in a row of action buttons; when it cannot sit there, have it name its subject.
+- Use sentence case, except uppercase buttons and eyebrows. Never truncate or ellipsize.
+- Render text as HTML at 12–13px or larger, never scaled inside SVG. Keep line height at 1.2 or less (large headings 1.1–1.15) with `text-wrap: pretty`.
+
+**Layout**
+- Fit first: fill the given width down to a readable minimum (labels whole, text at least 12px). Then slide quietly: swipe or drag, with small bare carets only while there is more.
+- Show only whole items in a strip: size it to end on an item edge, page by whole items and open on what matters (the first open hour, the current step).
+- Never draw outside the container. Pad equally on every side (Empty and Drawer are accepted exceptions).
+- On phones keep content 16px from the screen edge and make 44px touch targets from invisible hit areas, not taller rows.
+- Share chart baselines. Check 390, 768 and 1280 widths under both token sets.
+
+**Controls**
+- Keep table row actions compact: 32px, 44px below narrow.
+- Place buttons left or centered, never right; no `justify` end or between for actions.
+- Draw focus as a 2px ring with a 2px gap, except where a wash shows focus (menu items, options, search fields). Open dialogs with focus on the dialog itself.
+- Use a tertiary button (underlined iris text, no icon) for minor actions such as Clear filters, and a link with an arrow for navigation. Alerts and toasts act with the arrow link (black text, underline in the alert's tone), never an iris button.
+- Close dialogs, sheets and drawers with an X in the top-right corner, never a footer Close button.
+- Make tooltips solid ink with paper text. Keep overlays flat: border plus backdrop, no drop shadow.
+
+**Design for real use**
+- Design slots for what real apps put in them. Write review examples with realistic collections-domain copy; a wrong color in an example reads as a wrong component.
+
 ## Shared API domain
 
 Read [the shared API domain contract](../skills/guide-product-work/reference/shared-api-domain.md) for API infrastructure, packaging or installation work.

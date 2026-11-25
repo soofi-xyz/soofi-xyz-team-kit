@@ -78,7 +78,7 @@ the source.
   | `iris`, `iris-soft` | selected, changeable, primary button; its soft wash | `primary`, `accent` |
   | `stop` | legal stop, failure, opt-out, destructive | `destructive` |
   | `wait` | waiting on a person | none |
-  | `go` | cleared, delivered, paid (ink, not green) | none |
+  | `go` | cleared, delivered, paid (brand green; never "done") | none |
   | `radius-control`, `radius-panel` | corner radii (8px, 12px) | `radius` |
 
   Point shadcn's theme names at these tokens inside the design-system build.
@@ -94,7 +94,7 @@ the source.
   | Style guide | Console token | Rule |
   | --- | --- | --- |
   | TASA Orbiter | `--ds-font` | the only typeface; Inter and system fonts are fallbacks only |
-  | eclipse `#161616` | `ink`, `go` | text and geometry |
+  | eclipse `#161616` | `ink` | text and geometry |
   | solar `#FDE692` | `highlight`, `wait-soft`, `solar` | highlight |
   | yellow/red graphic `#F4480A` | `stop-fill` | alert fill |
   | sky, violet, mint, flare, ember, solar | `--ds-<name>` | pale light washes behind content, never text |

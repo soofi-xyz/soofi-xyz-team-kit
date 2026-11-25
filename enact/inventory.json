@@ -678,7 +678,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 20888,
+      "bytes": 25081,
       "files": 1,
       "flag_counts": {
         "aws-profile": 1,
@@ -689,7 +689,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 706063,
+      "library_pinned_bytes": 706070,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3253,7 +3253,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 706063,
+      "library_pinned_bytes": 706070,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3700,8 +3700,8 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.191.0",
-  "kit_version": "0.191.0",
+  "enact_version": "1.192.0",
+  "kit_version": "0.192.0",
   "mcp_allow_list": [
     "enact",
     "browser",
@@ -3844,7 +3844,7 @@
       ]
     },
     "build-console-product": {
-      "bytes": 182299,
+      "bytes": 182304,
       "files": 6,
       "flags": {},
       "omitted": [],
