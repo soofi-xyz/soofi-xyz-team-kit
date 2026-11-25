@@ -130,7 +130,7 @@ the source.
   - drawing parts for custom visuals: bars, segments, grid cells and axes, so
     most new visuals need no new component and no raw SVG;
   - messages ([pull request 66](https://github.com/prismteam-ai/console/pull/66),
-    runtime 1.34.0, not yet merged), each replacing a part of the debt-collection
+    runtime 1.41.0, not yet merged), each replacing a part of the debt-collection
     demo: `FilledText` (message text with highlighted, linked and missing
     variables, the demo's `Filled`), `SmsPreview` (`.content-phone`),
     `EmailPreview` (`.content-mail`), `Inbox` (`.responses-inbox`),
@@ -138,7 +138,7 @@ the source.
     (`dl.responses-facts`, `dl.ms-facts`, Mayo's `dl.my-def`). The message bubble
     is shadcn's `Bubble`;
   - content ([pull request 67](https://github.com/prismteam-ai/console/pull/67),
-    runtime 1.35.0, not yet merged): `CodeBlock` (the demo's `pre.code`, plus a
+    runtime 1.42.0, not yet merged): `CodeBlock` (the demo's `pre.code`, plus a
     copy button; shadcn's code-block), a step bar on `Carousel` (`.mt-stepbar`),
     `SectionDots` and `SkipLink` (`.nav-dots`, `.skip-link`), `RuleCard`
     (`article.lx-term` in the Rules draft), `RatingReasons` (`.inference-dot`
@@ -522,16 +522,14 @@ checked by a test or a type check.
   refresh `*-darwin.png` locally with `--update-snapshots` and `*-linux.png` from
   the **Design-system baselines** workflow artifact, and commit both. Never
   loosen a comparison threshold to make a baseline pass.
-- **Isolated screenshots.** Each gallery screenshot (`DS-1`, open overlays in
-  `DS-6`, the cumulative scenario and `CP-5`) is taken with its section alone on
-  the page, through `inIsolation` in `e2e/support/design-system.ts`
-  ([pull request 69](https://github.com/prismteam-ai/console/pull/69), not yet
-  merged). Before it, a section that was not a whole number of pixels tall moved
-  every later section by a fraction of a pixel and broke their baselines. A new
-  component commits only its own baselines; if a baselines run changes another
-  component's file, fix the cause and do not commit the refresh. A mask or
-  filter that creates a compositing layer can still change neighbours' text
-  rendering on Linux; draw fades as an overlay instead.
+- **Gallery order.** The gallery draws sections in `componentNames` order, so
+  add a new component at the end of the list. Inserting one in the middle moves
+  every section below it, often by a fraction of a pixel, and breaks their
+  baselines. A new component then commits only its own baselines; if a
+  baselines run changes another component's file, fix the cause and do not
+  commit the refresh. A mask or filter that creates a compositing layer can
+  still change neighbours' text rendering on Linux; draw fades as an overlay
+  instead.
 
 Applications cannot choose a token set from their manifest. An environment's
 tokens are chosen by its [design-system configuration](#design-system-configuration-implementation-rules)
