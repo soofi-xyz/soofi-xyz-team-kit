@@ -1,11 +1,23 @@
 {
-  "manifest": {
-    "package_registries": [
-      "prism"
-    ]
-  },
   "appendix": [
     "**Edit Mode turns.** In a Console Edit Mode turn, `.claude/skills/configure-console-product/scripts/edit-turn.mjs push` pushes the branch and finds or opens the draft pull request itself, with this run's token for that repository: do not call `open_pull_request` as well. The sandbox's own pre-push hook still runs after the turn's gate and still refuses the default branch.",
     "**Package registry.** Every turn can install `@prism/*` from this environment's `prism` registry; npm and pnpm already have its scope and a read token, so never run `aws codeartifact login` or write a registry file. This prompt's line `- @prism (prism): the latest @prism/console-app-kit published here is <kit_version>` names the app kit version for [the Edit Mode kit bump](.claude/skills/configure-console-product/reference/edit-mode.md#bump-the-app-kit-when-the-registry-lacks-its-version)."
-  ]
+  ],
+  "manifest": {
+    "package_registries": [
+      "prism"
+    ],
+    "create_repositories": {
+      "templates": [
+        "prismteam-ai/configuration-bundle-template"
+      ],
+      "max": 3,
+      "permissions": {
+        "contents": "write",
+        "pull_requests": "write"
+      }
+    }
+  },
+  "requires_mcp": [],
+  "requires_mcp_reason": "agents/vivillon.md works through Console's HTTP API and git; no MCP server. It creates each new app's repository from prismteam-ai/configuration-bundle-template with Enact's create_repository tool (docs/repositories.md, \"New repositories\")."
 }

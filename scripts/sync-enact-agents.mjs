@@ -162,6 +162,12 @@ function describeRepositories(manifest) {
       `  - Each run may name up to ${manifest.run_repositories.max} more repositories, with contents ${p.contents} and pull requests ${p.pull_requests}.`,
     );
   }
+  if (manifest.create_repositories) {
+    const c = manifest.create_repositories;
+    lines.push(
+      `  - The \`create_repository\` tool (\`template\`, \`name\` without the owner, optional \`description\`) creates a private repository under the template's owner from ${c.templates.map((t) => `\`${t}\``).join(", ")}, up to ${c.max} per session; the session then has contents ${c.permissions.contents} and pull requests ${c.permissions.pull_requests} on it. A taken name is refused.`,
+    );
+  }
   return lines;
 }
 
