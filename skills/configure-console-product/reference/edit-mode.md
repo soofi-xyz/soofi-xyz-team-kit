@@ -46,8 +46,13 @@ guess one: answer `NEEDS-INFO` (below) naming what is missing.
    `startSha` is the commit the turn started from (`null` on the first turn) and
    `appRoot` the app's folder in the repository.
 2. **Install.** In `<dir>/<appRoot>`, install the dependencies exactly as the lockfile
-   pins them (`pnpm install --frozen-lockfile`). Never change `package.json`, the
-   lockfile or a registry setting to make an install work. When the kit cannot be
+   pins them (`pnpm install --frozen-lockfile`). The sandbox already resolves
+   `@prism/*` from the environment's `prism` registry with a read token: never run
+   `aws codeartifact login` or write a registry file. When the install answers 404
+   for the app's pinned `@prism/console-app-kit`, make
+   [the kit bump](#bump-the-app-kit-when-the-registry-lacks-its-version), the one
+   change to `package.json` and the lockfile a turn may make. Never change them, or a
+   registry setting, any other way to make an install work. When the kit cannot be
    installed, the check cannot run and the turn cannot push: end it as `FAILED`.
 3. **Understand, then edit.** Read the request against the app's source. When it is
    ambiguous, needs a decision only the person can make, or needs something outside
@@ -72,6 +77,82 @@ One turn is one narrow piece of work. The person sees it in Console's preview an
 answers with their next message: that is the feedback checkpoint. Do not start a
 second change in the same turn.
 
+## Bump the app kit when the registry lacks its version
+
+Each environment's own package registry holds `@prism/console-app-kit` only from the
+version it started at, never below 1.49.0. An app installed earlier can pin an older
+kit that the registry answers with 404, so nothing installs and the gate refuses every
+push. The run's prompt names the registry's newest kit in a line such as:
+
+```text
+- @prism (prism): the latest @prism/console-app-kit published here is 1.49.0
+```
+
+followed by a rule to use that app kit version when you add or upgrade the kit, unless
+the repository pins another on purpose. The version is the text after
+`published here is`; the registry's other packages, such as packs, are versioned on
+their own and never take it.
+
+This step is only for recovering from that 404. When `pnpm install --frozen-lockfile`
+succeeds, the app's kit is in the registry: make no bump, whatever the prompt says,
+and go on with the turn as usual.
+
+Only when the app's `package.json` pins `@prism/console-app-kit` to an exact version
+**and** `pnpm install --frozen-lockfile` failed with 404 for it, take
+`<kit_version>` from that prompt line, never guessed. When the prompt has no
+`- @prism (prism)` line, or has one that does not name `@prism/console-app-kit` and a
+version (a bare `- @prism (prism)`: the registry has no kit yet, and then no line of the
+prompt mentions the app kit), there is no kit to bump to: end the turn as `FAILED`,
+with a `message` saying the environment's registry has no app kit for this app. An
+installed commit pinning a kit the registry answers with 404 is never a pin "on
+purpose" in this sense: the registry cannot install it. Otherwise run in the clone:
+
+```bash
+node <skill>/scripts/edit-turn.mjs bump-kit --kit-version <kit_version>
+```
+
+It runs `pnpm add -E --ignore-scripts @prism/console-app-kit@<kit_version>` in
+`<appRoot>` (the kit and `console-app` need no install scripts; Build installs apps
+the same way) and accepts the result only when:
+
+- `package.json` changed only in the kit pin, and no other tracked file changed;
+- `pnpm-lock.yaml` passes Build's kit gate: `lockfileVersion` stays `'9.0'`, as the
+  installed commit has it; the lockfile pins the kit at `<kit_version>`;
+  `@prism/console-app-kit@<kit_version>` and every other package under `packages:`
+  resolve only by `{ integrity: sha512-… }`, with no `tarball:` URL, registry host,
+  `file:`, `link:` or git source; and there is no `overrides`,
+  `patchedDependencies`, `pnpmfileChecksum` or `packageExtensionsChecksum`.
+
+It then records both files in the turn's state and prints `{ from, to, files }`.
+When any of that fails, it puts `package.json` and the lockfile back as they were and
+refuses. Then:
+
+1. Make the requested edit.
+2. Commit the bump with the edit. `check` checks the committed `HEAD` and refuses
+   uncommitted changes to tracked files, so commit first.
+3. Run `node <skill>/scripts/edit-turn.mjs check` (the gate and `console-app check`).
+4. Push as usual.
+
+It refuses, and changes nothing, when:
+
+- `<kit_version>` is not an exact version, or is earlier than 1.49.0, the lowest
+  kit any registry holds;
+- `<kit_version>` is not later than the app's pin (the same version, or a
+  downgrade): the 404 has another cause, so end the turn as `FAILED`;
+- `<kit_version>` has a different major version than the app's pin (for example
+  1.34.0 to 2.0.0): do not bump across a major version. End the turn as `FAILED`,
+  with a `message` saying the app needs a kit upgrade across a major version;
+- the pin is not an exact version, or `package.json` or the lockfile already differ
+  from the installed commit;
+- a `.npmrc`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `package-lock.json` or other
+  lockfile is in the app's folder or a folder above it, or such a file is untracked
+  anywhere in the clone. Do not remove a committed one: end the turn as `FAILED`.
+
+Never edit the pin by hand, add another dependency, or run `pnpm add` yourself: the
+gate accepts `package.json` and the lockfile only as `bump-kit` left them in this
+turn, or as an earlier turn of the session pushed them, and checks the lockfile
+again either way.
+
 ## The gate
 
 Every push from the clone passes through a `pre-push` hook that `begin` installs; `push`
@@ -83,7 +164,8 @@ GitHub, unless all of these hold:
 | Only `edit/<appId>/<sessionId>` is pushed, and it is neither deleted nor pushed with other refs. | A push to another branch. |
 | The remote branch is still where the turn started (`startSha`). | Someone pushed to the branch during the turn. |
 | The commit descends from `baseSha` and is the checked-out one. | A rebase onto the default branch. |
-| Every path that differs from `baseSha` is `<appRoot>/console-app.json` or under `<appRoot>/src/`. | `package.json`, the lockfile, `tsconfig.json`, a bundler or registry file, a workflow, `bundle.json`, another app. |
+| Every path that differs from `baseSha` is `<appRoot>/console-app.json` or under `<appRoot>/src/`, except `<appRoot>/package.json` and `<appRoot>/pnpm-lock.yaml` exactly as [the kit bump](#bump-the-app-kit-when-the-registry-lacks-its-version) left them. | `package.json`, the lockfile (other than that bump, or a bump across a major version), `tsconfig.json`, a bundler or registry file, a workflow, `bundle.json`, another app. |
+| No changed file is a `.npmrc`, `.pnpmfile.cjs`, `pnpm-workspace.yaml` or another lockfile, even under `src/`. | `src/.npmrc`. |
 | Every changed file is a regular file, git mode `100644`. | A symbolic link (`120000`), a submodule (`160000`), an executable file (`100755`). |
 | Nothing under the editable paths is uncommitted. | An edit made after the commit. |
 | `console-app check` passes in `<appRoot>`. | A raw element, a direct network call, a type error; a kit that is not installed. |
