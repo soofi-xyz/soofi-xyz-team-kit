@@ -34,9 +34,12 @@ user declines, or when a script needs a Node module Elephant CLI 2 does not offe
    [`reference/transform-v2-handler.md`](./reference/transform-v2-handler.md),
    [`reference/scripts-mode.md`](./reference/scripts-mode.md), or the custom-code
    section below
-4. [`reference/transform-evaluator.md`](./reference/transform-evaluator.md) — optional
+4. [`reference/html-capture-and-parsing.md`](./reference/html-capture-and-parsing.md) —
+   for every HTML source: capture only the data container, parse once, use htmlparser2,
+   and prove byte-identical output
+5. [`reference/transform-evaluator.md`](./reference/transform-evaluator.md) — optional
    AI generate-and-repair helper; never a substitute for validation
-5. `../use-oracle/reference/car-publication.md` — what consumes the output downstream
+6. `../use-oracle/reference/car-publication.md` — what consumes the output downstream
 
 ## The loop
 
@@ -141,6 +144,17 @@ merged result; the runtime reads that copy and there is no automatic sync.
 
 ## Scaling note
 
+For HTML sources, parsing usually dominates transform time. Apply
+[`reference/html-capture-and-parsing.md`](./reference/html-capture-and-parsing.md) before
+sizing a county run:
+- Store only the data container as the transform input; keep the full page gzipped
+  beside it.
+- Call `cheerio.load(html, { xml: { xmlMode: false, decodeEntities: true } })` once per
+  parcel and share the result with every mapper.
+- Accept the change only on byte-identical output.
+
+On Cobb County this took the transform from 1.55 s to 0.12 s per parcel.
+
 Per-parcel child processes cost more in startup than in work. For a full county, run the
 transform in a warm worker pool: one persistent worker per core, inputs read in memory,
 results returned over IPC. This is a throughput concern, not a correctness one; the
@@ -153,6 +167,8 @@ took 0.4 s for one parcel of the bundled counties where 1.x took 2.0 to 2.7 s.
   validated; no parcel is loaded, enqueued, or published from an unvalidated output.
 - The output contract is the interface; the tool that produced it is not.
 - Provenance is captured, never invented.
+- Parse each captured page once per parcel. Never call `cheerio.load()` once per script
+  or once per mapper.
 - Coverage is proved against the raw capture, never assumed from a previous county.
 - The findings doc and the transform ship in the same PR so the evidence is not lost.
 - Never modify the Elephant CLI to make a transform pass; a suspected CLI bug is
