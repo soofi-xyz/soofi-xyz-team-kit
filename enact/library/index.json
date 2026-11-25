@@ -755,19 +755,19 @@
       "version": "1.0.0-sha256-afdc3780a728c0ed"
     },
     "configure-model-product": {
-      "bytes": 84451,
-      "digest": "sha256:aaf0b6c6803c8fba0410ad4f442b2ed39ca2e77fa094b930039e743f39d89094",
-      "encoded_bytes": 90407,
+      "bytes": 85769,
+      "digest": "sha256:596904a06c23755a1ace5ef604b1bd6be337a968c016cb7e86b98897917bc27c",
+      "encoded_bytes": 91777,
       "files": 5,
       "reason": "used by 4 packaged agents",
-      "stored_bytes": 87492,
+      "stored_bytes": 88836,
       "used_by": [
         "dialga",
         "jirachi",
         "kecleon",
         "silvally"
       ],
-      "version": "1.0.0-sha256-14d9993535da6a96"
+      "version": "1.0.0-sha256-33197c52c918caa2"
     },
     "configure-persist-product": {
       "bytes": 77654,

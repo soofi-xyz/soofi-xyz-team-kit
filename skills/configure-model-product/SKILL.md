@@ -51,6 +51,32 @@ why: arrays can't be queried in the graph and express no relationships. Apply
 this to every change set, vocabulary gap and modeling proposal you return;
 Dialga executes this decision and does not override it.
 
+## Model for a fully immutable graph
+
+Persist names every vertex and edge by a content hash, only ever creates them,
+refuses any lexicon `identity` other than `contentHash`, and refuses a vertex
+that no declared edge joins (`IsolatedVertex`). Apply
+[the immutable modeling rules](reference/immutable-graph-modeling.md) to every
+vertex and edge type you propose, review or return:
+
+- Model each subject as an identity-only root with append-only version or event
+  vertices. Repeat the root's key on each version or event, and link them with
+  a property-free edge.
+- Record status changes, renames and removals as new versions, never as edits
+  or deletions.
+- Order versions by a business-time `effective_at` that the writer stamps when
+  a field changes, never a wall-clock `updated_at` or `created_at`. Break ties
+  by vertex id.
+- Derive current values with Persist indexes that recompute from the whole
+  history and clear when the latest version has no value.
+- Never declare keyed identity.
+- Say in the extension's README that old versions keep their PII forever, and
+  that erasing it is an operator cleanup of that subject's versions.
+
+Reject or rewrite a change that needs an in-place update, a key or a lone
+vertex, and say which rule it breaks. Dialga executes these decisions and does
+not override them.
+
 ## Suggest Model-derived metrics for a KPI
 
 When a user provides a KPI and says what they want to measure, read the
