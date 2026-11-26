@@ -61,6 +61,8 @@ CLI-exported tables are the MCP/public source.
     source
 12. [`reference/operating-in-vm.md`](./reference/operating-in-vm.md) when running on a
     cloud VM or runner
+13. [`reference/pipeline-reporting.md`](./reference/pipeline-reporting.md) for the team's
+    six pipeline stages, the Asana claim, and Console coverage reporting
 
 ## Choose the ingestion stack
 
@@ -243,8 +245,10 @@ PR.
 
 1. Confirm only `counties/<STATE>/<county>.json` changed in the Atlas clone.
 2. Open branch `publish/<state>-<county>`.
-3. Create one PR and wait for `validate`.
-4. Ask a code owner to merge. Do not self-merge.
+3. Create one PR per county, request review from the code owners, link it in the
+   county's Asana story, and wait for `validate`.
+4. One code-owner approval is enough; the miner merges once `validate` is green. Do not
+   merge it yourself ([`pipeline-reporting.md`](./reference/pipeline-reporting.md)).
 5. If automation reverts the merge, treat publication as failed, restore public
    availability, and open a new PR.
 6. Resolve global Atlas IPNS

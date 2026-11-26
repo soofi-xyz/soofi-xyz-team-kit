@@ -69,6 +69,10 @@ failure modes, not a list of special counties:
    `expected_count` equal to `advertised_listing_count` unless `listing_page_cap` and
    `cap_acknowledged` are both true.
 
+Outside the validator, readiness also needs the county claimed in Asana and its official
+parcel count registered for the Console (`county-seed-data` step 6,
+[`pipeline-reporting.md`](../use-oracle/reference/pipeline-reporting.md#before-mining)).
+
 ## Command
 
 ```bash

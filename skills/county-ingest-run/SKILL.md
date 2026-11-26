@@ -138,6 +138,25 @@ Watch with `monitoring-county-ingestion`: Web UI at `http://localhost:9070`,
 `CountyIngest/<county>-<jobId>/status`, and `CountyLedger/<county>-<jobId>/summary`
 (POST to the ingress).
 
+### Incremental progress
+
+Report progress per chunk, not only at the end. When `chunksDone` in
+`CountyIngest/<county>-<jobId>/status` advances:
+
+1. Refresh the run manifest without gating:
+   `npm run reconcile -- --county <county> --job <jobId>` (no `--strict`; add `--no-rehash`
+   on a large county to keep it quick). Mid-run `seed_complete` and `permits_complete`
+   fail by design.
+2. Push coverage by hand
+   ([`pipeline-reporting.md`](../use-oracle/reference/pipeline-reporting.md#coverage-push-every-mining-machine)).
+3. Report `chunksDone` of `chunks`, ready/dead/invalid/failed from the manifest, the
+   Pipeline stage, and the Local %.
+
+**Pack as you go (planned).** The goal is to assemble, validate and hash each finished
+chunk so final packing is short. The runtime has no per-chunk packing command yet:
+`--assemble` and `PublishGroup` work on the whole job. Until one exists, pack once after
+the strict reconcile (§6).
+
 ## 4. Ramp-up & Warm Worker Pool Optimization
 
 Raise the `CONCURRENCY_*` caps in `skills/use-oracle/runtime/.env` stepwise
@@ -154,6 +173,12 @@ minutes, then check error rates in the UI and the portal's health before the nex
 - **The limit is portal tolerance, not compute.** Your machine can always run more
   browser contexts than the county site will tolerate; ramp against the source's error
   rate, never against local headroom.
+- **Restate flow control (evaluated, not the default).** Restate 1.7 has experimental
+  scoped concurrency limits that could replace the chunk feeder and the in-process caps.
+  The Cobb evaluation was promising, with caveats: it needs Restate 1.7.9 or newer, a
+  fresh or migrated cluster, and `experimental_enable_vqueues`, and the cap must be set
+  from the source's measured request rate. Keep the feeder and `CONCURRENCY_*` caps
+  unless the operator approves trying it on a new run.
 
 ### High-Throughput Transform Optimization: Warm Worker Pool (`TransformPool`)
 
@@ -236,6 +261,19 @@ Restate redispatches. Machine crash or reboot: compose restarts Restate
 (`restart: unless-stopped`), but the services process must also be relaunched (run it
 supervised/detached for multi-day runs — see the `bootstrap-oracle-infra` gotchas);
 the run then resumes from its journals — no watchdog, no re-streaming.
+
+**Moving a run to another machine.** Never let two machines mine the same job.
+
+1. Stop the old machine: kill the job's Restate invocations
+   (`restate invocations kill`) and stop and disable its services and any timers or units
+   that restart them.
+2. Verify it stopped: no running invocations for the job, no services process, and the
+   artifact counts no longer change.
+3. Copy the artifacts: `rsync -a --delete --exclude '*.tmp' <old>:<DATA_DIR>/ <DATA_DIR>/`
+   (seed, artifacts, runs).
+4. Start the same `jobId` on the new machine (a `-rN` workflow key, §7, if that key
+   already ran on its Restate); parcels already finished are skipped by their hash.
+   Move the coverage push with the run (`bootstrap-oracle-infra`).
 
 ## 6. Reconcile
 

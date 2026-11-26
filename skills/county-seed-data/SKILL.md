@@ -63,6 +63,13 @@ offices and their download pages, start from the NETR Online directory:
    input of record. If a file already exists, confirm before overwriting — a run may be
    reading it.
 5. Record row count — it is the denominator for all ETA math during the run.
+6. Register the official parcel count. Once the canonical count is fixed, open the
+   parcel-counts PR in `prismteam-ai/meet-backfill-progress-report` (row in
+   `county-coverage/parcel-counts.csv`, `persist_feed.py repin --as-of <UTC date>`, tests
+   passing; see
+   [`pipeline-reporting.md`](../use-oracle/reference/pipeline-reporting.md#official-parcel-count)),
+   unless the county's row is already there. Readiness is not complete until that PR is
+   open or the row exists; without it the Console's Local column stays blank.
 
 ## Parcel-id format — validate BEFORE any run
 

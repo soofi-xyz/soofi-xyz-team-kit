@@ -203,3 +203,13 @@ error counts over- and under-report in both directions.
 Keep updates concise: status (running/paused/complete/blocked), backlog count,
 throughput window used, ETA or why ETA is not meaningful, and a caveat when a track is
 still discovering more work.
+
+Every status report also names:
+
+- the county's Pipeline stage (1–6) and the Local % on the Console's Pipeline tab
+  (`county-coverage-persist`), per
+  [`pipeline-reporting.md`](../use-oracle/reference/pipeline-reporting.md);
+- `chunksDone` of `chunks` from `CountyIngest/<county>-<jobId>/status`;
+- a lag flag when the Console's mined count is behind the Restate status or the file
+  counts by more than one push: push by hand, and say when the exporter cannot see the run
+  yet.
