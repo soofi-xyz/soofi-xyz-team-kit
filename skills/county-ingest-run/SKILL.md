@@ -121,7 +121,9 @@ Project full-county duration from the pilot rate for every source that will be s
 
 Requires Restate 1.7.9 with VQueues (`bootstrap-oracle-infra`). Full procedure, measured
 rates and limits: [`reference/full-run-flow-control.md`](./reference/full-run-flow-control.md).
-Job name stays `full-<YYYYMMDD>`.
+Name the job `full-<YYYYMMDD>`: the County Coverage export counts a job with no run
+manifest yet as the county's run only under that name, and never counts `pilot-`/`smoke-`
+jobs (`../use-oracle/reference/pipeline-reporting.md`).
 
 ```bash
 npm run enqueue -- --county <county> --job full-<YYYYMMDD> --seed seeds/<county>.csv
@@ -138,16 +140,35 @@ each, step down one level on degradation, never above 18 without a measured benc
 and run `npm run enqueue:permits`. Every status report and hand-off gives the Restate UI
 link, the SSH tunnel, the parcels-left query and the Console Pipeline tab (`npm run status`).
 
+### Incremental progress
+
+Report progress as the run goes, not only at the end: at each milestone (pilot passed,
+each 10% of the seed validated on the enqueue path — parcels left from `npm run status` —
+or each `chunksDone` step in chunk mode, appraisal drained, CAR packed, upload read back):
+
+1. Refresh the run manifest without gating:
+   `npm run reconcile -- --county <county> --job <jobId>` (no `--strict`; add `--no-rehash`
+   on a large county). Mid-run `seed_complete` and `permits_complete` fail by design.
+2. Push coverage by hand and run the County coverage workflow
+   ([`pipeline-reporting.md`](../use-oracle/reference/pipeline-reporting.md#coverage-push-every-mining-machine));
+   the Console's Local shows the validated count about an hour later.
+3. Report parcels left (or `chunksDone` of `chunks`), ready/dead/invalid/failed from the
+   manifest, the Pipeline stage and the Local %, with the `npm run status` hand-off block.
+
+**Pack as you go (planned).** The runtime has no per-chunk packing command yet
+(`--assemble` and `PublishGroup` work on the whole job), so pack once after the strict
+reconcile (§6).
+
 ### Fallback: chunk mode (`CountyIngest`)
 
 Use it only on a server without VQueues, or when the operator asks; never alongside the
 enqueue path for the same job.
 
-Same workflow, full seed:
+Same workflow, full seed, same `full-<YYYYMMDD>` job name:
 
 ```bash
-curl localhost:8080/CountyIngest/<county>-<jobId>/run/send \
-  --json '{"county":"<county>","jobId":"<jobId>","seedPath":"seeds/<county>.csv","chunkSize":10000,"window":25}'
+curl localhost:8080/CountyIngest/<county>-full-<YYYYMMDD>/run/send \
+  --json '{"county":"<county>","jobId":"full-<YYYYMMDD>","seedPath":"seeds/<county>.csv","chunkSize":10000,"window":25}'
 ```
 
 The run checks up front that the county has a transform and a capture route (capture
@@ -273,6 +294,19 @@ Restate redispatches. Machine crash or reboot: compose restarts Restate
 (`restart: unless-stopped`), but the services process must also be relaunched (run it
 supervised/detached for multi-day runs — see the `bootstrap-oracle-infra` gotchas);
 the run then resumes from its journals — no watchdog, no re-streaming.
+
+**Moving a run to another machine.** Never let two machines mine the same job.
+
+1. Stop the old machine: kill the job's Restate invocations
+   (`restate invocations kill`) and stop and disable its services and any timers or units
+   that restart them.
+2. Verify it stopped: no running invocations for the job, no services process, and the
+   artifact counts no longer change.
+3. Copy the artifacts: `rsync -a --delete --exclude '*.tmp' <old>:<DATA_DIR>/ <DATA_DIR>/`
+   (seed, artifacts, runs).
+4. Start the same `jobId` on the new machine (a `-rN` workflow key, §7, if that key
+   already ran on its Restate); parcels already finished are skipped by their hash.
+   Move the coverage push with the run (`bootstrap-oracle-infra`).
 
 ## 6. Reconcile
 

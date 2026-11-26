@@ -212,6 +212,38 @@ publication is in scope, verify the upload node by a safe runtime check and Atla
 repository access plus the county-page path, without storing credential values in the
 catalog.
 
+## Coverage push
+
+The Console's Pipeline tab sees local progress only through the hourly coverage push
+([`pipeline-reporting.md`](../use-oracle/reference/pipeline-reporting.md#coverage-push-every-mining-machine)).
+On the mining machine, check it before the pilot:
+
+```bash
+<venv>/bin/python -c 'import duckdb' && echo duckdb-ok   # the PYTHON the job was installed with
+gh api repos/prismteam-ai/meet-backfill-progress-report --jq .permissions.push   # true
+systemctl --user list-timers county-coverage-autopush.timer   # Linux (or crontab -l)
+launchctl print gui/$(id -u)/ai.prismteam.county-coverage-autopush | head -3   # macOS
+```
+
+If any check fails, put `duckdb` in a venv (system Pythons on Arch, Debian 12+ and
+Homebrew refuse `pip install`), ask for push access, or install the job with
+`PYTHON=<venv python>` and `ORACLE_DATA_DIRS=<runtime>/data` (absolute `DATA_DIR`; command
+in `pipeline-reporting.md`). The exporter supports Oracle-only machines. Record the
+result in the `stack` section:
+
+```yaml
+stack:
+  coverage_push:
+    installed: true
+    oracle_data_dirs: <abs DATA_DIR>
+    python: <venv python with duckdb>
+    machine_id: <COVERAGE_MACHINE_ID>
+    verified_at: "<iso8601>"
+```
+
+The readiness validator does not gate on `coverage_push`; a missing push is a reporting
+blocker, not a mining blocker.
+
 ## Sibling repos
 
 - `Counties-trasform-scripts` — PR target for county transform scripts and findings
@@ -252,4 +284,4 @@ catalog.
   and run `npm run register`.
 
 Return Node/Docker/Restate versions, container health, the `npm run register` result, the CLI build, data-directory readiness, the `stack` catalog section written, the
-service smoke result, and blockers. Redact secrets.
+coverage push state, the service smoke result, and blockers. Redact secrets.

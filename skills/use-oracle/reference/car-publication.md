@@ -58,7 +58,7 @@ elephant-cli upload $county-$group.car --output-json $county-$group-upload.json
 elephant-cli upload ./$county-$group-tables --output-json $county-$group-tables-upload.json
 
 # 5b. Worked example for registration: a pinning provider, here Filebase over Kubo RPC.
-export FILEBASE_ACCESS_KEY=... FILEBASE_SECRET_KEY=... FILEBASE_BUCKET=...
+export FILEBASE_ACCESS_KEY=... FILEBASE_SECRET_KEY=... FILEBASE_BUCKET=elephant-oracle-county-repair   # the team bucket for county uploads
 elephant-cli upload $county-$group.car --api https://rpc.filebase.io --output-json $county-$group-upload.json
 elephant-cli upload ./$county-$group-tables --api https://rpc.filebase.io --output-json $county-$group-tables-upload.json
 ```
@@ -205,14 +205,19 @@ Fix a red check by re-uploading or correcting the page, then push to the same br
 
 ### Who merges, and what publish does
 
-A code owner merges: one of `movsiienko`, `sean-cedar`, `samandun`, `mrndacreative`. Ask
-in the PR; do not self-merge. On merge the publish workflow:
+A code owner approves: request review from `movsiienko`, `samandun` and `mrndacreative`
+(the Atlas CODEOWNERS file also lists `sean-cedar`). One approval is enough; the miner (the
+operator who ran the mine) merges once `validate` is green. Oracle never merges. On merge
+the publish workflow:
 
 1. transfers the archive and the tables from wherever they were uploaded into the org's
    Filebase account by gateway export and import
 2. regenerates `index.json` on `main`
 3. repoints the IPNS name `elephant-atlas`
    (`k51qzi5uqu5dhzmj1jtn06idud425ozwdjjjn4eu7q01g2t814h7rw4du0nd04`) at it
+
+A large county takes 50–100 minutes; failed copies are retried hourly. The county counts as
+published only once IPNS points at the new index.
 
 If a root cannot be fetched at merge time, the merge is **reverted automatically and an
 issue is opened**. Treat that as "the archive was not available": re-upload to a node

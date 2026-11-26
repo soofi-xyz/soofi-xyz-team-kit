@@ -65,6 +65,46 @@ SQL database. Never publish from run state, run manifests, or working artifacts,
 a per-county public pointer, or wire a public MCP map from them. Publication reads
 validated group directories.
 
+### Pipeline reporting
+
+Follow the team's six-stage pipeline in
+`skills/use-oracle/reference/pipeline-reporting.md` (stage table, commands):
+
+1. **Local** — data only on the miner's machine; done when the CAR is packed and tables
+   exported.
+2. **IPFS** — upload archive and tables to Filebase bucket `elephant-oracle-county-repair`;
+   done when both roots read back through a public gateway. No go-ahead needed once
+   packed; one large upload at a time; retry at 15, 30, 60 minutes, then stop.
+3. **GitHub · Atlas** — one county per PR. Open it, request review from code owners
+   `movsiienko`, `samandun`, `mrndacreative`, and link it in the county's Asana story. One
+   approval is enough; the miner merges when `validate` is green. Never merge yourself.
+4. **GitHub · IPNS** — the Atlas publish job repoints IPNS (50–100 minutes for a large
+   county; failures retry hourly). A county counts as published only here.
+5. **Persist · MCP** and 6. **Persist · Metrics** — a Prism Team Member releases loads into
+   System flow `atlas-county-persist-load` (at most four at once). Do not start loads.
+
+HOA and Mortgage data skip stages 2–4: they go straight to Persist (`/persist/validate`,
+`/persist/ingest`), never to Filebase, IPFS or Atlas.
+
+- Take counties from Opendoor's 500-county schedule. Before mining, claim the county in
+  Asana: if someone has a story for it or already mined it, stop; otherwise create or take
+  the story and assign the miner.
+- If the publish queue is blocked (a packed county stuck in stages 2–4), start no new
+  mining.
+- Register the county's official parcel count in the coverage repository
+  (`county-seed-data`) and keep the hourly coverage push installed on the mining machine
+  (`bootstrap-oracle-infra`; `PYTHON=<venv python with duckdb>`,
+  `ORACLE_DATA_DIRS=<runtime>/data`). While a run mines, the Console's Local shows its
+  validated count with stage "Mining (in progress)". Push by hand at milestones (pilot,
+  each 10% of the seed or finished chunk, CAR packed, upload read back) and run the
+  County coverage workflow; Local still trails a push by about an hour.
+- Leave stage 1 only when the mined count is within 2% of the official parcel count or the
+  gap's cause is written down. Stop and alert a Prism Team Member when the data is only
+  for sale, needs a purchase, form or records request, hits a lexicon gap, or the gap is
+  unexplained or above 100%.
+- Name the Pipeline stage and the Local % (mined ÷ official parcels) in every status
+  report and required report, beside the Restate hand-off block below.
+
 ## Run tracking
 
 - Stack: Restate only (`skills/use-oracle/runtime/docker-compose.yml`, loopback ingress
@@ -162,8 +202,9 @@ separate, and stop. Do not continue into the pipeline below.
    5. Run `elephant-cli upload <county>-<group>.car` and
       `elephant-cli upload <tables-dir>`; require CID-matching readback through a
       public gateway.
-   6. Open one Atlas PR touching only `counties/<STATE>/<county>.json`; wait for
-      `validate`, request code-owner merge, and handle an automatic revert as a failed
+   6. Open one Atlas PR touching only `counties/<STATE>/<county>.json`; request review
+      from the code owners, link it in the county's Asana story, wait for `validate`,
+      hand the merge to the miner, and handle an automatic revert as a failed
       publication.
    7. Resolve the global `elephant-atlas` IPNS, verify the accepted index changed to
       the merged Atlas revision, run MCP 2.0 `sync`, then verify the county/data groups
@@ -227,7 +268,11 @@ separate, and stop. Do not continue into the pipeline below.
 
 ## Routing
 
-- New county or full re-ingest: `onboard-county`, then this pipeline.
+- New county or full re-ingest: claim it in Asana, then `onboard-county` and this
+  pipeline.
+- Pipeline stage, Console coverage, parcel-count registration, or Atlas PR reviewers:
+  `use-oracle/reference/pipeline-reporting.md`.
+- Moving a run to another machine: `county-ingest-run` §5.
 - Refused, challenged, or slow source, or a known vendor (qPublic, Accela, …):
   `use-oracle/reference/source-access.md` and `use-oracle/reference/cookbooks/`.
   Running on a cloud VM: `use-oracle/reference/operating-in-vm.md`.
@@ -274,6 +319,8 @@ For HOA web enrichment, return:
 
 For ingestion or publication work, return:
 
+- Pipeline stage (1–6), Local % (mined ÷ official parcels), the Asana story, and whether
+  the Console matches the run;
 - county, jurisdictions, source boundary, pilot/full scope, and seed count;
 - capture, transform, validation, dead/invalid/retryable counts, and readiness result;
 - official identity snapshots, freshness, adequacy, and whether they preceded permits;
