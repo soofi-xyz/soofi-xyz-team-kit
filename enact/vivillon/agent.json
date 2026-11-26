@@ -37,7 +37,7 @@
     },
     {
       "name": "configure-console-product",
-      "version": "1.0.0-sha256-dd5a8f41b4f3b103"
+      "version": "1.0.0-sha256-152475c76c631e47"
     },
     {
       "name": "configure-deploy-product",
@@ -72,5 +72,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.197.0"
+  "version": "1.198.0"
 }
