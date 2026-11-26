@@ -110,11 +110,13 @@ Project full-county duration from the pilot rate for every source that will be s
 
 ## 3. Full run
 
-Same workflow, full seed:
+Same workflow, full seed. Name the job `full-<YYYYMMDD>`: the County Coverage export treats a
+job with no run manifest yet as the county's run only under that name, so check jobs never
+stand in for the county (see `../use-oracle/reference/pipeline-reporting.md`).
 
 ```bash
-curl localhost:8080/CountyIngest/<county>-<jobId>/run/send \
-  --json '{"county":"<county>","jobId":"<jobId>","seedPath":"seeds/<county>.csv","chunkSize":10000,"window":25}'
+curl localhost:8080/CountyIngest/<county>-full-<YYYYMMDD>/run/send \
+  --json '{"county":"<county>","jobId":"full-<YYYYMMDD>","seedPath":"seeds/<county>.csv","chunkSize":10000,"window":25}'
 ```
 
 The run checks up front that the county has a transform and a capture route (capture
