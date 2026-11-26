@@ -3700,7 +3700,7 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.198.0",
+  "enact_version": "1.199.0",
   "kit_version": "0.199.0",
   "mcp_allow_list": [
     "enact",
