@@ -62,6 +62,17 @@ column is mined ÷ official parcels.
   with `ready.json`, which is written only after validation passes) and the Pipeline
   stage reads **Mining (in progress)**
   (`prismteam-ai/meet-backfill-progress-report#153`, merged).
+- **Every data group has its own Local count while a run mines.** The exporter also
+  counts the validated parcels with at least one Sales history, Tax and Property
+  improvement (permit) record, plus those records, so the Sales History, Tax and Permits
+  rows climb beside County (`prismteam-ai/meet-backfill-progress-report#161`).
+  - Permits come from two places: the transform's `property_improvement` records, and
+    the permits the permit pass linked. The linked ones are read from
+    `artifacts/permits/<county>/<jobId>/status/<parcel>.json`, and a permit number is
+    counted only once.
+  - Run the permit pass under the **same jobId** as the appraisal run, or its permits
+    are left out of Local.
+  - These counts are Local only. Opendoor delivery reads the Atlas index.
 - **Once the County group is packed** (every gate passed, `.car` and
   `tables-export.json` under `publish/<county>/<jobId>/county/`), the finished
   `properties` count replaces it
