@@ -36,7 +36,7 @@ node bin/elephant-county.mjs mortgage-window-harvest --county <key> --job-id <id
 # Source documents to S3 (no local copies; resumable): duval, hillsborough
 AWS_PROFILE=<profile> node bin/elephant-county.mjs mortgage-documents --county duval \
   --index-dir <harvest>/duval/<jobId>/windows --bucket <bucket> --limit N \
-  [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--delay-ms 2000]
+  [--year YYYY | --from YYYY-MM-DD --to YYYY-MM-DD] [--concurrency N] [--chrome <path>]
 
 # One Duval instrument with its PDF (optional IPFS pin)
 node bin/elephant-county.mjs mortgage-harvest --county duval --job-id <id> \
@@ -88,7 +88,7 @@ trustee deeds are deliberately excluded.
 ## 3a. Source documents
 
 The recorded document is the source of truth. Store documents in a private S3 bucket,
-never on the operator's laptop: `s3://<bucket>/documents/<ST>/<county>/<instrument>/`
+never on the operator's laptop: `s3://<bucket>/documents/<ST>/<county>/<year>/<instrument>/`
 holds `document.pdf` (or page images) and `index.json` (source URL, sha256, bytes,
 fetch time). Free document access (verified 2026-11-26): Duval full PDF (Acclaim
 `/Image/DocumentPdfAllPages`), Hillsborough watermarked PDF (`OverlayWatermark` API),

@@ -35,7 +35,8 @@ const record = (n, date) => ({
 
 describe("mortgage documents", () => {
   it("builds S3 keys per state, county and instrument", () => {
-    expect(documentPrefix({ state: "TX", county: "harris", instrumentNumber: "RP-2026-1/2" })).toBe("documents/TX/harris/RP-2026-1_2");
+    expect(documentPrefix({ state: "TX", county: "harris", instrumentNumber: "RP-2026-1/2", recordDate: "2026-11-02" })).toBe("documents/TX/harris/2026/RP-2026-1_2");
+    expect(documentPrefix({ state: "FL", county: "duval", instrumentNumber: "7" })).toBe("documents/FL/duval/unknown-year/7");
   });
 
   it("reads index windows newest first within a date range", async () => {
@@ -59,8 +60,8 @@ describe("mortgage documents", () => {
       commands: { PutObjectCommand, GetObjectCommand }, bucket: "b", limit: 10, delayMs: 0,
     });
     expect(await run()).toMatchObject({ stored: 1, skipped: 0, failed: 0 });
-    expect([...s3.objects.keys()]).toEqual(["documents/FL/duval/7/document.pdf", "documents/FL/duval/7/index.json"]);
-    const index = JSON.parse(s3.objects.get("documents/FL/duval/7/index.json"));
+    expect([...s3.objects.keys()]).toEqual(["documents/FL/duval/2026/7/document.pdf", "documents/FL/duval/2026/7/index.json"]);
+    const index = JSON.parse(s3.objects.get("documents/FL/duval/2026/7/index.json"));
     expect(index).toMatchObject({ requestIdentifier: "duval-or:7", contentType: "application/pdf", bytes: 13 });
     expect(index.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(await run()).toMatchObject({ stored: 0, skipped: 1 });

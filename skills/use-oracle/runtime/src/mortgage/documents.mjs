@@ -2,8 +2,8 @@
  * Mortgage source documents: fetch each recorded document from the county portal and
  * stream it straight to S3 (no local copies), with a small index.json beside it.
  *
- * Layout: s3://<bucket>/documents/<ST>/<county>/<instrument>/document.pdf
- *         s3://<bucket>/documents/<ST>/<county>/<instrument>/index.json
+ * Layout: s3://<bucket>/documents/<ST>/<county>/<year>/<instrument>/document.pdf (or page-0001.png ...)
+ *         s3://<bucket>/documents/<ST>/<county>/<year>/<instrument>/index.json
  * A document whose index.json already exists with the same sha256 is skipped, so runs
  * resume. Credentials come from the AWS credential chain (AWS_PROFILE).
  *
@@ -25,7 +25,9 @@ export const HILLSBOROUGH_DOCUMENT_URL =
  */
 export function documentPrefix(record) {
   const safe = String(record.instrumentNumber).replace(/[^A-Za-z0-9._-]/g, "_");
-  return `documents/${record.state}/${record.county}/${safe}`;
+  // Grouped by recording year so a county's documents can be read or shipped a year at a time.
+  const year = /^\d{4}/.exec(String(record.recordDate ?? ""))?.[0] ?? "unknown-year";
+  return `documents/${record.state}/${record.county}/${year}/${safe}`;
 }
 
 /**

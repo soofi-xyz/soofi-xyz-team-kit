@@ -1068,9 +1068,12 @@ async function runMortgageDocumentsCommand(argv) {
   const limit = optionalPositiveInteger(flags.limit, "limit");
   if (limit === null) throw new Error("mortgage-documents requires an explicit --limit bound");
   const delayMs = typeof flags["delay-ms"] === "string" ? Number(flags["delay-ms"]) : 2000;
+  // --year YYYY targets one recording year (same as --from YYYY-01-01 --to YYYY-12-31).
+  const year = typeof flags.year === "string" ? flags.year : null;
+  if (year && !/^\d{4}$/.test(year)) throw new Error("--year must be YYYY");
   const records = await readIndexRecords(requireStringFlag(flags, "index-dir"), {
-    from: typeof flags.from === "string" ? flags.from : undefined,
-    to: typeof flags.to === "string" ? flags.to : undefined,
+    from: year ? `${year}-01-01` : typeof flags.from === "string" ? flags.from : undefined,
+    to: year ? `${year}-12-31` : typeof flags.to === "string" ? flags.to : undefined,
   });
   const { S3Client, PutObjectCommand, GetObjectCommand } = await import("@aws-sdk/client-s3");
   const s3 = new S3Client({ region: typeof flags.region === "string" ? flags.region : "us-east-2" });
@@ -1168,7 +1171,7 @@ async function main() {
       "  mortgage-harvest --county <mortgage-profile-key> --job-id <id> --instruments <csv> --limit N --output <dir> [--delay-ms N] [--pin]\n" +
       "  mortgage-index-harvest --county <bexar|collin|dallas|denton|tarrant> --job-id <id> --from <YYYYMMDD> --to <YYYYMMDD> --output <dir> [--chrome <path>] [--headless] [--page-size N] [--delay-ms N] [--doc-types A,B | --extra-doc-types]\n" +
       "  mortgage-window-harvest --county <duval|hillsborough|maricopa|harris|mecklenburg> --job-id <id> --to <YYYYMMDD> --output <dir> [--from <YYYYMMDD>] [--window day|month|year] [--delay-ms N] [--with-names] [--chrome <path>]\n" +
-      "  mortgage-documents --county <key> --index-dir <harvest windows dir> --bucket <s3 bucket> --limit N [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--delay-ms N] [--concurrency N] [--page-concurrency N] [--chrome <path>] [--region us-east-2]",
+      "  mortgage-documents --county <key> --index-dir <harvest windows dir> --bucket <s3 bucket> --limit N [--year YYYY | --from YYYY-MM-DD --to YYYY-MM-DD] [--delay-ms N] [--concurrency N] [--page-concurrency N] [--chrome <path>] [--region us-east-2]",
   );
   process.exitCode = 1;
 }
