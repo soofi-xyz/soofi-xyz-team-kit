@@ -93,14 +93,17 @@ HOA and Mortgage data skip stages 2–4: they go straight to Persist (`/persist/
   mining.
 - Register the county's official parcel count in the coverage repository
   (`county-seed-data`) and keep the hourly coverage push installed on the mining machine
-  (`bootstrap-oracle-infra`). Push by hand at milestones (pilot, each finished chunk, CAR
-  packed, upload read back) so the Console does not wait an hour.
+  (`bootstrap-oracle-infra`; `PYTHON=<venv python with duckdb>`,
+  `ORACLE_DATA_DIRS=<runtime>/data`). While a run mines, the Console's Local shows its
+  validated count with stage "Mining (in progress)". Push by hand at milestones (pilot,
+  each 10% of the seed or finished chunk, CAR packed, upload read back) and run the
+  County coverage workflow; Local still trails a push by about an hour.
 - Leave stage 1 only when the mined count is within 2% of the official parcel count or the
   gap's cause is written down. Stop and alert a Prism Team Member when the data is only
   for sale, needs a purchase, form or records request, hits a lexicon gap, or the gap is
   unexplained or above 100%.
 - Name the Pipeline stage and the Local % (mined ÷ official parcels) in every status
-  report and required report.
+  report and required report, beside the Restate hand-off block below.
 
 ## Run tracking
 
@@ -126,6 +129,11 @@ HOA and Mortgage data skip stages 2–4: they go straight to Persist (`/persist/
   `skills/use-oracle/runtime` (exit 0 ok, 1 gate failed, 2 error); add
   `--assemble <group>` to build a group directory from verified ready parcels (the group
   plus its Seed root; `seed` itself is rejected).
+- Fan-out: a full run sends one scoped `Parcel.process` per parcel (`npm run enqueue`) on
+  Restate 1.7.9 with VQueues, ramps the source scope's cap 6 → 12 → 18 (`npm run ramp`;
+  never above 18 without a benchmark), and enqueues permits after the appraisal queue
+  drains (`npm run enqueue:permits`). `CountyIngest` chunk mode is the fallback
+  (`county-ingest-run` §3). Check progress with `npm run status`.
 
 ## Required pipeline
 
@@ -338,4 +346,12 @@ For ingestion or publication work, return:
 - global Atlas IPNS resolved index CID, MCP sync result, and v2 smoke-tool results;
 - CLI commit, lexicon manifest URL, blockers, next automated action, and required human
   action.
+
+Every status report and every hand-off also gives the person, as printed by
+`npm run status`: the Restate UI link `http://127.0.0.1:<RESTATE_ADMIN_PORT>/ui` (default
+9070); the SSH tunnel to open it from another machine
+(`ssh -N -L <port>:127.0.0.1:<port> <user>@<host>`); the parcels-left query
+(`sys_vqueue_meta`, `county-ingest-run` §3); and the Console Pipeline tab
+<https://soofi-safavi.account.prismteam.ai/console/app/?app=meet-backfill-progress&tab.data-mining-tabs=data-mining-pipeline-table#/data-mining>
+(shared view, refreshed hourly).
 '''

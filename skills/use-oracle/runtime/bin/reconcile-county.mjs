@@ -21,7 +21,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadLedger, readIngestSeedPath, reconcileCounty } from "../services/lib/reconcile.ts";
+import { loadLedger, readEnqueueSeedPath, readIngestSeedPath, reconcileCounty } from "../services/lib/reconcile.ts";
 import { assertCounty, assertJobId, assertPublishableGroup } from "../services/lib/storage.ts";
 
 const USAGE =
@@ -71,14 +71,15 @@ async function main() {
     ingressUrl: options.ingressUrl,
     key: `${options.county}-${options.jobId}`,
   });
-  // Without --seed, use the seed the run itself was started with.
+  // Without --seed, use the seed the run itself was started with: the
+  // CountyIngest state (chunk mode), else the enqueue record (enqueue path).
   const fromRun = options.seedPath
     ? null
-    : await readIngestSeedPath({
+    : ((await readIngestSeedPath({
         adminUrl: options.adminUrl,
         ingressUrl: options.ingressUrl,
         key: `${options.county}-${options.jobId}`,
-      });
+      })) ?? (await readEnqueueSeedPath(options.county, options.jobId)));
   const { manifest, manifestPath, exitCode } = await reconcileCounty({
     county: options.county,
     jobId: options.jobId,

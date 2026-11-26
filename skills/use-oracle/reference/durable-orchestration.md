@@ -122,8 +122,10 @@ Every HTTP request, browser action, child process, and journaled step must have:
 - a circuit breaker and next-attempt timestamp.
 
 Never retry indefinitely or increase source pressure blindly. Keep portal concurrency gentle
-(permit workers start at 2; stepwise ramp-up). Never dump a whole county into a queue; use the
-backpressure-aware seed feeder.
+(permit workers start at 2; stepwise ramp-up). Never dump a whole county into an unbounded
+queue. The default fan-out queues every parcel in Restate under a scope whose rule caps
+concurrency, and ramps that cap on measured health (6 → 12 → 18, never above 18 without a
+benchmark; `county-ingest-run` §3). Without VQueues, use the backpressure-aware seed feeder.
 
 ### 7. Reconcile source claims explicitly
 
@@ -315,8 +317,16 @@ Every status response must state:
 - next automated action;
 - required human action;
 - whether county completeness is established;
-- whether publication is unsupported, partial, or full.
-- whether the latest reconciled manifest is newer than the one the published group was built from.
+- whether publication is unsupported, partial, or full;
+- whether the latest reconciled manifest is newer than the one the published group was built from;
+- the queue per scope (queued, running, paused, finished; parcels left) and the cap in use;
+- the hand-off block, in every status report and every hand-off (`npm run status` prints it):
+  - Restate UI: `http://127.0.0.1:<RESTATE_ADMIN_PORT>/ui` (default 9070);
+  - to open it from another machine: `ssh -N -L <port>:127.0.0.1:<port> <user>@<host>`;
+  - the parcels-left query: `SELECT num_inbox + num_running + num_suspended + num_paused AS
+    parcels_left FROM sys_vqueue_meta WHERE service_name = 'Parcel' AND scope = '<scope>';`
+  - the Console Pipeline tab (shared view, refreshed hourly):
+    <https://soofi-safavi.account.prismteam.ai/console/app/?app=meet-backfill-progress&tab.data-mining-tabs=data-mining-pipeline-table#/data-mining>.
 
 When one source is blocked, continue every independent safe workstream.
 

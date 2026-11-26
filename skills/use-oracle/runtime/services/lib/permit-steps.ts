@@ -79,7 +79,7 @@ type HarvestStatus = {
 
 type HarvestResult = { status: HarvestStatus; records: HarvestRecord[]; failures: HarvestFailure[] };
 
-type PermitProfile = { countyKey: string; jurisdictions: Array<{ key: string; adapterKey?: string | null }> };
+export type PermitProfile = { countyKey: string; jurisdictions: Array<{ key: string; adapterKey?: string | null }> };
 
 const registry = permitProfileRegistry as {
   countyKeys: readonly string[];
@@ -148,6 +148,38 @@ function statusFile(
 
 export class TransientPermitError extends Error {}
 
+/**
+ * Route an eligible parcel to its permit jurisdiction and vendor adapter:
+ * the county routing hook first (tax district or any other seed column),
+ * then the city. The permit enqueuer uses `adapterKey` to pick the scope.
+ */
+export async function resolvePermitRoute(
+  county: string,
+  profile: PermitProfile,
+  eligibility: Eligibility,
+  parcelId: string,
+): Promise<{ routing: Eligibility["routing"]; hookKey: string | null; jurisdictionKey: string | null; adapterKey: string | null }> {
+  const routing = eligibility.routing;
+  const seedRow: Record<string, string> = routing.seed ?? {
+    parcel_id: parcelId,
+    ...(routing.situs_address ? { situs_address: routing.situs_address } : {}),
+    ...(routing.city ? { city: routing.city } : {}),
+  };
+  const hook = await loadPermitRoutingHook(county);
+  const hookKey = hook ? await hook.resolveJurisdiction({ seedRow, routing, profile }) : null;
+  const jurisdiction = (
+    hookKey
+      ? profile.jurisdictions.find((candidate) => candidate.key === hookKey)
+      : routePermitJurisdiction(profile, routing.city ?? routing.situs_address)
+  ) as { key: string; adapterKey?: string | null } | null | undefined;
+  return {
+    routing,
+    hookKey: hookKey ?? null,
+    jurisdictionKey: jurisdiction?.key ?? null,
+    adapterKey: jurisdiction?.adapterKey ?? null,
+  };
+}
+
 /** Harvest one parcel; writes artifacts and `status/<parcelKey>.json`. */
 export async function harvestOneParcel(req: {
   county: string;
@@ -186,21 +218,7 @@ export async function harvestOneParcel(req: {
     await atomicWriteJson(statusPath, status);
     return status;
   }
-  const routing = eligibility.routing;
-  const seedRow: Record<string, string> = routing.seed ?? {
-    parcel_id: req.parcel_id,
-    ...(routing.situs_address ? { situs_address: routing.situs_address } : {}),
-    ...(routing.city ? { city: routing.city } : {}),
-  };
-  // County routing hook first (tax district or any other seed column), then city.
-  const hook = await loadPermitRoutingHook(req.county);
-  const hookKey = hook ? await hook.resolveJurisdiction({ seedRow, routing, profile }) : null;
-  const jurisdiction = (
-    hookKey
-      ? profile.jurisdictions.find((candidate) => candidate.key === hookKey)
-      : routePermitJurisdiction(profile, routing.city ?? routing.situs_address)
-  ) as { key: string; adapterKey?: string | null } | null | undefined;
-  const adapterKey = jurisdiction?.adapterKey ?? null;
+  const { routing, hookKey, adapterKey } = await resolvePermitRoute(req.county, profile, eligibility, req.parcel_id);
   const outputDir = paths.permitsJob(req.county, req.jobId);
   const result = (await gate(`permit_${adapterKey ?? "unrouted"}`, 2)(() =>
     harvestPermitProperty({

@@ -58,34 +58,61 @@ The Console's `county-coverage-persist` report (Pipeline tab) reads repository
 `prismteam-ai/meet-backfill-progress-report`, directory `county-coverage/`. Its **Local**
 column is mined ÷ official parcels.
 
+- **While a run mines**, the exporter reports the Oracle run's validated count (parcels
+  with `ready.json`, which is written only after validation passes) and the Pipeline
+  stage reads **Mining (in progress)**
+  (`prismteam-ai/meet-backfill-progress-report#153`, merged).
+- **Once the County group is packed** (every gate passed, `.car` and
+  `tables-export.json` under `publish/<county>/<jobId>/county/`), the finished
+  `properties` count replaces it
+  (`prismteam-ai/meet-backfill-progress-report#152`, merged).
+- Only the county's own seed (`seeds/<county>.csv`) counts. Trial jobs (`pilot-`,
+  `smoke-`, `sample-`, `test-`, `dev-`) never count, and a job with no run manifest yet
+  counts only when named `full-<YYYYMMDD>` (`county-ingest-run` §3).
+
 ### Coverage push (every mining machine)
 
 An hourly job runs `export_local_inputs.py --push`, which commits
-`county-coverage/local-inputs/<machine-id>.json` to branch `county-coverage-inputs`; an
-hourly workflow merges every machine with Atlas and refreshes the report.
+`county-coverage/local-inputs/<machine-id>.json` to branch `county-coverage-inputs`. The
+exporter reads Oracle runtime data dirs from `ORACLE_DATA_DIRS` (colon-separated) and
+installs on an Oracle-only machine (no repair directory needed). It needs a Python with
+`duckdb`; system Pythons on Arch, Debian 12+ and Homebrew refuse `pip install`, so use a
+venv and pass it as `PYTHON`:
 
 ```bash
-# check prerequisites (git, gh signed in with push access, python3 with duckdb)
+python3 -m venv ~/.local/share/county-coverage-venv
+~/.local/share/county-coverage-venv/bin/pip install duckdb
+# check prerequisites first, then install
 gh api repos/prismteam-ai/meet-backfill-progress-report/contents/county-coverage/install-autopush.sh \
-  -H 'Accept: application/vnd.github.raw' | bash -s -- --dry-run
-# install: point ORACLE_DATA_DIRS at the runtime DATA_DIR (absolute path)
-ORACLE_DATA_DIRS=<abs DATA_DIR> \
+  -H 'Accept: application/vnd.github.raw' \
+  | PYTHON=~/.local/share/county-coverage-venv/bin/python ORACLE_DATA_DIRS=<runtime>/data bash -s -- --dry-run
 gh api repos/prismteam-ai/meet-backfill-progress-report/contents/county-coverage/install-autopush.sh \
-  -H 'Accept: application/vnd.github.raw' | bash
+  -H 'Accept: application/vnd.github.raw' \
+  | PYTHON=~/.local/share/county-coverage-venv/bin/python ORACLE_DATA_DIRS=<runtime>/data bash
 ```
 
-If the installer refuses, fix what it lists and run it again. The exporter learns the
-Oracle runtime layout (`ORACLE_DATA_DIRS`, and an `in_progress` value for unfinished runs)
-in a separate change. Until the installed exporter supports Oracle runs, it pushes nothing
-for them: report progress in the status report only, and say so.
+`<runtime>/data` is the absolute runtime `DATA_DIR`. If the installer refuses, fix what it
+lists and run it again.
 
-**Push by hand at milestones** (pilot passed, each chunk finished, CAR packed, upload read
-back) so the Console does not wait up to an hour. Run the installed job once; it refreshes
-its clone and runs `export_local_inputs.py --push` with the settings written at install:
+**Push by hand at milestones** (pilot passed, each finished chunk or each 10% of the seed
+validated, appraisal drained, CAR packed, upload read back). Run the installed job once;
+it refreshes its clone and pushes with the settings written at install:
 
 ```bash
 bash ~/code/prismteam/county-coverage-autopush.sh   # beside COVERAGE_CLONE_DIR when that was set
 ```
+
+**How long the Console takes.** A push reaches the Pipeline tab in two steps:
+
+1. The **County coverage** GitHub workflow merges every machine's file with Atlas and
+   uploads the build. Its hourly cron is unreliable, so after a milestone push run it by
+   hand:
+   `gh workflow run county-coverage.yml -R prismteam-ai/meet-backfill-progress-report`.
+2. The Pipeline report (`county-coverage-persist`) refreshes hourly at :12 and takes about
+   40 minutes.
+
+So Local trails a push by about an hour. Report the Restate status and file counts as the
+current numbers, and the Console as lagging until it catches up.
 
 ### Official parcel count
 
@@ -102,4 +129,7 @@ exists.
 ## In every status and required report
 
 Name the county's Pipeline stage (1–6) and the Local % (mined ÷ official parcels), and
-flag when the Console lags the Restate status or the file counts (`monitoring-county-ingestion`).
+flag when the Console lags the Restate status or the file counts by more than about an
+hour (`monitoring-county-ingestion`). Give it beside the Restate hand-off block from
+`npm run status` (`county-ingest-run/reference/full-run-flow-control.md`): the Restate UI
+link, the SSH tunnel, the parcels-left query and the Console Pipeline tab link.

@@ -1,6 +1,6 @@
 ---
 name: county-ingest-run
-description: "Operate the end-to-end property-first ingestion run for an onboarded county: pilot batch, source-feasibility gate, backpressure-aware full run with stepwise ramp-up, and the ledger-and-files reconciliation that gates Atlas publication. Use when starting, scaling, resuming, reconciling, or wrapping up a county ingestion run."
+description: "Operate the end-to-end property-first ingestion run for an onboarded county: pilot batch, source-feasibility gate, full run on Restate scoped queues (one invocation per parcel, capped per source) with a stepwise cap ramp, and the ledger-and-files reconciliation that gates Atlas publication. Use when starting, scaling, resuming, reconciling, or wrapping up a county ingestion run."
 metadata: {"author":"elephant-xyz"}
 ---
 # County Ingest Run
@@ -48,6 +48,12 @@ link results under `stage: "permits"` (where `blocked` marks a blocked permit so
 `durable-workflow-builder` patterns 1 (backpressure feeder), 2 (layered concurrency),
 8 (single-writer ledger), and 11 (chunked fan-out).
 
+**Fan-out.** The default full run does not use that feeder: `npm run enqueue` sends one
+scoped, idempotent `Parcel.process` per parcel, Restate's VQueues hold the backlog, and
+the scope's rule caps how many run at once (§3, `durable-workflow-builder` pattern 16).
+Permits follow the same way with `npm run enqueue:permits` once the appraisal queue
+drains. `CountyIngest` chunk mode is the fallback for a server without VQueues.
+
 For an operator-requested full re-ingest, preserve this one order: readiness PASS and
 seed/appraisal backbone → official corporate registry → official licensing-authority
 adequacy-or-acquire → permit detail/contact harvest → permit evidence preflight and
@@ -71,6 +77,9 @@ commands below from `skills/use-oracle/runtime`. Egress must be US
    curl localhost:8080/CountyIngest/<county>-pilot-<date>/run/send \
      --json '{"county":"<county>","jobId":"pilot-<date>","seedPath":"seeds/<county>-pilot.csv","chunkSize":10000,"window":25}'
    ```
+
+   On a VQueues server, pilot through the path the full run will use instead:
+   `npm run enqueue -- --county <county> --job pilot-<date> --seed seeds/<county>-pilot.csv --cap <workers>`.
 
 3. Verify one parcel end-to-end, in order: `capture.zip` on disk
    (`data/artifacts/appraisal/<county>/<jobId>/<parcelKey>/`, where `<parcelKey>` is the
@@ -108,11 +117,54 @@ Project full-county duration from the pilot rate for every source that will be s
   runtime path should be (direct API call, server-side scrape, cached lookup, queued
   background fetch). Record freshness, latency, and failure behavior before changing scope.
 
-## 3. Full run
+## 3. Full run (default: enqueue + ramp)
 
-Same workflow, full seed. Name the job `full-<YYYYMMDD>`: the County Coverage export treats a
-job with no run manifest yet as the county's run only under that name, so check jobs never
-stand in for the county (see `../use-oracle/reference/pipeline-reporting.md`).
+Requires Restate 1.7.9 with VQueues (`bootstrap-oracle-infra`). Full procedure, measured
+rates and limits: [`reference/full-run-flow-control.md`](./reference/full-run-flow-control.md).
+Name the job `full-<YYYYMMDD>`: the County Coverage export counts a job with no run
+manifest yet as the county's run only under that name, and never counts `pilot-`/`smoke-`
+jobs (`../use-oracle/reference/pipeline-reporting.md`).
+
+```bash
+npm run enqueue -- --county <county> --job full-<YYYYMMDD> --seed seeds/<county>.csv
+npm run ramp -- --county <county> --job full-<YYYYMMDD>      # supervised; exits when drained
+npm run status -- --county <county> --job full-<YYYYMMDD>
+```
+
+One scoped `Parcel.process` per parcel (key `<county>-<jobId>-<parcel_id>`, kept 14 days;
+`ready.json`/`dead.json` parcels skipped; re-runs are no-ops). Scope per source site, rule
+starting at `SCOPE_CAP_<SCOPE>` or 6. Ramp 6 → 12 → 18 after two clean 3-minute samples
+each, step down one level on degradation, never above 18 without a measured benchmark
+(Cobb: ~26k parcels/h at 18 against 10.8–12.6k/h for the chunk feeder). Keep
+`CONCURRENCY_PREPARE_<COUNTY>` above the top level. When parcels left is 0, reconcile (§6)
+and run `npm run enqueue:permits`. Every status report and hand-off gives the Restate UI
+link, the SSH tunnel, the parcels-left query and the Console Pipeline tab (`npm run status`).
+
+### Incremental progress
+
+Report progress as the run goes, not only at the end: at each milestone (pilot passed,
+each 10% of the seed validated on the enqueue path — parcels left from `npm run status` —
+or each `chunksDone` step in chunk mode, appraisal drained, CAR packed, upload read back):
+
+1. Refresh the run manifest without gating:
+   `npm run reconcile -- --county <county> --job <jobId>` (no `--strict`; add `--no-rehash`
+   on a large county). Mid-run `seed_complete` and `permits_complete` fail by design.
+2. Push coverage by hand and run the County coverage workflow
+   ([`pipeline-reporting.md`](../use-oracle/reference/pipeline-reporting.md#coverage-push-every-mining-machine));
+   the Console's Local shows the validated count about an hour later.
+3. Report parcels left (or `chunksDone` of `chunks`), ready/dead/invalid/failed from the
+   manifest, the Pipeline stage and the Local %, with the `npm run status` hand-off block.
+
+**Pack as you go (planned).** The runtime has no per-chunk packing command yet
+(`--assemble` and `PublishGroup` work on the whole job), so pack once after the strict
+reconcile (§6).
+
+### Fallback: chunk mode (`CountyIngest`)
+
+Use it only on a server without VQueues, or when the operator asks; never alongside the
+enqueue path for the same job.
+
+Same workflow, full seed, same `full-<YYYYMMDD>` job name:
 
 ```bash
 curl localhost:8080/CountyIngest/<county>-full-<YYYYMMDD>/run/send \
@@ -140,26 +192,11 @@ Watch with `monitoring-county-ingestion`: Web UI at `http://localhost:9070`,
 `CountyIngest/<county>-<jobId>/status`, and `CountyLedger/<county>-<jobId>/summary`
 (POST to the ingress).
 
-### Incremental progress
-
-Report progress per chunk, not only at the end. When `chunksDone` in
-`CountyIngest/<county>-<jobId>/status` advances:
-
-1. Refresh the run manifest without gating:
-   `npm run reconcile -- --county <county> --job <jobId>` (no `--strict`; add `--no-rehash`
-   on a large county to keep it quick). Mid-run `seed_complete` and `permits_complete`
-   fail by design.
-2. Push coverage by hand
-   ([`pipeline-reporting.md`](../use-oracle/reference/pipeline-reporting.md#coverage-push-every-mining-machine)).
-3. Report `chunksDone` of `chunks`, ready/dead/invalid/failed from the manifest, the
-   Pipeline stage, and the Local %.
-
-**Pack as you go (planned).** The goal is to assemble, validate and hash each finished
-chunk so final packing is short. The runtime has no per-chunk packing command yet:
-`--assemble` and `PublishGroup` work on the whole job. Until one exists, pack once after
-the strict reconcile (§6).
-
 ## 4. Ramp-up & Warm Worker Pool Optimization
+
+On the enqueue path (§3) the ramp is the scope cap, run by `npm run ramp` or set with
+`npm run scope-cap -- --scope <scope> --cap <n>`; the in-process gates below stay above it.
+They are the ramp only in chunk mode.
 
 Raise the `CONCURRENCY_*` caps in `skills/use-oracle/runtime/.env` stepwise
 (`CONCURRENCY_PREPARE[_<COUNTY>]`, `CONCURRENCY_TRANSFORM[_<COUNTY>]`,
@@ -285,8 +322,9 @@ npm run reconcile -- --county <county> --job <jobId> --strict
 Flags: `--restate <admin-url>` (default `RESTATE_ADMIN_URL` or `:9070`), `--ingress
 <ingress-url>` (default `RESTATE_INGRESS_URL` or `:8080`), `--seed <DATA_DIR-relative
 csv>` (default: the `seedPath` the run was started with, read from the `CountyIngest`
-`<county>-<jobId>` state through the admin API or its `status` handler, then
-`seeds/<county>.csv`; the manifest records `seed.source`), `--strict`, `--assemble <group>`, and `--no-rehash`
+`<county>-<jobId>` state through the admin API or its `status` handler, then the enqueue
+record `data/runs/<county>/<jobId>/enqueue.json`, then `seeds/<county>.csv`; the manifest
+records `seed.source`), `--strict`, `--assemble <group>`, and `--no-rehash`
 (trust `ready.json` hashes instead of rehashing every `transformed.zip`; use only for a
 quick mid-run look). It reads the ledger through the Restate admin SQL query API,
 falling back to `CountyLedger/summary` + `list` through ingress, plus the seed and the
@@ -427,6 +465,9 @@ just has no data.
 
 ## 8. Wrap-up
 
+- On the enqueue path the appraisal pass is done when the scope's parcels left
+  (`sys_vqueue_meta`: queued + running + suspended + paused) is 0, and the permit pass when
+  every permit scope is 0 too.
 - `CountyIngest` completing means appraisal DISPATCH is done — permit harvests sent by
   `PermitFeed` are still draining under their own caps. Wrap up only when permit status
   artifacts exist for every eligible parcel and `reconcile-county.mjs --strict` passes
