@@ -46,6 +46,12 @@ function quote(text, match) {
  * @returns {{
  *   program: "FHA" | "VA" | "USDA" | "GSE" | null,
  *   loanAmount: number | null,
+ *   termMonths: number | null,
+ *   min: string | null,
+ *   loanNumber: string | null,
+ *   lenderName: string | null,
+ *   borrowerText: string | null,
+ *   mers: boolean,
  *   noteDate: string | null,
  *   maturityDate: string | null,
  *   initialRatePercent: number | null,
@@ -82,6 +88,8 @@ export function extractLoanTerms(rawText) {
     /U\.?\s*S\.?\s*\$\s*([\d,]+\.\d{2})/i,
     /principal (?:sum|amount) of[^$]{0,120}\$\s*([\d,]+\.\d{2})/i,
     /Dollars\s*\(\s*\$\s*([\d,]+\.\d{2})/i,
+    // Revolving credit (HELOC) deeds of trust state a maximum instead of a principal.
+    /(?:shall not exceed|maximum (?:principal )?amount[^$]{0,60}?|credit limit[^$]{0,40}?)\s*\(?\s*\$\s*([\d,]+\.\d{2})/i,
   ]) {
     const m = re.exec(text);
     if (m) {
@@ -96,11 +104,34 @@ export function extractLoanTerms(rawText) {
 
   // Note date and maturity.
   const note = new RegExp(`Note[^.]{0,100}?dated\\s+${MONTHS}\\s+(\\d{1,2}),?\\s+(\\d{4})`, "i").exec(text);
-  const noteDate = note ? isoDate(note[1], note[2], note[3]) : null;
+  let noteDate = note ? isoDate(note[1], note[2], note[3]) : null;
   if (note) evidence.noteDate = quote(text, note);
+  if (!noteDate) {
+    const made = /(?:is made on|dated)\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i.exec(text);
+    if (made) {
+      noteDate = `${made[3]}-${made[1].padStart(2, "0")}-${made[2].padStart(2, "0")}`;
+      evidence.noteDate = quote(text, made);
+    }
+  }
   const maturity = new RegExp(`(?:not later than|maturity date[^A-Za-z]{0,10}(?:is|of)?)\\s*${MONTHS}\\s+(\\d{1,2}),?\\s+(\\d{4})`, "i").exec(text);
   const maturityDate = maturity ? isoDate(maturity[1], maturity[2], maturity[3]) : null;
   if (maturity) evidence.maturityDate = quote(text, maturity);
+
+  // MERS Mortgage Identification Number: 18 digits, printed as "MIN: 1000xxx-xxxxxxxxxx-x".
+  const minMatch = /\bMIN\b\s*(?:No\.?|Number|#)?\s*[:#]?\s*((?:\d[\s-]?){17}\d)/i.exec(text);
+  const min = minMatch ? minMatch[1].replace(/\D/g, "") : null;
+  if (minMatch) evidence.min = quote(text, minMatch);
+  const loanNo = /Loan\s*(?:Number|No\.?|#)\s*:?\s*([A-Z0-9][A-Z0-9-]{4,})/i.exec(text);
+  const loanNumber = loanNo ? loanNo[1] : null;
+  if (loanNo) evidence.loanNumber = quote(text, loanNo);
+  // Lender as the instrument defines it: '"Lender" is <NAME>.'
+  const lenderMatch = /"?Lender"?\s+is\s+([A-Z0-9][^.]{2,120}?)(?:\.\s|,\s*(?:a|an)\s)/.exec(text);
+  const lenderName = lenderMatch ? lenderMatch[1].trim() : null;
+  if (lenderMatch) evidence.lenderName = quote(text, lenderMatch);
+  const borrowerMatch = /"?Borrower"?\s+is\s+([A-Z][^.]{2,160}?)(?:\.\s|,\s*(?:whose|as|husband|wife|a single|an unmarried|married))/.exec(text);
+  const borrowerText = borrowerMatch ? borrowerMatch[1].trim() : null;
+  if (borrowerMatch) evidence.borrowerText = quote(text, borrowerMatch);
+  const mers = /Mortgage Electronic Registration Systems/i.test(text);
 
   // Interest rate: only where the instrument states it (ARM riders, some private notes).
   let initialRatePercent = null;
@@ -150,5 +181,20 @@ export function extractLoanTerms(rawText) {
     evidence.prepaymentPenalty = "Fannie Mae/Freddie Mac uniform instrument with no Prepayment Rider";
   }
 
-  return { program, loanAmount, noteDate, maturityDate, initialRatePercent, adjustableRate, prepaymentPenalty, riders, evidence };
+  // Term in months from note date to maturity (e.g. 360 for 30 years), when both are known.
+  let termMonths = null;
+  if (noteDate && maturityDate) {
+    const [ny, nm] = noteDate.split("-").map(Number);
+    const [my, mm] = maturityDate.split("-").map(Number);
+    let months = (my - ny) * 12 + (mm - nm);
+    // First payment is usually the month after the note, so 361 means a 360-month loan.
+    const nearest = Math.round(months / 12) * 12;
+    if (Math.abs(months - nearest) <= 2) months = nearest;
+    if (months > 0 && months <= 600) termMonths = months;
+  }
+
+  return {
+    program, loanAmount, noteDate, maturityDate, termMonths, min, loanNumber, lenderName, borrowerText, mers,
+    initialRatePercent, adjustableRate, prepaymentPenalty, riders, evidence,
+  };
 }
