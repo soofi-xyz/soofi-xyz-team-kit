@@ -41,6 +41,23 @@ import {
 } from "../src/enrichment/query-table-bbb.mjs";
 import { finalizeEnrichmentArtifacts } from "../src/enrichment/enrichment-finalize.mjs";
 import { requirePermitProfile } from "../src/counties/permit-profiles.mjs";
+import { requireMortgageProfile } from "../src/counties/mortgage-profiles.mjs";
+import {
+  harvestMortgageDocuments,
+  parseInstrumentList,
+} from "../src/mortgage/harvest.mjs";
+import { pinConfigFromEnv } from "../src/mortgage/ipfs-pin.mjs";
+import { acclaimDocTypeFetcher } from "../src/mortgage/acclaim.mjs";
+import { browserDocumentFetcher, documentFetcher, readIndexRecords, storeDocuments } from "../src/mortgage/documents.mjs";
+import { calendarWindows, harvestWindows } from "../src/mortgage/windowed-harvest.mjs";
+import { hillsboroughFetcher } from "../src/mortgage/hillsborough.mjs";
+import { maricopaFetcher } from "../src/mortgage/maricopa.mjs";
+import { harrisFetcher } from "../src/mortgage/harris.mjs";
+import { openMecklenburgSession } from "../src/mortgage/mecklenburg.mjs";
+import {
+  harvestPublicsearchMortgages,
+  openPublicsearchSession,
+} from "../src/mortgage/publicsearch.mjs";
 import { permitProfileDigest } from "../src/counties/permit-profile.mjs";
 import {
   harvestPermitProperties,
@@ -895,6 +912,189 @@ async function runPermitBulkExportCommand(argv) {
 }
 
 /**
+ * `mortgage-harvest`: capture clerk index facts and mortgage documents for a
+ * list of instruments, optionally pinning each document to IPFS.
+ *
+ * @param {readonly string[]} argv - Flags after the subcommand.
+ * @returns {Promise<void>} Resolves when the run manifest is written.
+ */
+async function runMortgageHarvestCommand(argv) {
+  const flags = parseFlags(argv, ["pin"]);
+  const profile = requireMortgageProfile(requireStringFlag(flags, "county"));
+  const jobId = requireStringFlag(flags, "job-id");
+  const instrumentsPath = requireStringFlag(flags, "instruments");
+  const outputDir = requireStringFlag(flags, "output");
+  const limit = optionalPositiveInteger(flags.limit, "limit");
+  if (limit === null) {
+    throw new Error("Mortgage harvest requires an explicit --limit bound");
+  }
+  const delayMs =
+    typeof flags["delay-ms"] === "string" ? Number(flags["delay-ms"]) : 2000;
+  if (!Number.isInteger(delayMs) || delayMs < 0) {
+    throw new Error("--delay-ms must be a non-negative integer");
+  }
+  const instruments = parseInstrumentList(
+    await readFile(instrumentsPath, "utf8"),
+    profile.requestIdentifierPrefix,
+  ).slice(0, limit);
+  const result = await harvestMortgageDocuments({
+    profile,
+    jobId,
+    instruments,
+    outputDir,
+    pin: flags.pin ? pinConfigFromEnv(process.env) : null,
+    delayMs,
+    onProgress: (event) => console.log(JSON.stringify(event)),
+  });
+  console.log(JSON.stringify({ event: "mortgage_harvest_complete", ...result }));
+}
+
+/**
+ * `mortgage-index-harvest`: list every Deed of Trust recorded in a date window on a
+ * publicsearch.us county portal, one resumable day file at a time.
+ *
+ * @param {readonly string[]} argv - Flags after the subcommand.
+ * @returns {Promise<void>} Resolves when the manifest is written.
+ */
+async function runMortgageIndexHarvestCommand(argv) {
+  const flags = parseFlags(argv, ["headless", "extra-doc-types"]);
+  let profile = requireMortgageProfile(requireStringFlag(flags, "county"));
+  // --doc-types A,B overrides the codes; --extra-doc-types harvests only the profile's extra codes.
+  const docTypes =
+    typeof flags["doc-types"] === "string"
+      ? flags["doc-types"].split(",").map((code) => code.trim()).filter(Boolean)
+      : flags["extra-doc-types"]
+        ? [...(profile.extraMortgageDocTypeCodes ?? [])]
+        : null;
+  if (docTypes) {
+    if (docTypes.length === 0) throw new Error(`${profile.county} has no extra mortgage doc types`);
+    profile = { ...profile, mortgageDocTypeCodes: docTypes };
+  }
+  if (profile.vendor !== "publicsearch" || !profile.host) {
+    throw new Error(`mortgage-index-harvest supports publicsearch counties; ${profile.county} is ${profile.vendor}`);
+  }
+  const chromePath =
+    typeof flags.chrome === "string" ? flags.chrome : process.env.CHROME_EXECUTABLE_PATH?.trim();
+  if (!chromePath) throw new Error("Pass --chrome <path> or set CHROME_EXECUTABLE_PATH");
+  const pageSize = optionalPositiveInteger(flags["page-size"], "page-size", 250);
+  const delayMs =
+    typeof flags["delay-ms"] === "string" ? Number(flags["delay-ms"]) : 1500;
+  if (!Number.isInteger(delayMs) || delayMs < 0) throw new Error("--delay-ms must be a non-negative integer");
+  const session = await openPublicsearchSession({
+    host: profile.host,
+    chromePath,
+    headless: Boolean(flags.headless),
+  });
+  try {
+    const result = await harvestPublicsearchMortgages({
+      profile,
+      jobId: requireStringFlag(flags, "job-id"),
+      from: requireStringFlag(flags, "from"),
+      to: requireStringFlag(flags, "to"),
+      outputDir: requireStringFlag(flags, "output"),
+      pageSize,
+      delayMs,
+      session,
+      onProgress: (event) => console.log(JSON.stringify(event)),
+    });
+    console.log(JSON.stringify({ event: "mortgage_index_harvest_complete", ...result }));
+  } finally {
+    await session.close();
+  }
+}
+
+/**
+ * `mortgage-window-harvest`: list every mortgage in a date range from an API/form-based
+ * county source (hillsborough, maricopa, harris) in resumable date windows.
+ *
+ * @param {readonly string[]} argv - Flags after the subcommand.
+ * @returns {Promise<void>} Resolves when the manifest is written.
+ */
+async function runMortgageWindowHarvestCommand(argv) {
+  const flags = parseFlags(argv, ["with-names"]);
+  const profile = requireMortgageProfile(requireStringFlag(flags, "county"));
+  const fetchers = {
+    "hillsclerk-ori": () => hillsboroughFetcher(),
+    "maricopa-recorder-api": () => maricopaFetcher({ withNames: Boolean(flags["with-names"]) }),
+    "harris-cclerk-rp": () => harrisFetcher(),
+    acclaim: () =>
+      acclaimDocTypeFetcher({ baseUrl: profile.baseUrl, docTypeIds: profile.acclaimDocTypeIds ?? [], profile }),
+  };
+  let closeSession = async () => {};
+  if (profile.vendor === "aumentum-recorder") {
+    const chromePath =
+      typeof flags.chrome === "string" ? flags.chrome : process.env.CHROME_EXECUTABLE_PATH?.trim();
+    if (!chromePath) throw new Error("Pass --chrome <path> or set CHROME_EXECUTABLE_PATH");
+    const session = await openMecklenburgSession({ chromePath });
+    fetchers["aumentum-recorder"] = () => session.fetchWindow;
+    closeSession = session.close;
+  }
+  const makeFetcher = fetchers[profile.vendor];
+  if (!makeFetcher) {
+    throw new Error(`mortgage-window-harvest supports ${Object.keys(fetchers).join(", ")}; ${profile.county} is ${profile.vendor}`);
+  }
+  const from = typeof flags.from === "string" ? flags.from : profile.earliest;
+  const to = requireStringFlag(flags, "to");
+  const unit = typeof flags.window === "string" ? flags.window : profile.defaultWindow ?? "day";
+  if (!["day", "month", "year"].includes(unit)) throw new Error("--window must be day, month or year");
+  const delayMs = typeof flags["delay-ms"] === "string" ? Number(flags["delay-ms"]) : 1500;
+  if (!Number.isInteger(delayMs) || delayMs < 0) throw new Error("--delay-ms must be a non-negative integer");
+  const result = await harvestWindows({
+    county: profile.county,
+    jobId: requireStringFlag(flags, "job-id"),
+    outputDir: requireStringFlag(flags, "output"),
+    windows: calendarWindows(from, to, unit),
+    fetchWindow: makeFetcher(),
+    // Older records can share an instrument number; prefer the portal's own record id.
+    keyOf: (record) =>
+      String(record.source?.globalId ?? record.source?.uuid ?? record.source?.transactionItemId ?? record.instrumentNumber),
+    delayMs,
+    onProgress: (event) => console.log(JSON.stringify(event)),
+  }).finally(closeSession);
+  console.log(JSON.stringify({ event: "mortgage_window_harvest_complete", ...result }));
+}
+
+
+/**
+ * `mortgage-documents`: fetch the source documents for harvested index records and
+ * stream them to S3 (no local copies). Resumable: stored documents are skipped.
+ *
+ * @param {readonly string[]} argv - Flags after the subcommand.
+ * @returns {Promise<void>} Resolves when the batch finishes.
+ */
+async function runMortgageDocumentsCommand(argv) {
+  const flags = parseFlags(argv);
+  const profile = requireMortgageProfile(requireStringFlag(flags, "county"));
+  const limit = optionalPositiveInteger(flags.limit, "limit");
+  if (limit === null) throw new Error("mortgage-documents requires an explicit --limit bound");
+  const delayMs = typeof flags["delay-ms"] === "string" ? Number(flags["delay-ms"]) : 2000;
+  const records = await readIndexRecords(requireStringFlag(flags, "index-dir"), {
+    from: typeof flags.from === "string" ? flags.from : undefined,
+    to: typeof flags.to === "string" ? flags.to : undefined,
+  });
+  const { S3Client, PutObjectCommand, GetObjectCommand } = await import("@aws-sdk/client-s3");
+  const s3 = new S3Client({ region: typeof flags.region === "string" ? flags.region : "us-east-2" });
+  const result = await storeDocuments({
+    records,
+    makeFetcher: () =>
+      ["publicsearch", "maricopa-recorder-api", "aumentum-recorder"].includes(profile.vendor)
+        ? browserDocumentFetcher(profile.vendor, profile, {
+            chromePath: typeof flags.chrome === "string" ? flags.chrome : process.env.CHROME_EXECUTABLE_PATH?.trim(),
+            pageConcurrency: optionalPositiveInteger(flags["page-concurrency"], "page-concurrency", 6),
+          })
+        : documentFetcher(profile.vendor, profile),
+    concurrency: optionalPositiveInteger(flags.concurrency, "concurrency", 1),
+    s3,
+    commands: { PutObjectCommand, GetObjectCommand },
+    bucket: requireStringFlag(flags, "bucket"),
+    limit,
+    delayMs,
+    onProgress: (event) => console.log(JSON.stringify(event)),
+  });
+  console.log(JSON.stringify({ event: "mortgage_documents_complete", county: profile.county, candidates: records.length, ...result }));
+}
+
+/**
  * @returns {Promise<void>} Resolves once the requested subcommand finishes.
  */
 async function main() {
@@ -932,8 +1132,16 @@ async function main() {
   if (command === "permit-bulk-export") {
     return runPermitBulkExportCommand(rest);
   }
+  if (command === "mortgage-harvest") return runMortgageHarvestCommand(rest);
+  if (command === "mortgage-documents") return runMortgageDocumentsCommand(rest);
+  if (command === "mortgage-window-harvest") {
+    return runMortgageWindowHarvestCommand(rest);
+  }
+  if (command === "mortgage-index-harvest") {
+    return runMortgageIndexHarvestCommand(rest);
+  }
   console.error(
-    "Usage: elephant-county <capture-raw|ingest|reconcile-export|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-overlay-sync|hoa-pm-enrich|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export> [...flags]\n" +
+    "Usage: elephant-county <capture-raw|ingest|reconcile-export|replay|sunbiz-prepare|sunbiz-filter|sunbiz-transform|sunbiz-enrich|avm-enrich|hoa-enrich|hoa-pm-index|hoa-pm-overlay-sync|hoa-pm-enrich|bbb-harvest|bbb-reconcile|bbb-link|enrichment-finalize|permit-probe|permit-bounded-harvest|permit-resume|permit-reconcile|permit-export|permit-bulk-export|mortgage-harvest|mortgage-index-harvest|mortgage-window-harvest|mortgage-documents> [...flags]\n" +
       "  capture-raw --county <key> --seed <one-row.csv> --output <temp-or-runtime-scratch-dir> [--stdout]\n" +
       "  ingest  --county <key> --seed <csv> --html-dir <dir> [--skip-validate] [--live-fetch] [--allow-empty] --output <run-dir>\n" +
       "  reconcile-export --county <key> --seed <csv> --run <run-dir> --output <working-dir> [--allow-empty]\n" +
@@ -956,7 +1164,11 @@ async function main() {
       "  permit-resume --county <profile-key> --job-id <id> --input-parquet <parquet> --limit N --output <dir>\n" +
       "  permit-reconcile --county <profile-key> --harvest <dir>\n" +
       "  permit-export --county <profile-key> --job-id <id> --harvest <dir> --input-parquet <parquet> --input-coverage <json> --output <dir>\n" +
-      "  permit-bulk-export --county <profile-key> --job-id <id> --input-parquet <parquet> --input-coverage <json> --output <dir> [--max-pages N]",
+      "  permit-bulk-export --county <profile-key> --job-id <id> --input-parquet <parquet> --input-coverage <json> --output <dir> [--max-pages N]\n" +
+      "  mortgage-harvest --county <mortgage-profile-key> --job-id <id> --instruments <csv> --limit N --output <dir> [--delay-ms N] [--pin]\n" +
+      "  mortgage-index-harvest --county <bexar|collin|dallas|denton|tarrant> --job-id <id> --from <YYYYMMDD> --to <YYYYMMDD> --output <dir> [--chrome <path>] [--headless] [--page-size N] [--delay-ms N] [--doc-types A,B | --extra-doc-types]\n" +
+      "  mortgage-window-harvest --county <duval|hillsborough|maricopa|harris|mecklenburg> --job-id <id> --to <YYYYMMDD> --output <dir> [--from <YYYYMMDD>] [--window day|month|year] [--delay-ms N] [--with-names] [--chrome <path>]\n" +
+      "  mortgage-documents --county <key> --index-dir <harvest windows dir> --bucket <s3 bucket> --limit N [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--delay-ms N] [--concurrency N] [--page-concurrency N] [--chrome <path>] [--region us-east-2]",
   );
   process.exitCode = 1;
 }

@@ -37,6 +37,12 @@ Write findings to `skills/use-oracle/runtime/docs/<county>-county-findings.md`. 
    URL, bulk-download availability, and whether the operator wants it in scope. Lee
    shipped with two beyond appraisal+permits (Sunbiz, BBB); treat that as the baseline to
    offer, not the ceiling.
+   For mortgages, record the recorder/clerk official-records portal and vendor, whether
+   it lists documents by type and recording date, its result cap, its earliest indexed
+   year, every mortgage doc-type code it uses (including corrected, supplemental and
+   pre-conversion codes such as `PRE D/T`), whether document images are free and how,
+   and any disclaimer, CAPTCHA, login or terms that forbid automation. Then follow
+   `mortgage-index-harvest`.
    For HOA discovery, record whether the clerk/official-records index exposes a structured
    plat or declaration name linked to the exact parcel identifier. Use appraisal
    `subdivision` first when it is a clean community name; use clerk/OR only when that field
