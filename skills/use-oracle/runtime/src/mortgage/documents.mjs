@@ -167,7 +167,12 @@ export function browserDocumentFetcher(vendor, profile, options) {
       await Promise.all(Array.from({ length: Math.min(pageConcurrency, urls.length) }, async () => {
         while (next < urls.length) {
           const i = next; next += 1;
-          const bytes = await fetchInPage(session.page, urls[i]);
+          // The portal throttles bursts of page requests: retry each page with back-off.
+          let bytes = null;
+          for (let attempt = 1; attempt <= 5 && !bytes; attempt += 1) {
+            bytes = await fetchInPage(session.page, urls[i]);
+            if (!bytes) await new Promise((r) => setTimeout(r, 1500 * attempt));
+          }
           if (!bytes) throw new Error(`page ${i + 1} of doc ${docId} failed`);
           files[i] = { name: pad(i + 1), bytes, contentType: "image/png" };
         }
