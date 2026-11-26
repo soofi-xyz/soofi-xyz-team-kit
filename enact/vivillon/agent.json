@@ -2,6 +2,16 @@
   "channels": [
     "direct"
   ],
+  "create_repositories": {
+    "max": 3,
+    "permissions": {
+      "contents": "write",
+      "pull_requests": "write"
+    },
+    "templates": [
+      "prismteam-ai/configuration-bundle-template"
+    ]
+  },
   "description": "Console configurer. Turn a business person's plain-language request into an app built only from the shared design system, set an environment's look and available components, and keep existing dashboards working. Use Chandelure for missing components or runtime defects.",
   "hosts": [],
   "library_skills": [
@@ -27,7 +37,7 @@
     },
     {
       "name": "configure-console-product",
-      "version": "1.0.0-sha256-c193d0b09e2e0470"
+      "version": "1.0.0-sha256-152475c76c631e47"
     },
     {
       "name": "configure-deploy-product",
@@ -62,5 +72,5 @@
   "secrets": [
     "PRISM_API_KEY"
   ],
-  "version": "1.197.0"
+  "version": "1.198.0"
 }
