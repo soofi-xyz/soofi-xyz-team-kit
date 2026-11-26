@@ -131,7 +131,7 @@ export function extractLoanTerms(rawText) {
   const borrowerMatch = /"?Borrower"?\s+is\s+([A-Z][^.]{2,160}?)(?:\.\s|,\s*(?:whose|as|husband|wife|a single|an unmarried|married))/.exec(text);
   const borrowerText = borrowerMatch ? borrowerMatch[1].trim() : null;
   if (borrowerMatch) evidence.borrowerText = quote(text, borrowerMatch);
-  const mers = /Mortgage Electronic Registration Systems/i.test(text);
+  const mers = /Mortgage Electronic Registration Systems|\bMERS\b/.test(text) || Boolean(min);
 
   // Interest rate: only where the instrument states it (ARM riders, some private notes).
   let initialRatePercent = null;
@@ -152,7 +152,11 @@ export function extractLoanTerms(rawText) {
       }
     }
   }
-  const adjustableRate = /ADJUSTABLE RATE RIDER|change in the initial fixed interest rate to an adjustable|Interest Rate Change Date/i.test(text);
+  // The rider must be attached (its upper-case heading) or its terms present; an unticked
+  // "[ ] Adjustable Rate Rider" checklist label does not count.
+  const adjustableRate =
+    /(?:^|\s)(?:FIXED\/)?ADJUSTABLE RATE RIDER\b/.test(text) ||
+    /change in the initial fixed interest rate to an adjustable|Interest Rate Change Date|initial interest rate of/i.test(text);
 
   // Riders ticked on the checklist (and riders attached as their own page heading).
   const riders = [];
