@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "allowJs": true,
+    "checkJs": false,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["services/**/*.ts", "tests/services-*.ts"]
+}

@@ -22,8 +22,13 @@ Canonical header (matches `durable-workflow-builder`'s SeedRow contract):
 - `situs_address` — optional; single situs-address column, used for address-hash
   matching.
 
-Extra columns flow through untouched to `Parcel.process`. `buildSeedIndex` validates the
-header at run start — a missing `parcel_id` column fails the run immediately.
+- `source_url` (or `url`, with optional `method`) — optional; the parcel's source request
+  when the county uses no prepare flow, capture plug-in, or `PREPARE_URL_TEMPLATE_<COUNTY>`.
+
+Extra columns flow through untouched to `Parcel.process` (as `extra`). `CountyIngest`
+indexes the seed at run start — a missing `parcel_id` column, or a county with no
+transform or capture route, fails the run immediately. Duplicate `parcel_id` rows fail
+the `no_duplicate_keys` reconcile gate.
 
 ## Sourcing parcel lists
 

@@ -8,14 +8,14 @@
       "used_by_stays_local": []
     },
     "use-oracle": {
-      "reason": "paths the library refuses: skills/use-oracle/runtime/.dockerignore, skills/use-oracle/runtime/.gitignore",
+      "reason": "paths the library refuses: skills/use-oracle/runtime/.dockerignore, skills/use-oracle/runtime/.env.example, skills/use-oracle/runtime/.gitignore",
       "used_by": [],
       "used_by_stays_local": [
         "oracle"
       ]
     }
   },
-  "kit_version": "0.198.0",
+  "kit_version": "0.199.0",
   "limits": {
     "body_bytes": 4194304,
     "encoded_bytes": 5242880,
@@ -1070,17 +1070,17 @@
       "version": "1.0.0-sha256-87ab458ae63bbb54"
     },
     "use-elephant-mcp": {
-      "bytes": 17617,
-      "digest": "sha256:70c3ac50ba445f55a605230eb5c46701dc5c26c1d84754b2a69e70d015cd667c",
-      "encoded_bytes": 19108,
+      "bytes": 17670,
+      "digest": "sha256:4d04f4b801446b623b68333cb38bb684b053d959f480895489ac1c8aad635d50",
+      "encoded_bytes": 19161,
       "files": 4,
       "reason": "used by 2 packaged agents",
-      "stored_bytes": 18563,
+      "stored_bytes": 18616,
       "used_by": [
         "donphan",
         "watchog"
       ],
-      "version": "1.0.0-sha256-1f0f2b2a9ff12ec2"
+      "version": "1.0.0-sha256-c48e108e8af00c39"
     },
     "use-neutral-lexicon": {
       "bytes": 1316400,

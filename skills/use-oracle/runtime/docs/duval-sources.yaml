@@ -203,12 +203,16 @@ source_inventory:
   bbb: https://www.bbb.org/
   permit_authority_boundary: Jacksonville consolidated government plus Jacksonville Beach, Atlantic Beach, Neptune Beach, and Baldwin
 
-destination:
-  writes_in_scope: true
-  proven: false
-  mode: internal Query DB reconciliation
-  migration_note: re-verify database project, branch, endpoint, and role before the next load
-  private_harvest_boundary: AWS S3 run artifacts; never an MCP or publication source
+# Run state lives in Restate; data lives in files. Private harvest artifacts
+# (AWS S3 run artifacts on the batch track) are never an MCP or publication source.
+stack:
+  orchestrator: restate
+  restate_admin_url: http://localhost:9070
+  services_registered: false  # re-verify with `npm run register` before the next run
+  verified_at: null
+  publication:
+    in_scope: true
+    upload_node: null  # name the upload node before the CAR republication
 
 atlas_publication:
   status: requires-car-republication

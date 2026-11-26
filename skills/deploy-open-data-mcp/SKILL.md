@@ -10,8 +10,8 @@ Elephant MCP 2.0 resolves the global Atlas index, verifies archive and table CID
 synchronizes the published tables into a local snapshot. Tool handlers query that
 accepted snapshot; they never fetch remote archives during a request.
 
-The ingestion query DB is internal and unrelated to MCP serving. Do not point MCP at it
-or expose it as a public source.
+Oracle's ingestion run state (Restate ledger, run manifests, working artifacts) is internal
+and unrelated to MCP serving. Do not point MCP at it or expose it as a public source.
 
 ## Configuration
 

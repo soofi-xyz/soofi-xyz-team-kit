@@ -1,6 +1,6 @@
 ---
 name: onboard-county
-description: "Orchestrate county onboarding or re-ingest through readiness, appraisal, official identity, permits, internal Query DB reconciliation, enrichment, and Atlas publication."
+description: "Orchestrate county onboarding or re-ingest through readiness, appraisal, official identity, permits, ledger-and-files reconciliation, enrichment, and Atlas publication."
 metadata: {"author":"elephant-xyz"}
 ---
 
@@ -23,19 +23,23 @@ Ask once, then execute approved stages without repeated confirmation:
 4. Local Restate or bundled AWS execution. Verify selected AWS identity and region when
    AWS is chosen; fall back to local only with operator agreement.
 5. US egress and any login, CAPTCHA, records-request, or custodian constraints.
-6. Internal `DATABASE_URL` target. Do not print it.
-7. Existing flows, transforms, findings, and reusable adapters.
-8. Whether public publication is in scope. If yes, confirm an upload node that will
+6. Restate stack: compose project and ports (`COMPOSE_PROJECT_NAME`,
+   `RESTATE_INGRESS_PORT`, `RESTATE_ADMIN_PORT`) and admin URL, or an existing stack to
+   reuse.
+7. Permit eligibility for `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_<COUNTY>` (usage-type
+   CSV, `__ALL__`, or `__NONE__`); unset means appraisal only.
+8. Existing flows, transforms, findings, and reusable adapters.
+9. Whether public publication is in scope. If yes, confirm an upload node that will
    remain publicly reachable through Atlas merge and authenticated Atlas PR access.
 
-Restate the source boundary, stages, job ID, execution mode, internal destination, and
+Restate the source boundary, stages, job ID, execution mode, Restate stack, and
 publication scope. Stop only for a material missing choice, access blocker, or source
 whose projected acquisition exceeds 48 hours.
 
 ## Target outcome
 
 Produce validated lexicon records with exact source-request provenance; reconcile them
-internally by folio; stamp each Sunbiz company from its document-number detail URL;
+by folio from the `CountyLedger` and artifact files into a durable run manifest; stamp each Sunbiz company from its document-number detail URL;
 resolve a printed permit license through official DBPR license detail before writing
 any contractor, person, or license; require the public-records relationship extract
 before historical qualification of permits that omit a license number; preserve
@@ -43,13 +47,15 @@ unmatched evidence; calculate roof-age lineage; add enrichment separately; and,
 when publication is authorized, register each data group through the single Atlas
 publication sequence.
 
-The Query DB is an internal working store. It is not the MCP source, public registry, or
-publication input.
+Restate holds run state only (progress, retries, per-parcel status, dedupe, resume).
+Files hold all data. Neither run state nor working artifacts are the MCP source, public
+registry, or publication input; publication reads validated group directories.
 
 ## Stage order
 
-1. **Infrastructure:** `bootstrap-oracle-infra`. Verify the chosen stack, data
-   directories, database, services, and destination identity.
+1. **Infrastructure:** `bootstrap-oracle-infra`. Verify Restate, the registered
+   services, data directories, and the upload node when publication is in scope;
+   record the proof in the catalog `stack` section.
 2. **Discovery and readiness:** `county-discovery`, then
    `county-readiness-preflight`. A failed gate blocks seed, pilot, and full run.
 3. **Seed:** `county-seed-data`. Keep the official seed CSV as input of record.
@@ -83,35 +89,44 @@ publication input.
    request bulk records, or design an owning application runtime lookup.
 10. **Full run:** use the backpressure-aware feeder and measured concurrency. Monitor
     with the stack-specific monitoring skill.
-11. **Internal reconciliation:** `query-db-loading-matching`.
-12. **Roof age and enrichment:** apply the roof-age reference; run BBB, places,
+11. **Reconciliation:** `county-ingest-run` §6 — `reconcile-county.mjs --strict`,
+    identity relationship files, and the run manifest.
+12. **Roof age and enrichment:** apply the roof-age reference (roof age is not computed
+    by the pipeline run itself; build and audit the roof-age records file it describes,
+    or report roof age as not computed); run BBB, places,
     HOA/property-management, or AVM stages within their source and licence gates.
 13. **Publication:** when in scope, follow `use-oracle` and
     `reference/car-publication.md` once per data group. Do not run another publisher.
 14. **Public verification:** after Atlas merge, verify global Atlas IPNS, synchronize MCP
     2.0 SQL, and smoke the retained tools.
 
-## Internal reconciliation gates
+## Reconciliation gates
 
-Require all of these before wrap-up:
+Require all of these in `data/runs/<county>/<jobId>/manifest.json` from
+`reconcile-county.mjs --strict` before wrap-up:
 
-- distinct folios in artifacts and Query DB reconcile to `seed − proven dead/invalid`;
-- the county loader is single-writer and merges idempotently;
-- watermarks track path plus artifact hash and cover the final ready artifacts;
-- dead/invalid tombstones remove or downgrade previously loaded rows;
-- permits link from the harvest target evidence, not an unverified displayed parcel;
-- `permit_contacts.company_id` uses versioned official identity evidence;
-- `property_improvements.contractor_company_id` is set only when contractor contacts
-  agree;
-- unresolved, ambiguous, conflicting, and valid-unmatched records remain explicit;
-- indexes support company-edge product queries;
+- `seed_accounted` and `seed_complete`: `seed = ready + dead + invalid`, with no
+  `pending` or `failed` remainder;
+- `no_duplicate_keys`: the folio/request identifier is the key, never a digits-only
+  normalization;
+- `ready_hash_coverage`: every `ready` parcel's `ready.json` hash covers its validated
+  `transformed.zip`;
+- `tombstones_excluded`: a parcel that was ready and is now dead/invalid is excluded from
+  every group directory;
+- `ledger_files_agree`: zero mismatches between `CountyLedger` status and the files on
+  disk;
+- `permits_complete`: every eligible ready parcel has a permit status (`not_started` is
+  acceptable only for an appraisal-only run);
+- `permits_linked`: every harvested permit is linked to its requested parcel from the harvest target
+  evidence, or explicitly unlinked with a reason — never linked to an unverified
+  displayed parcel;
+- official identity edges are lexicon relationship files from DBPR/Sunbiz detail
+  records, with resolver version and snapshot digests in the resolution ledger; a
+  permit-level contractor edge exists only when its contractor contacts agree;
+- unresolved, ambiguous, conflicting, and valid-unlinked records remain explicit;
 - roof-age lineage records accepted status/work mappings, source profile, selected
   evidence, confidence, historical-coverage caveats, and as-of date;
 - BBB and places remain enrichment, never official identity.
-
-Do not key parcels on digits-only identifiers. Folio/request identifier is the stable
-parcel identity. Use FK-safe source-scoped clears; never truncate shared tables with
-cascade.
 
 ## Atlas publication gate
 
@@ -127,12 +142,13 @@ For each produced data group:
 7. Verify the merged global Atlas IPNS and synchronized MCP snapshot.
 
 The seed root rides inside every group archive. Never publish Seed as a standalone group.
-Never derive the CAR or Atlas table set from the Query DB.
+Never derive the CAR or Atlas table set from Restate state, the run manifest, or
+working artifacts.
 
 ## Persistence and safety
 
 - Commit code, small fixtures, transforms, flows, and findings. Never commit raw county
-  data, archives, Parquet, database URLs, or secrets.
+  data, archives, Parquet, `.env` files, or secrets.
 - Do not persist a contractor company, person, or license copied from a permit.
   Permit fields are DBPR search keys only. No DBPR match means write no contractor,
   person, or license.
@@ -144,7 +160,7 @@ Never derive the CAR or Atlas table set from the Query DB.
 
 ## Handoff
 
-Return the source boundary, readiness result, pilot/full counts, internal reconciliation,
+Return the source boundary, readiness result, pilot/full counts, run manifest and gates,
 official identity adequacy, permit linkage, roof-age/enrichment coverage, per-group CAR and
 tables evidence, Atlas PR/merge result, global IPNS index CID, MCP sync result, blockers,
 and next action.

@@ -39,9 +39,10 @@ validate group
   → synchronize MCP 2.0 SQL
 ```
 
-Do not publish Query DB exports, per-county pointers, coverage objects, overlays, or
-environment maps. The Query DB is an internal working store for reconciliation and
-product checks. Atlas archives and CLI-exported tables are the MCP/public source.
+Do not publish run state, run manifests, working artifacts, per-county pointers,
+coverage objects, overlays, or environment maps. Restate holds run state only; files
+hold data; publication reads validated group directories. Atlas archives and
+CLI-exported tables are the MCP/public source.
 
 ## Read first
 
@@ -65,11 +66,14 @@ product checks. Atlas archives and CLI-exported tables are the MCP/public source
 
 Select one bundled runtime mode before capture:
 
-- **Local:** Restate + Postgres under `skills/use-oracle/runtime/`.
+- **Local:** Restate only (`skills/use-oracle/runtime/docker-compose.yml`) plus the
+  services process (`npm run services`, `services/app.ts`) registered with
+  `npm run register`; see `bootstrap-oracle-infra` and `runtime/services/README.md`.
+  There is no SQL database.
 - **AWS:** the bundled AWS batch/queue modules and the selected, verified AWS profile.
 
 Do not require a sibling source checkout. Do not mix local Restate handlers with AWS
-workers. Stack choice affects capture and internal loading only; publication always uses
+workers. Stack choice affects capture and run tracking only; publication always uses
 the Atlas sequence above.
 
 ## Raw single-property response
@@ -87,7 +91,7 @@ bounded diagnostic route, not an ingest or publication run.
   digest, and parcel-validation result in the separate receipt.
 - Stop on blocked/challenged content, CAPTCHA, unsuccessful HTTP status, or parcel
   mismatch.
-- Do not transform, reconcile, load Query DB, hash, export, register, or publish.
+- Do not transform, reconcile, hash, export, register, or publish.
 
 The command calls the selected county adapter directly and does not start local Restate
 handlers or AWS workers. Identify the configured stack as usual, but do not mix either
@@ -123,7 +127,9 @@ Run these stages in order:
    URL, not the permit page and not the Sunbiz download page. If the live manifest
    lacks those edges or the license source fields, record the gap and do not
    substitute another edge.
-5. **Internal reconciliation:** `query-db-loading-matching`.
+5. **Reconciliation:** `county-ingest-run` §6. Run
+   `npm run reconcile -- --county <slug> --job <jobId> --strict` from
+   `skills/use-oracle/runtime`; it writes `data/runs/<county>/<jobId>/manifest.json`.
 6. **Enrichment:** For HOA names, fees, and frequencies, run the playbook in
    `reference/hoa-web-ingestion.md`: freeze the cohort and gap fields, pilot
    8–12 rows, then pass 1 (exact-address search, open the top 2–4 ranked links,
@@ -140,17 +146,21 @@ Run these stages in order:
    improve both coverage and NetSuite error before publishing through Atlas. Run
    BBB, places, AVM, and roof age as applicable.
 
-Preserve these internal contracts:
+Preserve these run contracts:
 
-- Key parcels by folio/request identifier, never a digits-only parcel normalization.
-- Merge idempotently through one writer per county.
-- Scope artifacts by county/job and load only fail-closed ready markers.
-- Track `(path, artifact hash)` watermarks so corrected in-place outputs reload.
-- Consume dead/invalid tombstones so stale rows do not survive.
-- Preserve raw source payloads and valid unmatched permits.
+- Key parcels by folio/request identifier, never a digits-only parcel normalization;
+  no duplicate parcel keys.
+- Record per-parcel status only through `CountyLedger` (`<county>-<jobId>`), the single
+  writer; make every step idempotent with deterministic paths.
+- Scope artifacts by county/job and assemble groups only from fail-closed ready
+  markers whose hash covers the current validated output.
+- Exclude tombstoned parcels (ready, then dead/invalid) from group directories.
+- Require `seed = ready + dead + invalid` and zero ledger-vs-file mismatches.
+- Preserve raw source payloads and valid unlinked permits with their reasons.
 - Link permits to the targeted parcel evidence; never trust a portal's displayed related
   parcel without reconciliation.
-- Stamp company edges only from official, versioned, temporally valid identity evidence.
+- Emit company edges only as lexicon relationship files from official, versioned,
+  temporally valid identity evidence.
 - Preserve unresolved, ambiguous, and conflicting contacts as unlinked.
 - Compute roof age from accepted lifecycle evidence and retain confidence/coverage
   caveats.
@@ -165,8 +175,32 @@ Preserve these internal contracts:
   adjudicated regression set, and a full-cohort shadow run that improves
   coverage and NetSuite paid-HOA MAE/RMSE.
 
-The Query DB never becomes the publication source. Its successful reconciliation gates
-completion and provides diagnostics; CAR inputs remain validated lexicon output.
+Run state never becomes the publication source. A strict reconcile gates completion and
+its manifest provides diagnostics; CAR inputs remain validated group directories
+assembled from verified ready parcels (`reconcile-county.mjs --assemble <group>`; each
+archive keeps the group plus its Seed root, and `seed` is rejected as a group).
+
+`PublishGroup` (workflow keyed `<county>-<group>-<jobId>`) may run validate → hash →
+validate CAR → export-tables durably, then wait in phase `awaiting-approval`. Read
+`status()` for the `groupDigest`, then call `approve({approvedBy, groupDigest})` (a
+supplied digest must match) or `reject({reason})`; both are refused in any other phase.
+Before approval, `export-tables --atlas-page` writes only a STAGED copy of the county
+page (`status().atlasPage.staged`, under `data/publish/<county>/<jobId>/<group>/atlas/`);
+the given Atlas checkout is untouched. After approval it uploads with readback, then
+copies the staged page onto `atlasPage` — and fails if that checkout page changed after
+export (rerun under a new key). It rejects group `seed`. It stops before the Atlas PR;
+open the PR yourself as below. Today only the County group (or another
+appraisal-transform group) is publishable this way: no Restate stage yet turns permit
+artifacts into a `property_improvement` group, nor emits official identity edges.
+
+```bash
+curl localhost:8080/PublishGroup/<county>-<group>-<jobId>/run/send --json \
+  '{"county":"<county>","jobId":"<jobId>","group":"<group>","groupDir":"groups/<county>/<jobId>/<group>",
+    "atlasPage":"/abs/atlas/counties/<ST>/<county>.json","state":"<ST>","fips":"<fips>"}'
+curl -X POST localhost:8080/PublishGroup/<county>-<group>-<jobId>/status
+curl localhost:8080/PublishGroup/<county>-<group>-<jobId>/approve \
+  --json '{"approvedBy":"<name>","groupDigest":"<from status>"}'
+```
 
 ## Publish each data group
 
@@ -196,6 +230,9 @@ elephant-cli upload <county>-<group>.car \
 elephant-cli upload <tables-dir> \
   --output-json <tables-upload.json>
 ```
+
+Read `<group-dir>` from `data/groups/<county>/<jobId>/<group>/` and write the hashed zip,
+`hash.csv`, CAR, tables, and upload JSON under `data/publish/<county>/<jobId>/<group>/`.
 
 Use a public, durable IPFS node for a registrable run. Filebase Kubo RPC is the worked
 example. A local node is acceptable only for development unless it remains publicly
@@ -240,6 +277,6 @@ rows.
 
 ## Completion report
 
-Use the required report in `agents/oracle.md`. Include internal reconciliation evidence
-without exposing private rows or database credentials, and include global Atlas IPNS plus
-MCP sync evidence for every public claim.
+Use the required report in `agents/oracle.md`. Include the run manifest and gate results
+without exposing private rows or credentials, and include global Atlas IPNS plus MCP
+sync evidence for every public claim.

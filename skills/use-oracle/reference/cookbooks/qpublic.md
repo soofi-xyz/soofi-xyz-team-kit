@@ -48,6 +48,33 @@ Ready when `document.title` contains `Report: <KeyValue>` **and** the body conta
 - Do not stop at the title: after a challenge clears the title switches first and the page
   can still be a ~98 KB shell. Complete reports were 150–180 KB.
 
+## Data container and transform input
+
+Keep `<title>` plus **`main#maincontent`** as the transform input. Every report module is a
+`<section id="ctlBodyPane_ctlNN_mSection">` inside it, and nothing the Cobb transform
+reads lives outside it. Measured on Cobb, 2026-11-25:
+
+- **Size:** median 62.6 KB of 177.3 KB (34.5%). Script tags alone were about 70 KB of a
+  180 KB page.
+- **Identical output:** on 119 parcels, full vs trimmed input gave the same output, 12,658
+  files byte for byte.
+- **Transform time** (Elephant CLI 2, per parcel):
+
+| Transform | Median | p95 |
+|---|---:|---:|
+| Five parse5 parses (the original bundle) | 1.55 s | 1.77 s |
+| Parse once, htmlparser2, full page | 0.16 s | 0.19 s |
+| Parse once, htmlparser2, trimmed page | 0.12 s | 0.15 s |
+
+The capture runner cuts the title and `main` straight out of the captured text, and
+stores the full page as `page.full.html.gz` with its sha256 in the receipt. It treats a
+missing `main#maincontent`, or one without `ctlBodyPane` sections, as retryable.
+
+qPublic serves a `Report: <id>` shell that includes "Assessed Values" even for a parcel
+that doesn't exist. Treat a page without a Composite Summary module as DEAD. Method and
+proof steps:
+[`../../../build-county-transform/reference/html-capture-and-parsing.md`](../../../build-county-transform/reference/html-capture-and-parsing.md).
+
 ## Record inventory (Cobb)
 
 Sections, in page order: Composite Summary (parcel number, property address, class,

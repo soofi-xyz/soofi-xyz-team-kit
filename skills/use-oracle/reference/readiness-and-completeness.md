@@ -43,7 +43,9 @@ Record the following in `docs/<county>-sources.yaml`:
 - Pagination, result-cap, partition, and drift behavior
 - Safe concurrency and full-run estimate
 - Publication rights and privacy constraints
-- Required infrastructure and destination identity
+- Stack proof: `stack.orchestrator` (`restate`), `stack.restate_admin_url`,
+  `stack.services_registered`, `stack.verified_at`, and `stack.publication`
+  (`in_scope`, `upload_node`)
 - Approved exceptions and unresolved blockers
 
 ## County Readiness Preflight
@@ -60,7 +62,7 @@ python3 skills/use-oracle/scripts/validate-county-readiness.py \
 any gate is `BLOCKED`. This applies when `onboard-county` is invoked directly.
 
 At intake, automatically begin bounded source/jurisdiction enumeration, adapter
-fingerprinting and implementation scaffolds, AWS remote BBB execution setup, destination
+fingerprinting and implementation scaffolds, AWS remote BBB execution setup, stack
 proof, upload-node and Atlas-PR readiness checks, and named records-request preparation. These
 independent preparation tracks continue while a readiness gate is blocked; bulk traversal
 and pilots do not.
@@ -136,32 +138,35 @@ not a roster of special counties:
   `recipient_office`, `system_scope`, `route` (`api-first` or `records-first`), and a
   portal URL or email (`reference/request-routing.md`).
 
-### Destination readiness gate
+### Stack readiness gate
 
-Before writes, independently prove through `bootstrap-oracle-infra` and
-`query-db-loading-matching`:
+Restate is the only run-state store and files under `DATA_DIR` hold all data. There is no
+SQL destination to prove. Before a seed, pilot, or full run, prove the stack through
+`bootstrap-oracle-infra` and record it in the catalog:
 
-- Database project and branch
-- Endpoint and role
-- Environment classification
-- Migration state
-- Writer connection type
-- Required schemas and tables
-- Advisory-lock namespace
-- Idempotency and source-key contracts
-- Upload-node availability and Atlas repository/county-page access when publication is in scope
+```yaml
+stack:
+  orchestrator: restate
+  restate_admin_url: http://localhost:9070
+  services_registered: true   # `npm run register` lists all 7 services with none missing
+  verified_at: "<iso8601>"
+  publication:
+    in_scope: false            # true when Atlas publication is authorized
+    upload_node: null          # required when in_scope is true
+```
 
-Refuse to write if the target cannot be independently proven. Do not open writer connections
-from this plugin.
+The gate passes only when `orchestrator` is `restate`, `services_registered` is `true`, and
+`verified_at` is set. When `publication.in_scope` is `true`, `upload_node` must name the
+publicly reachable upload node. A missing `stack` section is BLOCKED.
 
-Start destination and publication readiness at intake. Verify upload credentials by secret
+A catalog that still carries a `destination:` section (Query DB project, branch, endpoint,
+identity sources) gets a non-blocking WARN that the section is obsolete. Delete it when you
+next touch the catalog.
+
+Start stack and publication readiness at intake. Verify upload credentials by secret
 identifier/availability and a safe runtime check—never by storing values in the source
 catalog—and verify Atlas repository access plus the county-page path. If access is missing,
 request it immediately and continue independent discovery and adapter work.
-
-When `destination.writes_in_scope` is true and `proven` is true, list at least two
-`independent_identity_sources` (for example Neon console project/branch **and** configured
-branch/endpoint IDs). Do not copy expected IDs from the connection under test.
 
 ### Enrichment readiness gate
 
@@ -196,8 +201,9 @@ The validator fails (`exit 1`) when:
 - A required adapter has no implementation plan
 - Enumeration boundaries or result caps are unknown
 - Throughput and full-run duration are unknown
-- The destination cannot be independently proven
-- `destination.proven` is true without two independent identity sources
+- The `stack` section is missing, `orchestrator` is not `restate`, `services_registered` is
+  not true, or `verified_at` is missing
+- `stack.publication.in_scope` is true without `stack.publication.upload_node`
 - A blocked / custodian-only / manual-only jurisdiction lacks `records_request`
 - BBB `expected_count` copies an advertised listing total without a page-cap acknowledgment
 - Publication targets or approvals are missing when publication is in scope
@@ -229,13 +235,15 @@ unique_logical =
 
 A capped, truncated, regressing, duplicated, or unreconciled source must fail closed.
 
-Drive `monitoring-county-ingestion` for artifact vs Neon counts. Map:
+Drive `monitoring-county-ingestion` for artifact vs ledger counts. Map:
 
 - reported → source-claimed totals in the catalog
 - received / captured → local/S3 artifact counts
 - normalized / unique_logical → transform outputs (`build-county-transform`)
-- committed / loaded → Neon counts from `query-db-loading-matching`
-- linked / valid_unlinked → match results (null property links are valid unmatched records)
+- validated / reconciled → `ready` in the `CountyLedger` summary and ready-marker counts in
+  the run manifest from `reconcile-county.mjs` (`county-ingest-run`, Reconcile)
+- linked / valid_unlinked → permit link results recorded under `stage: "permits"` (an
+  unlinked permit with a reason is a valid unmatched record)
 - published → Atlas county page merged, global Atlas IPNS verified, MCP SQL synchronized
 
 ## Completeness evidence gates
@@ -252,11 +260,16 @@ authoritative, explicit source boundary.
 **EXCEPTION GATE.** Every missing or failed record is finite, identified, and explicitly
 accepted.
 
-**DURABILITY GATE.** Raw snapshot digest, manifest, terminal checkpoint, and chunk receipts
-exist.
+**DURABILITY GATE.** Raw snapshot digest, the run manifest
+(`data/runs/<county>/<jobId>/manifest.json`), terminal checkpoint, and chunk receipts exist.
 
-**IDEMPOTENCE GATE.** An identical reload produces the same logical counts and no duplicate
-source keys.
+**LEDGER GATE.** A strict reconcile passes: `seed = ready + dead + invalid`; every harvested
+permit is linked to its requested parcel or unlinked with a reason; every ready parcel's
+`ready.json` hash covers its validated `transformed.zip`; tombstoned parcels (ready, then
+dead or invalid) are excluded from group directories; zero ledger-vs-file mismatches.
+
+**IDEMPOTENCE GATE.** An identical re-run produces the same logical counts and no duplicate
+source or parcel keys.
 
 **QUERY GATE.** Atlas tables reconcile to the validated CARs, and scoped MCP 2.0 queries
 succeed from the synchronized Atlas SQL snapshot.
@@ -264,7 +277,7 @@ succeed from the synchronized Atlas SQL snapshot.
 **PROVENANCE GATE.** The completeness flag is derived from frozen manifests — not adapter
 counts, dashboard labels, or pilot success.
 
-Never set `oracle_dataset_coverage.expected_count` as if a source were complete unless these
+Never record a source's coverage `expected_count` as if the source were complete unless these
 gates pass for that source. Reputation/places gaps (BBB, places) must not silently change
 core permit-capture completeness. A missing Sunbiz detail URL or license-detail lookup
 blocks automatic identity edges for that permit and enqueues the official lookup. A
@@ -275,8 +288,9 @@ no license number. Neither authorizes a name match.
 
 Before publication:
 
-- finish internal folio, watermark, tombstone, identity-edge, roof-age, and enrichment
+- pass `reconcile-county.mjs --strict` and finish identity-edge, roof-age, and enrichment
   reconciliation;
+- assemble group directories from ready parcels only (`--assemble <group>`);
 - validate every lexicon group;
 - build and validate one CAR per county/data group;
 - derive normalized tables only with `elephant-cli export-tables`;
@@ -285,12 +299,13 @@ Before publication:
 - merge one Atlas county-page PR only after `validate` passes;
 - verify the global Atlas IPNS and synchronize MCP 2.0 SQL.
 
-The Query DB is an internal reconciliation store, not publication input. Do not upload its
-working tables or coverage artifacts. Do not create a parallel county registry or pointer.
+Publication reads validated group directories, never Restate run state, the ledger, or the
+run manifest. Do not upload working, coverage, or ledger artifacts. Do not create a parallel
+county registry or pointer.
 
 Apply the atomic completion and snapshot-drift rules in
-[`continuous-ingestion.md`](./continuous-ingestion.md). A capture or load milestone is not
-done; completion requires Atlas readback and MCP visibility. A newer loaded watermark marks
+[`continuous-ingestion.md`](./continuous-ingestion.md). A capture or reconciliation milestone is not
+done; completion requires Atlas readback and MCP visibility. A newer reconciled manifest marks
 the published Atlas group stale and queues a replacement CAR/table/Atlas-PR sequence; execute
 that queue under [`continuous-safe-optimization.md`](./continuous-safe-optimization.md).
 
@@ -311,6 +326,11 @@ evidence for the county being ingested.
 | `fixtures/readiness/ready-minimal.yaml` | PASS |
 | `fixtures/readiness/blocked-without-request-route.yaml` | Blocked/custodian/manual-only rows need `records_request` |
 | `fixtures/readiness/advertised-listing-count-is-not-harvestable.yaml` | Advertised BBB listings are not `expected_count` without a page-cap acknowledgment |
+| `fixtures/readiness/stack-ready-publication-in-scope.yaml` | PASS — Restate stack proven, publication in scope with an upload node |
+| `fixtures/readiness/stack-missing.yaml` | No `stack` section; BLOCKED |
+| `fixtures/readiness/stack-services-not-registered.yaml` | Services not registered with Restate; BLOCKED |
+| `fixtures/readiness/stack-publication-without-upload-node.yaml` | Publication in scope without `upload_node`; BLOCKED |
+| `fixtures/readiness/legacy-destination-section-warns.yaml` | Obsolete `destination:` section; PASS with a WARN |
 
 Provenance: these modes were learned during 2026 Florida ingests (large GIS-under-tax-roll
 gaps with condo/geometry-null units; close GIS/tax-roll match that still required separate

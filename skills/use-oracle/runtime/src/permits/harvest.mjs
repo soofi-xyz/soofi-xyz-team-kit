@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 
 import { permitProfileDigest } from "../counties/permit-profile.mjs";
 import { createPermitAdapter } from "./adapters/index.mjs";
+import { harvestFromBulkLinked } from "./bulk-linked.mjs";
 import {
   normalizedPermitRecordSchema,
   parcelPermitStatusSchema,
@@ -24,7 +25,7 @@ function nowIso(clock) {
   return new Date(clock()).toISOString();
 }
 
-function propertyInput(row) {
+export function propertyInput(row) {
   return {
     propertyId: row.property_id ?? row.propertyId ?? null,
     parcelIdentifier:
@@ -38,6 +39,22 @@ function propertyInput(row) {
       row.address ??
       null,
   };
+}
+
+/**
+ * Jurisdiction for a row: an explicit `jurisdictionKey` (set by a county
+ * permit-routing hook, for example from a tax-district column) wins; otherwise
+ * the profile's city routing.
+ */
+export function rowJurisdiction(profile, row, input = propertyInput(row)) {
+  if (row.jurisdictionKey) {
+    return (
+      profile.jurisdictions.find(
+        (jurisdiction) => jurisdiction.key === row.jurisdictionKey,
+      ) ?? null
+    );
+  }
+  return routePermitJurisdiction(profile, input.city ?? input.workAddress);
 }
 
 function statusForFailure(classification) {
@@ -79,10 +96,7 @@ async function processProperty({
       profile,
       input.parcelIdentifier,
     );
-    jurisdiction = routePermitJurisdiction(
-      profile,
-      input.city ?? input.workAddress,
-    );
+    jurisdiction = rowJurisdiction(profile, row, input);
     if (!jurisdiction) {
       throw new PermitSourceError(
         `No permit jurisdiction matched routing evidence "${String(
@@ -97,7 +111,7 @@ async function processProperty({
   } catch (error) {
     const classified = classifyPermitError(error);
     jurisdiction =
-      routePermitJurisdiction(profile, input.city ?? input.workAddress) ??
+      rowJurisdiction(profile, row, input) ??
       {
         key: "unrouted",
         name: "Unrouted permit authority",
@@ -427,6 +441,64 @@ export async function harvestPermitProperties({
   };
   await atomicWriteJson(`${outputDir}/harvest-summary.json`, summary);
   return { summary, results, records: [...uniqueRecords.values()] };
+}
+
+/**
+ * Harvest ONE property with the same routing, resume and artifact rules as
+ * `harvestPermitProperties`, without the run-level summary file. Used by the
+ * `PermitHarvest` Restate service, which handles concurrency and resume
+ * itself (one durable invocation per parcel).
+ */
+export async function harvestPermitProperty({
+  row,
+  profile,
+  outputDir,
+  jobId,
+  resume = true,
+  adapterOptions = {},
+  clock = Date.now,
+}) {
+  assertPermitProfileReady(profile);
+  await mkdir(outputDir, { recursive: true });
+  const profileSha256 = permitProfileDigest(profile);
+  if (adapterOptions.bulkLinkedDir) {
+    // Records already enumerated and linked to the seed by a bulk snapshot:
+    // read them instead of the live portal. Falls through to the live
+    // adapter when the jurisdiction has no snapshot or the row cannot route.
+    const input = propertyInput(row);
+    let parcelIdentifier = null;
+    try {
+      parcelIdentifier = normalizePermitParcelIdentifier(profile, input.parcelIdentifier);
+    } catch {
+      parcelIdentifier = null;
+    }
+    const jurisdiction = parcelIdentifier ? rowJurisdiction(profile, row, input) : null;
+    if (jurisdiction) {
+      const bulk = await harvestFromBulkLinked({
+        bulkDir: adapterOptions.bulkLinkedDir,
+        profile,
+        profileSha256,
+        jurisdiction,
+        parcelIdentifier,
+        propertyId: input.propertyId,
+        outputDir,
+        jobId,
+        resume,
+        clock,
+      });
+      if (bulk) return bulk;
+    }
+  }
+  return processProperty({
+    row,
+    profile,
+    outputDir,
+    jobId,
+    adapterOptions,
+    resume,
+    clock,
+    profileSha256,
+  });
 }
 
 export async function probePermitSources({ profile, adapterOptions = {} }) {

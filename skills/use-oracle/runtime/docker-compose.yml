@@ -1,0 +1,30 @@
+# Local Oracle stack: Restate only. All data lives in files under DATA_DIR;
+# there is no database service. Run state (progress, retries, per-parcel
+# status) lives in Restate's `restate-data` volume.
+#
+#   docker compose up -d                 # from skills/use-oracle/runtime
+#   npm run services                     # services process on :9080
+#   npm run register                     # register it with Restate
+#
+# Another stack on the default ports? Give this one its own project and
+# loopback ports, e.g. COMPOSE_PROJECT_NAME=oracle-cobb-local
+# RESTATE_INGRESS_PORT=18080 RESTATE_ADMIN_PORT=19070.
+name: ${COMPOSE_PROJECT_NAME:-oracle-local}
+services:
+  restate:
+    image: restatedev/restate:1.7.2
+    ports:
+      - "127.0.0.1:${RESTATE_INGRESS_PORT:-8080}:8080"
+      - "127.0.0.1:${RESTATE_ADMIN_PORT:-9070}:9070"
+    volumes:
+      - restate-data:/restate-data
+    # Lets Restate in Docker reach the services process on the host (Linux).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Keep the node name stable: a changed identity breaks restoring the volume.
+      # Override only to adopt an existing volume created under another name.
+      RESTATE_NODE_NAME: ${RESTATE_NODE_NAME:-restate-1}
+    restart: unless-stopped
+volumes:
+  restate-data:

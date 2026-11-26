@@ -26,12 +26,14 @@ old-roof contractor-expansion query. The policy is county-neutral.
 3. Run `county-permit-adapter` and `county-ingest-run` with permit list, detail, contact,
    lifecycle-date, inspection, description/scope, raw artifact, and digest capture.
 4. Run `permit-evidence-preflight.md`, classify roofing work from explicit source text,
-   resolve company identity, and use `query-db-loading-matching` to backfill supported
-   company edges. Preserve raw names and omitted `license_number`.
-5. Verify/create the two company-edge indexes per `query-db-loading-matching`, then rerun
-   the product query in this order: parcel → explicitly classified roofing permits →
-   resolved contractor `company_id` → other permits for that same company → old-roof
-   candidates from the roof-age estimator.
+   resolve company identity, and emit the supported identity relationship files with a
+   resolution-ledger record each. Preserve raw names and omitted license numbers.
+5. Run `reconcile-county.mjs --strict` (`county-ingest-run`, Reconcile), assemble the
+   groups, then rerun the product query in this order: parcel → explicitly classified
+   roofing permits → resolved contractor company through
+   `property_improvement_has_contractor` → other permits for that same company →
+   old-roof candidates from the roof-age estimator (see the gaps below: the estimate
+   exists only after a roof-age records file was built and audited).
 6. Run BBB and Overture places only after identity resolution. They add reputation and
    context; they do not replace DBPR or establish contractor identity.
 
@@ -76,63 +78,63 @@ The versioned output contract (`elephant.roof-age-estimate.v1`) returns:
 physical roof condition, prove that no later replacement occurred, or override incomplete
 historical coverage.
 
-The shared production integration is
-`runtime/src/roof-age/integration.ts`. Appraisal transforms call it through
-`runtime/src/core/transform-runner.mjs`; permit database loads run the same reconciler
-inside the permit load transaction. Preserve explicit parcel `roof_date` and
-`roof_age_years`. Never create a date from age alone. A built-year default writes the
-four-digit year to the legacy text `roof_date` column and records
-`roofDatePrecision: "year"`; it does not claim January 1 or any exact date.
-
-Lineage is queryable internally at `structures.source_payload->'roof_age_lineage'` and may
-be flattened into private reconciliation tables as `roof_age_*` columns. It records source category, date
+The shared integration is `runtime/src/roof-age/integration.ts`. Preserve explicit
+parcel `roof_date` and `roof_age_years`. Never create a date from age alone. A built-year
+default writes the four-digit year to `roof_date` and records
+`roofDatePrecision: "year"`; it does not claim January 1 or any exact date. Lineage
+(`roof_age_lineage` in the structure's source payload) records source category, date
 precision, confidence, policy/profile versions and digest, selected permit source/id,
-coverage state/caveats, as-of date, and eligibility reason.
+coverage state/caveats, as-of date, and eligibility reason. There is no database step.
 
-## Audit and backfill
+## What the runtime does today (gaps)
 
-Require Node 22.18+, installed bundled dependencies, the reflected Query DB schema, and
-an explicit environment-variable **name** containing a PostgreSQL URL. Do not print the
-URL. AWS and upload-node credentials are not required for a database-only audit.
+State these gaps honestly in every report that mentions roof age:
 
-Run a bounded read-only audit first; dry-run is the default:
+- The Restate `Parcel` transform does not call the estimator. A pipeline run produces no
+  roof-age estimate by itself.
+- `src/core/transform-runner.mjs` (the `elephant-county` scripts runner) applies the
+  estimator with an optional `roofAge: {sourceSystem, asOfDate}`, but it reads only the
+  transformed parcel files (structure, property, layout) — not permit artifacts — so on
+  its own it yields built-year anchors, not permit anchors.
+- `bin/roof-age-backfill.mjs` (`npm run roof-age:audit` / `roof-age:backfill`) runs the
+  estimator over a JSONL file of roof-age property records (one
+  `RoofAgePropertyRecord` per line with `state`, `county`, `propertyId`, `structureId`,
+  `sourceSystem`, `sourceRecordId`, `builtYear`, `roofDate`, `roofAgeYears`,
+  `sourcePayload`, `permits`; see `src/roof-age/jsonl-store.mjs`). Nothing yet builds that
+  JSONL from transformed parcels plus the job's permit artifacts. Until a builder exists,
+  write it with a reviewed, versioned script and record its digest in the run manifest.
+
+## Audit and backfill (files)
+
+Dry-run is the default and never writes records. `--apply` requires `--output`, writes
+reconciled records to that NEW JSONL file atomically (holding `<output>.lock`), and never
+modifies `--input`:
 
 ```bash
 npm run roof-age:audit --prefix skills/use-oracle/runtime -- \
-  --state FL --county Broward --as-of-date YYYY-MM-DD \
-  --database-url-env DATABASE_URL --limit 25 --offset 0 \
+  --state FL --county <County> --as-of-date YYYY-MM-DD \
+  --input <roof-age-records.jsonl> --limit 25 --offset 0 \
   --coverage-state unknown --coverage-caveats history_unknown \
-  --report /private/checkpoints/broward-roof-age-audit.json
+  --report <private-checkpoint-dir>/roof-age-audit.json
 ```
 
-Review scope totals, missing before/after, explicit values, untouched construction-year
-defaults, accepted permit updates, stale defaults superseded, blocked rows, incomplete
-history, and projected updates. Apply only after separate database-write approval:
-
-```bash
-npm run roof-age:backfill --prefix skills/use-oracle/runtime -- \
-  --state FL --county Broward --as-of-date YYYY-MM-DD \
-  --database-url-env DATABASE_URL --limit 25 --offset 0 \
-  --coverage-state partial \
-  --coverage-caveats partial_history,predecessor_gap \
-  --report /private/checkpoints/broward-roof-age-apply.json --apply
-```
-
-Repeat the same bounded batch and as-of date to prove `rowsWritten: 0` before widening
-scope. Keep reports and database URLs outside Git. Unknown or partial permit history
-remains a caveat; a dry-run never writes property rows.
+Other flags: `--source-system <system>`. Review scope totals, missing before/after,
+explicit values kept, built-year defaults, accepted permit anchors, stale defaults
+superseded, blocked rows, and incomplete history. Apply the same bounded batch and as-of
+date with `--apply --output <new.jsonl>` only after review, then apply again to that
+output and prove nothing changes before widening scope. Keep reports and record files
+outside Git. Unknown or partial permit history remains a caveat.
 
 ## Product-query contract
 
 Feed the query only permit IDs accepted by the frozen, profile-versioned work classifier;
 do not classify production results with SQL regex. Join lexicon contractors through
 `property_improvement_has_contractor`, `contractor_has_license`
-(`license_identifier`), and `contractor_has_person`. In the Query DB, join companies
-through `permit_contacts.company_id` or
-`property_improvements.contractor_company_id`. Use raw names, license text, regex, fuzzy
+(`license_identifier`), and `contractor_has_person` in validated group output or the
+exported Atlas tables. Use raw names, license text, regex, fuzzy
 matching, addresses, and phones only to discover unresolved repair candidates.
 
 Return the parcel and roof-age confidence/caveat, roofing permit and accepted work class,
-resolved company ID and resolver version, the company's other permits, identity-edge
-index verification, and unresolved/ambiguous/conflicting counts. A product row without a
+resolved company and resolver version, the company's other permits, the resolution-ledger
+record for each edge, and unresolved/ambiguous/conflicting counts. A product row without a
 verified company edge must not appear as resolved.

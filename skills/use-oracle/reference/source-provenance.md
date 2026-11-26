@@ -10,7 +10,7 @@ is in [`docs/elephant-source-repos.md`](../../../docs/elephant-source-repos.md).
 | Source repository | Pinned commit | Bundled location |
 |---|---|---|
 | [oracle-node](https://github.com/elephant-xyz/oracle-node) | `ff68b0b6812598d07e0f4aaa322ddbfe230f20b9` | `skills/{stage-skill}/`, `skills/monitoring-oracle-ingestion/` |
-| [elephant-query-db](https://github.com/elephant-xyz/elephant-query-db) | `083414442c57061b5e07359a9ebda30d14d7bc14` | Internal reconciliation behavior retained in `skills/query-db-loading-matching/`; public schema-consumer snapshots retired |
+| [elephant-query-db](https://github.com/elephant-xyz/elephant-query-db) | `083414442c57061b5e07359a9ebda30d14d7bc14` | Retired: the internal Query DB and its reconciliation skill were removed; reconciliation now runs over the Restate ledger and artifact files. Do not use this repository |
 | [Counties-trasform-scripts](https://github.com/elephant-xyz/Counties-trasform-scripts) | `39300ce69bcd8920176cb3cf902b49725ad09e38` | referenced by runtime transform sync (Task 2+) |
 | [elephant-mcp](https://github.com/elephant-xyz/elephant-mcp) | `a736c9fc510d32c50ec3419a609fc03421d8fc06` | bundled MCP server config |
 

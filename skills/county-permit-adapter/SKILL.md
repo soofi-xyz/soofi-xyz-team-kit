@@ -7,43 +7,54 @@ metadata: {"author":"elephant-xyz"}
 
 **Harvest order.** Build the vendor module as soon as the portal is fingerprinted.
 Do not start county permit harvest until the identity baseline (official corporate
-registry plus an **adequate** official contractor-licensing snapshot) is loaded and
+registry plus an **adequate** official contractor-licensing snapshot) is acquired and
 reconciled. In Florida use `sunbiz-corporate-ingest` plus `dbpr-license-ingest`; elsewhere
 use the official equivalents named in the county profile. If licensing data is
 inadequate, acquire it before harvest; do not start under a recorded gap. Capture contacts
-raw; preserve omitted `license_number` values; never write an inferred license into
-raw `permit_contacts.license_number`; never stamp `companies.company_id` from portal
-name/regex matching. Identity resolution is
-`skills/use-oracle/reference/permit-evidence-preflight.md` after harvest.
+raw; preserve omitted license values; never write an inferred license onto a raw permit
+contact; never emit a company or contractor edge from portal name/regex matching.
+Identity resolution is `skills/use-oracle/reference/permit-evidence-preflight.md` after
+harvest, and it emits official identity edges as lexicon relationship files.
 
-The `PermitHarvest` Restate service (`services/permit-harvest.ts`) exposes
-`harvestParcel({county, jobId, parcel_id})` and dispatches to the county's vendor module — a plain
-TypeScript module registered with the service. The Accela module is the template:
+The `PermitHarvest` Restate service (`services/permits.ts`, logic in
+`services/lib/permit-steps.ts`) exposes `harvestParcel({county, jobId, parcel_id})` and
+routes the parcel through the county permit profile (`src/counties/permit-profiles.mjs`)
+to the vendor adapters in `src/permits/adapters/*`. The Accela module is the template:
 copy-and-adapt for Accela counties, reimplement navigation for other vendors.
 Parameterize by county config (agency code, base URL, parcel-format rules) — **never
 hardcode a per-county branch in the dispatch**; that lesson is paid for. The vendor,
-base URLs, and jurisdiction list come from the county's sources catalog
-(`skills/use-oracle/runtime/docs/<county>-sources.yaml`, from `county-discovery`). Eligibility
-flow: a `PermitFeed` workflow (key `<CountyIngest key>-permits` — so a redrive pass feeds
-`<county>-<jobId>-r2-permits`), started by `CountyIngest` after appraisal dispatch
-completes, scans the eligibility artifacts (`eligible: true`), rebuilds the eligible-list
-index (`data/artifacts/permits/<county>/<jobId>/eligible.idx`) atomically on every
-PermitFeed pass — the index is stamped with the eligibility-policy fingerprint and never
-reused across policy changes — and spawns `PermitFeedChunk` children (keyed
-`<PermitFeed key>-c<N>`) that dispatch
-`PermitHarvest.harvestParcel` in bounded windows. A malformed `eligibility.json` is
-recorded and skipped, never thrown — one bad manifest must not poison the feeder.
+base URLs, and jurisdiction list are researched into the county's sources catalog
+(`skills/use-oracle/runtime/docs/<county>-sources.yaml`, from `county-discovery`) and
+encoded in the county permit profile. Eligibility flow: a `PermitFeed` workflow (key
+`<CountyIngest key>-permits` — so a redrive pass feeds `<county>-<jobId>-r2-permits`),
+started by `CountyIngest` after appraisal dispatch completes (unless `startPermits:
+false`), scans the eligibility artifacts (`eligible: true`, recomputed when the policy
+fingerprint changed), rebuilds the eligible index
+(`data/artifacts/permits/<county>/<jobId>/eligible/<PermitFeed key>/c<N>.json`) on every
+pass, and hands each `chunkSize` slice to a child run of itself
+(`<PermitFeed key>-c<N>`) that dispatches `PermitHarvest.harvestParcel` in bounded
+windows. A malformed `eligibility.json` is recorded and skipped, never thrown — one bad
+manifest must not poison the feeder. Eligibility comes from
+`PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES[_<COUNTY>]`; unset means `__NONE__`, so no
+parcel is eligible until you set it (`county-appraisal-onboarding` §4).
 `Parcel.process` does NOT send permit invocations directly — one send per
 parcel would queue the whole eligible county.
 
 **Jurisdiction routing.** A county spans dozens of municipal jurisdictions and
 potentially SEVERAL permit vendors — the sources catalog models exactly this.
-`PermitHarvest` loads the county's sources catalog, resolves each parcel's jurisdiction
-from stored appraisal/seed data (situs city), groups by vendor, and dispatches to the
-matching vendor adapter — multiple adapters per county are normal. An ambiguous or
-unmatched jurisdiction is recorded in the parcel's status JSON as `unrouted` (falling
-back to the county-level portal only when the catalog defines one), and per-jurisdiction
-coverage lives in the status artifacts. The canonical `{county, jobId, parcel_id}`
+`PermitHarvest` loads the county permit profile, resolves each parcel's jurisdiction,
+and dispatches to the matching adapter — multiple adapters per county are normal.
+Routing order: the county routing hook
+`src/counties/<county>/permit-routing.mjs` (or `PERMIT_ROUTING_MODULE_<COUNTY>`)
+exporting `resolveJurisdiction({seedRow, routing, profile})`, which returns a
+permit-profile jurisdiction key from any seed column (tax district, municipality code)
+or null; then the default city routing on `eligibility.json` (seed `city`,
+`situs_city`, `address_city`, then the situs address). `eligibility.json` keeps the full
+seed row for the hook. A county with no profile
+records `no_profile`; an ambiguous or unmatched jurisdiction records `unrouted` (falling
+back to the county-level portal only when the profile defines one); a parcel that is not
+ready or not eligible records `not_eligible`. Per-jurisdiction coverage lives in the
+status artifacts. The canonical `{county, jobId, parcel_id}`
 payload is unchanged.
 
 ### Municipal Portal Adapter Patterns
@@ -149,26 +160,55 @@ When deep permit enrichment exceeds local single-IP bandwidth (e.g. 500k+ permit
    - Capture every contact role/name/license omission and the immutable detail/contact
      artifact digest needed by the versioned identity resolver.
 4. **Stable keys + resume** — deterministic artifact keys (`safeKeyPart()` for parcel
-   ids), `skipExisting`/`skipCompleted` checks, and a per-parcel status JSON
-   (`status/<folio>.json` — monitoring counts these against the eligible total). Work
+   ids), `skipExisting`/`skipCompleted` checks, and a per-parcel link status
+   (`status/<parcelKey>.json` — monitoring counts these against the eligible total). Work
    must be re-runnable without duplication (see `durable-workflow-builder` pattern 3).
-   The harvester writes artifacts + `status/<folio>.json` only — it never merges into
-   the DB or publishes. DB merging and watermarks happen via `PermitFeed` → the
-   county-keyed `Loader`. Atlas publication begins only after group validation.
-5. **DB row mapping** — MAP extracted permits to `@elephant-xyz/query-db` (the npm
-   package published from the `elephant-query-db` repo) row CSVs staged under the job
-   dir. The actual merge runs via `Loader.load({jobId, tracks:["permits"],
-   step:"incremental"})`, submitted per completed chunk by `PermitFeed` — the `Loader`
-   is the single writer; never merge inline from the harvester.
-   Link permits to the REQUESTED parcel via explicit target
-   evidence (`propertyFirstTarget`), never via whatever parcel the detail page happens to
-   display — Accela detail pages sometimes show a different parcel, which corrupted early
-   Lee loads.
+   Adapters write `{raw,extracted,status}/<jurisdiction>/<key>.json`; `PermitHarvest`
+   adds `status/<parcelKey>.json` (every permit `linked` or `unlinked` with a reason),
+   then records to the `CountyLedger` (key `<county>-<jobId>`) under `stage: "permits"`:
+   `done` → `ready` (reason `unlinked: N` when some permits are unlinked); `blocked`
+   (the jurisdiction's source is blocked or unavailable: harvestable later) →
+   `blocked`, reported per jurisdiction apart from dead parcels; `unrouted`,
+   `no_profile`, `not_eligible` → `dead`; `failed` → `failed`. A transient
+   failure is never recorded: the handler throws, retries with backoff, then pauses. It writes no
+   SQL and publishes nothing. Atlas publication begins only after group validation.
+5. **Permit → parcel link** — map extracted permits to lexicon permit output
+   (`property_improvement` records) under the job's `extracted/` dir, and link each
+   permit to the REQUESTED parcel via explicit target evidence (`propertyFirstTarget`),
+   never via whatever parcel the detail page happens to display — Accela detail pages
+   sometimes show a different parcel, which corrupted early Lee runs. A permit that
+   cannot be linked to the requested parcel stays in the output, unlinked, with an
+   explicit reason in the status JSON and the ledger record. Reconciliation counts
+   every harvested permit as linked or unlinked-with-reason (reconcile section of
+   `county-ingest-run`).
 6. **Browser session where required** — some portals block curl entirely (Palm Beach's
    ePZB guest endpoints need a Playwright/Puppeteer session bootstrap first). Session
    setup belongs in the module; keep it reusable across parcels.
 
-Artifact layout: `data/artifacts/permits/<county>/<jobId>/{permit-lists,raw,extracted,status}/…`.
+**Adapter options and bulk snapshots.** `PermitHarvest` passes the county's options to
+every adapter: the profile's `countyKey`/`countyName`, `PERMIT_TIMEOUT_MS_<COUNTY>`,
+`PERMIT_MAX_ATTEMPTS_<COUNTY>`, `PERMIT_CHROMIUM_PATH_<COUNTY>` (else
+`CHROME_EXECUTABLE_PATH`), `PERMIT_HEADLESS_<COUNTY>`, and
+`PERMIT_ADAPTER_OPTIONS_<COUNTY>` (a JSON object of scalars). When a source is better
+enumerated once than searched per parcel (a bulk export, a GIS extract behind a
+login-gated portal), write it as a linked snapshot and point
+`PERMIT_BULK_DIR_<COUNTY>` (DATA_DIR-relative or absolute) at it:
+
+```
+<bulkDir>/<jurisdiction key or adapter-route key>/
+  linked-permits.jsonl   # one normalized permit record per line, bound to its parcel_identifier
+  summary.json           # {jurisdictionKey, routeKey?, adapterKey?, snapshotSha256?, completedAt?}
+```
+
+`PermitHarvest` then reads each parcel's records from the snapshot (no portal traffic,
+same raw/extracted/status artifacts, a fingerprint over the linked file for resume) and
+falls back to the live adapter for a jurisdiction without one; a blocked primary portal
+is still covered by its snapshot. Link records to parcels inside the snapshot tool with
+the same rules as live harvest (exact parcel first); never guess.
+
+Artifact layout: `data/artifacts/permits/<county>/<jobId>/{raw,extracted,status}/…`.
+Accela date-window backfills also write a vendor-specific `permit-lists/` dir beside
+them.
 
 **Date-window backfill (Accela).** Accela list searches cap at ~100 results per query, so
 harvest permit LISTS by date window with binary splitting; workers truncate after page 1
@@ -208,35 +248,40 @@ exceeds the window.
   capture, session bootstrap, retry/failure rate, and bytes written for a representative
   sample. Estimate countywide elapsed time from eligible parcel count, expected permits
   per parcel, measured latency, safe concurrency, delays, and retry overhead.
-- Smoke test the deployed service: `docker compose up -d`, `npm run dev`,
-  `restate deployments register http://host.docker.internal:9080`, then invoke ONE parcel.
+- Smoke test the deployed service from `skills/use-oracle/runtime`: `docker compose up -d`
+  (Restate only), `npm run services`, `npm run register` (or
+  `npm run register -- --uri http://localhost:9080` on Linux host networking), then
+  invoke ONE parcel that is already ready and eligible in the job.
   Use a one-way `send`, not `call` — a harvest takes minutes, so a synchronous call times
   out client-side:
 
 ```bash
-curl localhost:8080/restate/send/PermitHarvest/harvestParcel \
+curl localhost:8080/PermitHarvest/harvestParcel/send \
   --json '{"county":"lee","jobId":"smoke-1","parcel_id":"..."}'
 ```
 
   Capture the invocation id from the response, watch that invocation in the Web UI
   (`http://localhost:9070`) until it completes, then verify the parcel's status artifact
-  (`data/artifacts/permits/<county>/<jobId>/status/<folio>.json`) and the other artifacts
-  (`find data/artifacts/permits/<county>/ -type f`). The handler writes artifacts and
-  status only — no DB rows exist yet. To check DB rows, run the merge explicitly:
+  (`data/artifacts/permits/<county>/<jobId>/status/<parcelKey>.json`), the other artifacts
+  (`find data/artifacts/permits/<county>/ -type f`), and the ledger's permit record:
 
 ```bash
-curl localhost:8080/restate/send/Loader/<county>/load \
-  --json '{"jobId":"smoke-1","tracks":["permits"],"step":"incremental"}'
+curl localhost:8080/CountyLedger/lee-smoke-1/get --json '{"parcel_id":"..."}'
 ```
 
-  wait for that invocation to complete in the UI, THEN inspect DB rows.
+  The response's `permits` entry must show `stage: "permits"` with the mapped status and
+  `detail` (`harvestStatus`, `permitCount`, `linked`, `unlinked`). There is no merge step
+  to run.
 
 ## Throughput rules
 
 - The `PermitHarvest` concurrency cap IS the portal-politeness control. It is NOT tunable
   in the Restate UI (server-side flow control is only a 1.7 preview behind experimental
   flags) — it is an in-process semaphore in the services process, limit from the
-  `CONCURRENCY_PERMIT_<VENDOR>` env var (e.g. `CONCURRENCY_PERMIT_ACCELA=2`). To change
+  `CONCURRENCY_PERMIT_<ADAPTER>` env var keyed by the profile's adapter key (e.g.
+  `CONCURRENCY_PERMIT_ACCELA=2`, `CONCURRENCY_PERMIT_TYLER_CIVIC_ACCESS`; default 2).
+  `PERMIT_INACTIVITY_TIMEOUT_MS`/`PERMIT_ABORT_TIMEOUT_MS` (defaults 20/60 min) bound one
+  harvest. To change
   it, edit `.env` and restart the services process — safe mid-run, because in-flight
   invocations resume from their journals (`durable-workflow-builder` pattern 2, the gate
   helper). Start at 2; raise one step at a time while watching error rates and portal
@@ -247,8 +292,9 @@ curl localhost:8080/restate/send/Loader/<county>/load \
   IP gets rate-limited or blocked over a long harvest.
 - Before scaling beyond the pilot, record the portal's safe concurrency and the estimated
   full permit-download time in the county findings doc. If the estimate is more than
-  48 hours, stop and ask whether permits should be downloaded anyway, ingested into the
-  query DB, or retrieved at runtime. For runtime retrieval, ask which app/service owns it
+  48 hours, stop and ask whether permits should be downloaded anyway, ingested from an
+  official bulk export or records extract as artifact files instead of scraping, or
+  retrieved at runtime. For runtime retrieval, ask which app/service owns it
   and whether lookup should use direct portal/API calls, server-side scraping, cache,
   queued background fetch, or another pattern.
 

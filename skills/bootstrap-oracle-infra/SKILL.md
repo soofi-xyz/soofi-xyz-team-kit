@@ -1,209 +1,183 @@
 ---
 name: bootstrap-oracle-infra
-description: "Verify and bootstrap the local pipeline stack required for county ingestion: the durable workflow server, data directories, the internal database, and the bundled runtime services process. Use when starting county onboarding, when a run or registration fails because the stack is down, or when setting up on a fresh machine."
+description: "Verify and bootstrap the local pipeline stack required for county ingestion: the Restate server, data directories, and the bundled runtime services process registered with Restate. Use when starting county onboarding, when a run or registration fails because the stack is down, or when setting up on a fresh machine."
 metadata: {"author":"elephant-xyz"}
 ---
 
 # Bootstrap Oracle Infra
 
-Everything runs locally: Docker Compose (Restate + Postgres) plus one Node
-services process. Work happens in the bundled runtime at `skills/use-oracle/runtime` with sibling repos
-next to it. Verify first; only bootstrap what is missing. Once prerequisites are
-confirmed, proceed without check-ins; ask only on genuine ambiguity.
+Everything runs locally: Restate in Docker Compose plus one Node services process, both
+from the bundled runtime at `skills/use-oracle/runtime`. Restate is the only run-state
+store (progress, retries, per-parcel status, dedupe, resume). Files under `DATA_DIR` hold
+all data. There is no SQL database, no Postgres service, and no `DATABASE_URL`. Do not
+clone sibling source repositories as prerequisites. Verify first; only bootstrap what is
+missing. Once prerequisites are confirmed, proceed without check-ins; ask only on genuine
+ambiguity.
 
 ## Prerequisites check
 
 ```bash
 docker info >/dev/null && echo docker-ok
-node --version          # need 22+
-restate --version       # brew install restatedev/tap/restate  (or npm i -g @restatedev/restate)
-gh auth status          # PRs to Counties-trasform-scripts
+node --version          # need 22.18+
+restate --version       # optional: `npm run register` and curl cover the essentials
+gh auth status          # PRs to Counties-trasform-scripts and Atlas
 ```
 
-## Scaffold `skills/use-oracle/runtime` (if missing)
+Propose the experimental Elephant CLI 2 before pinning 1.x
+([`migrate-elephant-cli-v2`](../migrate-elephant-cli-v2/SKILL.md)): one binary with
+`prepare` and `transform` built in, no npm package. Point `ELEPHANT_CLI` at the chosen
+binary and record its version and commit.
 
-Layout:
-
-```
-elephant/
-  skills/use-oracle/runtime/          # your durable pipeline project (scaffolded)
-    docker-compose.yml
-    services/                 # TypeScript Restate services (one process)
-      app.ts                  # endpoint: binds all services, listens on :9080
-      county-ingest.ts        # CountyIngest workflow (feeder) + its IngestChunk child workflow
-      parcel.ts               # Parcel service (prepare→transform→validate→store)
-      permit-harvest.ts       # PermitHarvest service (portal harvesters per vendor)
-      loader.ts               # Loader virtual object (per-county internal DB merges)
-      enrichment.ts           # SunbizIngest / BbbHarvest workflows
-    flows/                    # Browser Flow v2 JSON per county (elephant-cli prepare)
-    transforms/               # synced from Counties-trasform-scripts (<county>/scripts/)
-    docs/                     # county sources catalogs + findings
-                              #   (county-discovery writes docs/<county>-sources.yaml)
-    data/                     # pipeline data (gitignored): seeds/ + artifacts/
-                              #   created by scaffold: mkdir -p data/seeds data/artifacts docs
-  Counties-trasform-scripts/
-  elephant-query-db/
-  lexicon/                    # optional
-```
-
-`docker-compose.yml` (canonical):
-
-```yaml
-services:
-  restate:
-    image: restatedev/restate:1.7.2
-    ports: ["8080:8080", "9070:9070"]
-    volumes: ["restate-data:/restate-data"]
-    extra_hosts: ["host.docker.internal:host-gateway"]
-    environment:
-      RESTATE_NODE_NAME: restate-1
-    restart: unless-stopped
-  postgres:
-    image: postgres:16
-    ports: ["5432:5432"]
-    environment:
-      POSTGRES_PASSWORD: elephant
-      POSTGRES_DB: elephant
-    volumes: ["pg-data:/var/lib/postgresql/data"]
-    restart: unless-stopped
-volumes:
-  restate-data:
-  pg-data:
-```
-
-The node name must stay stable — Restate derives it from the container hostname by
-default, and a changed identity breaks restoring the persisted `restate-data` volume.
-
-Ports: 8080 Restate ingress (invoke), 9070 Restate admin + Web UI, 9080 the services
-Node process (host), 5432 Postgres.
-
-Initialize the package so the scaffold compiles as handed off:
-
-```bash
-npm init -y
-```
-
-`tsconfig.json` (minimal):
-
-```json
-{
-  "compilerOptions": {
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "target": "es2022",
-    "strict": true
-  }
-}
-```
-
-Deps: `npm i @restatedev/restate-sdk postgres csv-parse p-limit dotenv tsx typescript
-@types/node` plus
-`@elephant-xyz/cli` pinned from GitHub — npm publishing has been unreliable — via
-`npm i github:elephant-xyz/elephant-cli#main` (the release workflow is failing, so `main` is the source of the latest CLI; check the repo
-for the latest tested tag and record the chosen ref in the project README; the npm
-registry `@elephant-xyz/cli@<version>` is the fallback when publishing works), and
-`npm i -D vitest`. Propose the experimental Elephant CLI 2 before pinning 1.x
-([`migrate-elephant-cli-v2`](../migrate-elephant-cli-v2/SKILL.md)): it is one binary with
-`prepare` and `transform` built in, it has no npm package and no library, and a service
-runs it with `--json` and reads the exit code. Keep the npm pin when the user declines. Add `"dev": "tsx watch services/app.ts"`,
-`"typecheck": "tsc --noEmit"`, and `"test": "vitest run"` to scripts.
-(Playwright/Puppeteer are installed when authoring browser-based modules — permit
-vendors, BBB — not part of the core scaffold.)
-
-`.env`:
+## Runtime layout
 
 ```
-DATA_DIR=/absolute/path/to/elephant/skills/use-oracle/runtime/data  # absolute — sibling-repo commands rely on it
-DATABASE_URL=postgresql://postgres:elephant@localhost:5432/elephant
-CONCURRENCY_PREPARE=8
-CONCURRENCY_TRANSFORM=16
-CONCURRENCY_PERMIT_ACCELA=2
+skills/use-oracle/runtime/
+  docker-compose.yml      # Restate only
+  .env.example            # copy to .env (never commit .env)
+  services/app.ts         # one endpoint binding all seven Restate services, :9080
+  services/README.md      # service table, run commands, file layout
+  scripts/register-services.mjs
+  bin/reconcile-county.mjs
+  counties/<county>/      # flow.json, transform-v2.zip or transforms/ (scripts)
+  src/counties/<county>/  # optional capture.mjs for custom browser capture
+  src/permits/adapters/   # permit vendor adapters used by PermitHarvest
+  flows/<county>.json     # optional Browser Flow JSON (elephant-cli prepare)
+  docs/                   # <county>-sources.yaml catalogs + findings
+  data/                   # DATA_DIR (gitignored)
 ```
 
-The `CONCURRENCY_*` caps feed in-process semaphores — see `durable-workflow-builder`
-pattern 2 for how they're enforced. `DATABASE_URL` is the internal reconciliation store;
-never print it. Do not configure public county pointers, catalog maps, or runtime
-publishers here — Atlas publication runs later through the Elephant CLI and the Atlas
+`DATA_DIR` layout (`<parcelKey>` is the parcel id when filesystem-safe, otherwise a
+sanitized form with a short hash suffix):
+
+```
+data/seeds/<county>.csv
+data/artifacts/appraisal/<county>/<jobId>/<parcelKey>/capture.zip | transformed.zip
+    | transformed.meta.json | ready.json | dead.json | invalid.json | failed.json
+    | eligibility.json | validate-findings.csv
+data/artifacts/permits/<county>/<jobId>/{raw,extracted,status}/<jurisdiction>/<key>.json
+data/artifacts/permits/<county>/<jobId>/status/<parcelKey>.json             # link status per parcel
+data/artifacts/permits/<county>/<jobId>/eligible/<PermitFeed key>/c<N>.json # eligible index
+data/runs/<county>/<jobId>/manifest.json                                    # written by reconcile
+data/groups/<county>/<jobId>/<group>/<parcelKey>.zip (+ <group>.assembly.json beside it)
+data/publish/<county>/<jobId>/<group>/                                      # hashed/, hash.csv, CAR, tables/, upload json
+```
+
+`docker-compose.yml` runs one service: `restatedev/restate:1.7.2` with ingress and
+admin/UI bound to loopback (`127.0.0.1:${RESTATE_INGRESS_PORT:-8080}` and
+`127.0.0.1:${RESTATE_ADMIN_PORT:-9070}`), the `restate-data` volume, `extra_hosts:
+["host.docker.internal:host-gateway"]`, `RESTATE_NODE_NAME` (default `restate-1`,
+override only to adopt a volume created under another name), and
+`restart: unless-stopped`; the project name is `${COMPOSE_PROJECT_NAME:-oracle-local}`.
+Keep the node name stable — a changed identity breaks restoring the persisted
+`restate-data` volume.
+
+## Environment
+
+Copy `.env.example` to `skills/use-oracle/runtime/.env` (never commit it). The npm
+scripts load it with `node --env-file-if-exists=.env`. Per-county names take the
+`_<COUNTY>` suffix (slug uppercased, `-` → `_`, so `palm-beach` → `PALM_BEACH`).
+
+| Variable | Purpose |
+|---|---|
+| `DATA_DIR` | Data root; relative paths resolve against `skills/use-oracle/runtime` (default `data`). |
+| `ELEPHANT_CLI`, `ELEPHANT_CLI_COMMIT` | CLI binary (Elephant CLI 2 preferred). Set the commit when the binary prints none (the v2 alpha does not), so ready markers and gates record it. |
+| `SERVICES_PORT`, `SERVICES_URL` | Services process port (9080) and the URI `npm run register` registers (default `http://host.docker.internal:9080`). |
+| `SERVICES_HOST` | Listen addresses. `auto` (default): `127.0.0.1` plus the Docker default-bridge gateway (`docker0`, usually `172.17.0.1`), where `host.docker.internal:host-gateway` lands from the compose Restate on Linux — never the public interfaces. `127.0.0.1` when Restate runs on the host; `0.0.0.0` only with identity keys. |
+| `RESTATE_IDENTITY_KEYS` | Optional hardening: the `publickeyv1_…` key(s) Restate logs at startup when it has a request-identity private key; unsigned requests then get 401. |
+| `RESTATE_ADMIN_URL`, `RESTATE_INGRESS_URL` | Admin (9070) and ingress (8080) URLs for register and reconcile. |
+| `COMPOSE_PROJECT_NAME`, `RESTATE_INGRESS_PORT`, `RESTATE_ADMIN_PORT` | Compose overrides when another stack holds the default ports. |
+| `CONCURRENCY_PREPARE[_<COUNTY>]`, `CONCURRENCY_TRANSFORM[_<COUNTY>]`, `CONCURRENCY_PERMIT_<ADAPTER>` | In-process gates (`durable-workflow-builder` pattern 2); restart the services process to apply. |
+| `CAPTURE_MODULE_<COUNTY>`, `CAPTURE_TIMEOUT_MS[_<COUNTY>]`, `PREPARE_{URL_TEMPLATE,METHOD,JSON_TEMPLATE,BODY_TEMPLATE,CONTENT_TYPE}_<COUNTY>`, `PREPARE_{MULTI_REQUEST_FLOW,BROWSER_FLOW,BROWSER_FLOW_ZIP,USE_BROWSER,CONTINUE_BUTTON,IGNORE_CAPTCHA,PROXY}_<COUNTY>` | Capture route and source request; see `county-appraisal-onboarding`. |
+| `TRANSFORM_{ZIP,SCRIPTS_DIR,DATA_GROUP,SEED}_<COUNTY>`, `COUNTY_NAME_<COUNTY>` | Transform package, data-group label, Seed merge (`off` disables), display name. |
+| `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES[_<COUNTY>]` | Permit eligibility: CSV of usage types, `__ALL__`, or `__NONE__`. Unset means `__NONE__` (appraisal only); set it explicitly anyway. |
+| `PERMIT_BULK_DIR_<COUNTY>`, `PERMIT_ROUTING_MODULE_<COUNTY>`, `PERMIT_{TIMEOUT_MS,MAX_ATTEMPTS,CHROMIUM_PATH,HEADLESS,ADAPTER_OPTIONS}_<COUNTY>` | Permit bulk snapshots, routing hook and adapter options; see `county-permit-adapter`. |
+| `{PARCEL,PERMIT,PUBLISH}_{INACTIVITY,ABORT}_TIMEOUT_MS` | Long-step Restate timeouts (defaults 15/45 min, 20/60 min, 60/360 min). |
+| `IPFS_API`, `IPFS_API_TOKEN`, `ELEPHANT_CAR_GATEWAY`, `FILEBASE_*` | Upload credentials, only when publication is in scope. Never print them. |
+
+There is no `DATABASE_URL`. Do not configure public county pointers, catalog maps, or
+runtime publishers here — Atlas publication runs through the Elephant CLI and the Atlas
 repository (`use-oracle`).
-
-`services/app.ts` starts as a stub endpoint binding no services yet and listening on
-:9080, with `import "dotenv/config"` as its first line so `.env` (DATA_DIR,
-DATABASE_URL, `CONCURRENCY_*`) is actually loaded — tsx alone does not read `.env`:
-
-```ts
-import "dotenv/config";
-import * as restate from "@restatedev/restate-sdk";
-restate.serve({ services: [], port: 9080 }); // bind services as you author them
-```
-
-Author the actual services per `durable-workflow-builder`; the `app.ts` bind list fills
-in as each service is authored.
-
-`services/lib/storage.ts` (dataPath/exists/atomic write — `dataPath` resolves
-DATA_DIR-relative paths and rejects absolute/traversal input;
-`buildSeedIndex(seedPath)` writes a byte-offset index next to the seed and returns
-the row count, and `readSeedBatch` seeks via that index — O(1) per batch, never
-rescan the CSV from row 1),
-`services/lib/parcel-steps.ts`, and `services/lib/limits.ts` are typed stubs the
-operator authors per `durable-workflow-builder`'s contracts before the first run.
-The helper-contract signatures live in `durable-workflow-builder`'s "Lib contracts"
-block — author them until `npm run typecheck` passes.
 
 ## Bring-up + verify
 
 ```bash
-docker compose up -d
+cd skills/use-oracle/runtime
+cp .env.example .env              # then set ELEPHANT_CLI and per-county settings
+npm ci
+docker compose up -d              # or npm run stack:up; Restate only
 
 # Restate admin up
 curl -s localhost:9070/health
 
 # Data directories exist
-mkdir -p data/seeds data/artifacts docs
+mkdir -p data/seeds data/artifacts data/runs data/groups data/publish
 ls data/ docs/
 
-# Postgres up
-docker compose exec postgres psql -U postgres elephant -c "SELECT 1"
-
-# Services process (blocks — leave it running)
-npm run dev
+# Services process on :9080 (blocks — leave it running; see Gotchas for supervision)
+npm run services                  # node services/app.ts; `npm run dev` restarts on change
 ```
 
-In a separate terminal (or with `npm run dev` backgrounded), register with Restate:
+In a separate terminal, register the services process with Restate through the admin
+API:
 
 ```bash
-restate deployments register http://host.docker.internal:9080
+npm run register                                    # registers SERVICES_URL, checks all 7 services
+npm run register -- --uri http://localhost:9080     # Restate on the host or Linux host networking
+npm run register -- --force                         # after handler changes (dev only)
 ```
 
-Register (or `--force` re-register in dev) each time you author and bind a new service,
-then confirm whichever services are registered at that point appear in the Web UI at
-`http://localhost:9070`. The full set once everything is authored (9 services):
-`CountyIngest`, `IngestChunk`, `Parcel`, `PermitFeed`, `PermitFeedChunk`,
-`PermitHarvest`, `Loader`, `SunbizIngest`, `BbbHarvest` (the latter two per
-`sunbiz-corporate-ingest`/`bbb-harvest`).
+`npm run register` exits non-zero and lists `missing` unless every service is visible:
+`CountyIngest`, `IngestChunk`, `Parcel`, `CountyLedger`, `PermitFeed`, `PermitHarvest`,
+`PublishGroup`. `restate deployments register <uri>` and `restate services list` are
+equivalent when the restate CLI is installed. With the default `SERVICES_HOST=auto` the
+compose Restate reaches the endpoint through `host.docker.internal` → the docker0
+gateway; if registration reports `Connection refused`, check the services log line
+`oracle_services_listening` for its `hosts` (docker0 must be listed) or set
+`SERVICES_HOST` to the bridge gateway (`docker network inspect bridge`).
 
-Then raise `inactivityTimeout`/`abortTimeout` for the long-step services (`Loader`,
-`SunbizIngest`, `BbbHarvest`, `PermitHarvest` — detail-heavy parcels can
-exceed the abort window; alternatively split vendor work into journaled
-search/list/detail steps — and `Parcel`, whose heavy captures can also exceed the
-abort window) — apply this to whichever of them are
-registered so far, and revisit once all are authored: the defaults (1 min inactivity / 10 min
-abort) will abort multi-minute bulk/export steps stuck in a single `ctx.run`. Set them
-via the service definition's options, or per service in the Web UI/CLI — see
-`durable-workflow-builder` authoring rule 3. Also review/tune the **retry policy**
-(`default-retry-policy` in the server config, or per-service retry options via the
-UI/CLI/SDK) during bootstrap so failures pause on your intended schedule: the stock
-`restatedev/restate:1.7` default is ~70 attempts then pause (`on-max-attempts =
-"pause"`), which the inspect-paused → fix → resume procedure relies on. Do NOT
-explicitly unset the policy — unset means unlimited retries and nothing ever pauses.
-See `durable-workflow-builder`'s error taxonomy.
+Optional request identity: generate an ed25519 key
+(`openssl genpkey -algorithm ed25519 -out request-identity.pem`), mount it into the
+Restate container with a compose override file setting
+`RESTATE_REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE=/identity/request-identity.pem`, read the
+`publickeyv1_…` key Restate logs at startup, set `RESTATE_IDENTITY_KEYS` to it, restart
+the services process, and `npm run register -- --force`. Required before
+`SERVICES_HOST=0.0.0.0`.
+
+The long-step services already raise their timeouts (`Parcel`, `PermitHarvest`,
+`PublishGroup`, plus `CountyIngest`/`PermitFeed` for indexing); tune them with the
+`*_TIMEOUT_MS` variables above rather than in the UI. See `durable-workflow-builder`
+authoring rule 3. Review the retry policy (`default-retry-policy` in the server config,
+or per-service options) so failures pause on your intended schedule: the stock
+`restatedev/restate:1.7` default retries ~70 times then pauses
+(`on-max-attempts = "pause"`), which the inspect-paused → fix → resume procedure relies
+on. Do NOT unset the policy — unset means unlimited retries and nothing ever pauses.
+
+## Record the stack proof
+
+After `npm run register` reports no missing services, write the proof into the county catalog
+`skills/use-oracle/runtime/docs/<county>-sources.yaml` for `county-readiness-preflight`
+(whose `--probe` flag re-checks the seven services on `restate_admin_url` itself):
+
+```yaml
+stack:
+  orchestrator: restate
+  restate_admin_url: http://localhost:9070
+  services_registered: true
+  verified_at: "<iso8601>"
+  publication:
+    in_scope: false          # true when Atlas publication is authorized
+    upload_node: null        # required when in_scope is true; publicly reachable through Atlas merge
+```
+
+Delete any leftover `destination:` section; the validator only warns on it. When
+publication is in scope, verify the upload node by a safe runtime check and Atlas
+repository access plus the county-page path, without storing credential values in the
+catalog.
 
 ## Sibling repos
 
-- `Counties-trasform-scripts` — county transform scripts + findings docs; PR target.
-- `elephant-query-db` — schema + loader scripts; run its migrations against the local
-  `DATABASE_URL` before any loading. Use the migration command from that repo's
-  README / `package.json` scripts (e.g. `npm run migrate` or its drizzle migration
-  script) — check the repo, don't guess.
+- `Counties-trasform-scripts` — PR target for county transform scripts and findings
+  docs. Not a runtime prerequisite.
 - `lexicon` — optional, for lexicon-gap work.
 
 ## Gotchas
@@ -214,17 +188,20 @@ See `durable-workflow-builder`'s error taxonomy.
   proxy mode is the safe alternate egress, a full-tunnel VPN (Mullvad) needs the
   connect → run → disconnect script, and `pkill -f` must not match its own command.
 - If another county's stack already holds the default ports, give the new county its own
-  compose project and loopback ports instead of stopping the other stack.
-- On Linux, the `extra_hosts: host-gateway` entry is required or Restate-in-Docker
-  cannot reach the services process on host :9080.
-- Reboot recovery: compose auto-restarts Restate + Postgres
-  (`restart: unless-stopped`), but the services process (`npm run dev`) is a plain
-  host process and must be relaunched before work resumes. For multi-day runs, run it
-  supervised/detached (launchd/systemd-user, or at minimum `nohup npm run dev &`) and
-  add `caffeinate -i` on laptops so sleep doesn't kill the run.
-- The `restate-data` volume is the durability root: back it up for long runs; remove it
-  to wipe all dev state. The complete state of a run is `data/` + the `restate-data`
-  volume + `pg_dump`.
+  compose project and loopback ports (`COMPOSE_PROJECT_NAME`, `RESTATE_INGRESS_PORT`,
+  `RESTATE_ADMIN_PORT`, then matching `RESTATE_*_URL` and `SERVICES_PORT`/`SERVICES_URL`)
+  instead of stopping the other stack.
+- On Linux without host networking, the `extra_hosts: host-gateway` entry is required or
+  Restate-in-Docker cannot reach the services process on host :9080.
+- Reboot recovery: compose auto-restarts Restate (`restart: unless-stopped`), but the
+  services process is a plain host process and must be relaunched before work resumes.
+  For multi-day runs, run it supervised/detached (launchd/systemd-user, or at minimum
+  `nohup npm run services &`) and add `caffeinate -i` on laptops so sleep doesn't
+  kill the run.
+- The `restate-data` volume is the durability root for run state: back it up for long
+  runs; remove it to wipe all dev state. Restate keeps finished invocation state only for
+  its retention window, so the durable record of a finished run is `data/` plus the
+  `data/runs/<county>/<jobId>/manifest.json` written by `reconcile-county.mjs`.
 - There is only ONE endpoint (the single services process on :9080), so a "new
   deployment version" during a live run is not actually possible. `--force`
   re-registration is fine while iterating in dev; once a real multi-day run is in
@@ -232,10 +209,9 @@ See `durable-workflow-builder`'s error taxonomy.
   steps added/removed/reordered), apply it in place and `--force` re-register;
   otherwise cancel the affected invocations and re-run them as a redrive pass on the
   new code. See `durable-workflow-builder` authoring rule 2.
-- If ports 5432/8080/9070/9080 conflict, identify the owning local process and ask
-  before stopping it. If Restate is up but services are absent, restart the services
-  process and re-register. If database identity cannot be proven, stop writes.
+- If ports 8080/9070/9080 conflict, identify the owning local process and ask before
+  stopping it. If Restate is up but services are absent, restart the services process
+  and run `npm run register`.
 
-Return Node/Docker/Restate versions, container health, the deployment list, database
-identity proof, data-directory readiness, the service smoke result, and blockers.
-Redact secrets.
+Return Node/Docker/Restate versions, container health, the `npm run register` result, the CLI build, data-directory readiness, the `stack` catalog section written, the
+service smoke result, and blockers. Redact secrets.

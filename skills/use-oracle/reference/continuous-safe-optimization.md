@@ -16,9 +16,8 @@ changing one route.
 Optimize for completed, reconciled work rather than raw request rate. Prefer:
 
 - more terminal work units and valid unique records per hour;
-- fewer browser launches, timeouts, source errors, database transactions, and checkpoint
-  writes;
-- lower runtime, database overhead, memory use, and publication latency; and
+- fewer browser launches, timeouts, source errors, journaled steps, and checkpoint writes;
+- lower runtime, file I/O, memory use, and publication latency; and
 - deterministic restart and replay.
 
 Reject request-rate gains that increase source pressure, caps, errors, incomplete results, or
@@ -27,7 +26,7 @@ recovery risk.
 ## Find and measure the active bottleneck
 
 Continuously classify each route's limiting stage as source latency, browser startup, session
-bootstrap, list pagination, detail traversal, normalization, checkpoint writes, Neon loading,
+bootstrap, list pagination, detail traversal, normalization, checkpoint writes, reconciliation,
 publication, CPU, memory, disk, or network. Optimize only the measured bottleneck. Do not add
 compute to a source-limited municipality.
 
@@ -37,7 +36,7 @@ Maintain a baseline per source, operation, tenant, and execution mode:
 - p50/p95 latency plus error and timeout rates;
 - browser launches/reuses, list pages, and details fetched;
 - bytes transferred;
-- database rows per transaction and transaction count;
+- artifact files written per parcel and reconcile duration;
 - checkpoint-write count and duration; and
 - CPU and memory utilization.
 
@@ -92,11 +91,11 @@ Within the existing source-access and concurrency contracts, evaluate:
 3. Skip detail requests proven unnecessary for reconciliation.
 4. Prefer official bulk, list, or API sources.
 5. Pipeline independent stages.
-6. Batch database and checkpoint writes.
+6. Batch artifact and checkpoint writes.
 7. Improve fair scheduling.
 8. Increase inter-source concurrency.
 9. Test intra-source concurrency cautiously.
-10. Add compute only after proving CPU or database capacity is limiting.
+10. Add compute only after proving CPU or disk capacity is limiting.
 
 Do not persist browser cookies, challenge tokens, or CAPTCHA state to obtain warm-session reuse.
 Do not restart healthy workers merely to test a candidate.
@@ -108,23 +107,24 @@ small tenant-specific reconciliation pilot before enabling it. Keep per-tenant s
 fallbacks. Never infer identical behavior across Accela, Tyler, Citizenserve, eSuite,
 Click2Gov, or OpenGov tenants.
 
-## Optimize loading and publication
+## Optimize reconciliation and publication
 
-Drive all writes through `query-db-loading-matching` and the established publication skills:
+Drive reconciliation through `county-ingest-run` (its reconcile step,
+`bin/reconcile-county.mjs`) and publication through the established publication skills:
 
-- incrementally load safe terminal rows when a configured backlog threshold is exceeded or a
-  source completes;
-- use high-water manifests to avoid rescanning committed artifacts;
+- reconcile incrementally when a configured backlog threshold is exceeded or a source
+  completes;
+- use ready-marker hashes and the previous manifest to avoid rescanning unchanged artifacts;
 - reuse byte-identical property artifacts by verified digest between immutable publication
   manifests; and
-- coalesce publication execution until a source completes, the unpublished loaded delta
+- coalesce publication execution until a source completes, the unpublished reconciled delta
   exceeds `max(10,000 rows, 1% of public rows)`, coverage semantics change materially, or the
   user explicitly requests publication.
 
-Every loaded-watermark advance still immediately marks the current publication stale and
+Every newer reconciled manifest still immediately marks the current publication stale and
 queues a replacement immutable snapshot as required by `continuous-ingestion.md`. Coalescing
-must not hide that state, mutate an existing snapshot, or permit `COMPLETE` while loaded and
-published watermarks differ.
+must not hide that state, mutate an existing snapshot, or permit `COMPLETE` while the
+reconciled and published manifests differ.
 
 ## Report optimization activity
 

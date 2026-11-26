@@ -1,6 +1,6 @@
 ---
 name: monitoring-county-ingestion
-description: "Monitor a running county ingestion - workflow progress and ETA, in-flight and paused invocation counts, artifact file counts under data/, query-DB row counts, and stall diagnosis - for any county. Use when asked for ingestion status, ETA, backlog, permit harvest progress, appraisal progress, or why ingestion stalled."
+description: "Monitor a running county ingestion - workflow progress and ETA, in-flight and paused invocation counts, artifact file counts under data/, CountyLedger status counts and the run manifest, and stall diagnosis - for any county. Use when asked for ingestion status, ETA, backlog, permit harvest progress, appraisal progress, or why ingestion stalled."
 metadata: {"author":"elephant-xyz"}
 ---
 # Monitoring County Ingestion
@@ -20,10 +20,10 @@ node scripts/<county>/serve-dashboard.mjs --port=3888
    - It reads small JSON progress markers (`progress.json`, `enrichment-progress.json`, `appraisal-bulk-checkpoint.json`) emitted periodically by workers.
    - Workers use 500ms debounced async writes to eliminate disk write contention.
 2. **9-Stage Lifecycle Tracker**:
-   - Tracks: **Overview**, **Discovery**, **Seed Roll**, **Appraisal Harvest**, **Permits & Trade**, **Sunbiz Corporate**, **BBB Roofer CRM**, **Warehouse**, **Publish & IPFS**.
+   - Tracks: **Overview**, **Discovery**, **Seed Roll**, **Appraisal Harvest**, **Permits & Trade**, **Sunbiz Corporate**, **BBB Roofer CRM**, **Reconcile**, **Publish & IPFS**.
    - Highlights the current stage, displays completion percentage, and provides contextual "Next Step" action recommendations.
 3. **Deep-Link URL Routing**:
-   - Implements `history.pushState` client-side navigation (`/overview`, `/permits`, `/crm`, `/warehouse`, `/publish`).
+   - Implements `history.pushState` client-side navigation (`/overview`, `/permits`, `/crm`, `/reconcile`, `/publish`).
    - Preserves active tab state across page refreshes and browser reloads.
 4. **Accurate Rolling Rate & ETA Windowing**:
    - Calculates throughput and ETA exclusively over the most recent 30–60 second sliding window.
@@ -34,20 +34,25 @@ node scripts/<county>/serve-dashboard.mjs --port=3888
 
 ## Command-Line & Durable State Monitoring
 
-All state lives in Restate, the `data/` directory, and Postgres — inspect them directly;
-there are no helper scripts.
+Run state lives in Restate and data lives under `data/` — inspect them directly. There is
+no SQL database. `reconcile-county.mjs` (below) is the only reconciliation helper.
 
 ## Run progress
 
 The `CountyIngest` workflow (key `<county>-<jobId>`) fans the seed into per-chunk
-`IngestChunk` child workflows (keys `<county>-<jobId>-c<N>`) and tracks `chunksDone` (of
-`chunks` total) as parent state. Child keys derive from the parent workflow key, so a
+`IngestChunk` child workflows (keys `<county>-<jobId>-c<N>`) and tracks `phase`
+(`indexing`, `appraisal`, `permits` while it awaits its `PermitFeed`, then `done`; or
+`appraisal-done` with `startPermits: false`), `chunksDone` (of `chunks` total),
+per-status `counts`, `permitFeed`, and the final `permits` counts as parent state. Child keys derive from the parent workflow key, so a
 redrive pass's chunks are keyed `<county>-<jobId>-r2-c<N>`. Read it in the Web UI at `http://localhost:9070`
 (invocation → state), or via SQL:
 
 ```bash
 restate sql "SELECT * FROM state WHERE service_name = 'CountyIngest' AND service_key = '<county>-<jobId>'"
 restate sql "SELECT status, created_at, modified_at FROM sys_invocation WHERE target_service_name = 'CountyIngest'"
+curl -s -X POST localhost:8080/CountyIngest/<county>-<jobId>/status
+curl -s -X POST localhost:8080/IngestChunk/<county>-<jobId>-c<N>/status   # rows, done, counts
+curl -s -X POST localhost:8080/PermitFeed/<county>-<jobId>-permits/status # phase, eligible, chunksDone
 ```
 
 Coarse percent complete = `chunksDone` ÷ `chunks`. For finer-grain progress use the
@@ -57,7 +62,7 @@ invocations themselves are visible in `restate invocations list`.
 ## In-flight and backlog
 
 ```bash
-restate invocations list          # filter by service: Parcel, PermitHarvest, PermitFeed, PermitFeedChunk, IngestChunk, CountyIngest
+restate invocations list          # filter by service: Parcel, PermitHarvest, PermitFeed, IngestChunk, CountyIngest, PublishGroup
 ```
 
 Counts of running / paused / retrying invocations per service replace queue-depth and
@@ -72,6 +77,7 @@ find data/artifacts/appraisal/<county>/<jobId> -name transformed.zip | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name ready.json | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name capture.zip | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name eligibility.json | wc -l
+find data/artifacts/appraisal/<county>/<jobId> -name failed.json | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name dead.json | wc -l
 find data/artifacts/appraisal/<county>/<jobId> -name invalid.json | wc -l
 find data/artifacts/permits/<county>/<jobId> -type f | wc -l
@@ -79,21 +85,23 @@ find data/artifacts/permits/<county>/<jobId> -type f | wc -l
 
 During a run: `pending = seed − ready − dead − current-invalid`. At appraisal terminal
 state: `seed = ready + dead + current-invalid` (a stale `invalid.json` is cleared when
-a later validation passes, so counts reflect current state). DB completion is separate:
-the `Loader` watermark plus the distinct DB folio count must cover `ready`.
-`ready.json` = the loadable set (what the `Loader` reads); `transformed.zip` −
+a later validation passes, so counts reflect current state). The `CountyLedger` counts
+must agree with these file counts; any difference is a ledger-vs-file mismatch.
+`ready.json` = the publishable set (what group assembly reads); `transformed.zip` −
 `ready.json` = the invalid/dead tail pending classification.
 
 Note: `CountyIngest` completing means the appraisal dispatch finished — permit work
 drains separately. Measure permit completion exactly: count the per-parcel status
 artifacts (one per eligible parcel, written by the harvester),
-`find data/artifacts/permits/<county>/<jobId>/status -name '*.json' | wc -l`, and
+`find data/artifacts/permits/<county>/<jobId>/status -maxdepth 1 -name '*.json' | wc -l`
+(the per-parcel `status/<parcelKey>.json`; adapter files sit one level deeper under
+`status/<jurisdiction>/`), and
 reconcile against the eligible-parcel count (the `eligibility.json` files with
 `eligible: true`); `find … -type f | wc -l` alone is not a completion measure.
 
 One `find` sweep over the prefix beats per-parcel checks in a loop ~80× at county
-scale — always sweep once, then count/filter locally. Reconcile distinct folios vs seed
-count BEFORE any bulk load: count folio directories,
+scale — always sweep once, then count/filter locally. Reconcile distinct parcel
+directories vs the seed count before assembling groups:
 `find data/artifacts/appraisal/<county>/<jobId> -mindepth 1 -maxdepth 1 -type d | wc -l`.
 
 ## Permit backfill coverage (Accela date-window)
@@ -110,30 +118,53 @@ date-range gaps, and ETA = remaining uncovered days ÷ recent rate of NEWLY COVE
 terminal days (not window count). `2×days − roots` is a worst-case node-count bound, not
 an expected total (see `county-permit-adapter` for the split-tree semantics).
 
-## DB counts
+## Ledger counts and the run manifest
+
+`CountyLedger` (virtual object keyed `<county>-<jobId>`) is the single writer of
+per-parcel status (`pending`, `ready`, `dead`, `invalid`, `failed`; permit link results
+under `stage: "permits"`, where `blocked` is a blocked source — captcha, login,
+custodian-only — counted apart from `dead`). Read its shared handlers through ingress:
 
 ```bash
-docker compose exec postgres psql -U postgres elephant \
-  -c "SELECT jurisdiction_key, count(*), count(DISTINCT request_identifier) FROM parcels GROUP BY jurisdiction_key"
+curl -s -X POST localhost:8080/CountyLedger/<county>-<jobId>/summary   # counts, tombstones, permits
+curl -s localhost:8080/CountyLedger/<county>-<jobId>/list --json '{"status":"failed","limit":100}'
+curl -s localhost:8080/CountyLedger/<county>-<jobId>/list --json '{"stage":"permits","status":"dead"}'
+curl -s localhost:8080/CountyLedger/<county>-<jobId>/list --json '{"stage":"permits","status":"blocked"}'
+curl -s localhost:8080/CountyLedger/<county>-<jobId>/get --json '{"parcel_id":"<parcel_id>"}'
 ```
 
-Property counts come via the parcel join, not a `properties.source_system` group-by.
-DB counts complement artifact counts; only reconciling both against the seed tells you
-the true missing set (see `county-ingest-run` wrap-up).
+`list` pages in `parcel_id` order (pass the returned `cursor` back). `get` returns the
+`parcel` entry and the `permits` entry; each carries `stage`, `status`, `reason`,
+`artifactHash`, `transformVersion`, `detail`, and `tombstoned`.
 
-## Wrap-up gate verification (state reads)
-
-The `county-ingest-run` wrap-up gates are verified from persisted service state, not
-logs. The `Loader` object keeps per-track watermarks (`watermark_<track>`) and the
-`Publish` object keeps `approved` / `tickScheduled` / `lastTickAt`:
+For a full reconciliation, run the reconcile command; without `--strict` it reports
+without failing, so it is safe mid-run:
 
 ```bash
-restate sql "SELECT * FROM state WHERE service_name = 'Loader' AND service_key = '<county>'"
-restate sql "SELECT * FROM state WHERE service_name = 'Publish' AND service_key = '<county>'"
+cd skills/use-oracle/runtime
+npm run reconcile -- --county <county> --job <jobId> --no-rehash   # quick; drop --no-rehash for the full check
 ```
 
-Gate checks: the watermark covers the final artifacts, and `lastTickAt` shows a publish
-tick after the last load.
+It writes `data/runs/<county>/<jobId>/manifest.json` and prints the gates
+(`seed_accounted`, `seed_complete`, `no_duplicate_keys`, `ready_hash_coverage`,
+`ledger_files_agree`, `permits_linked`, `permits_complete`, `tombstones_excluded`; each
+`pass`, `fail`, or `not_started`), counts by status, dead/invalid/failed reasons, permits
+linked/unlinked by reason, ready-marker hash coverage, and ledger-vs-file mismatches.
+Mid-run, `seed_complete` and `permits_complete` fail by design. Ledger counts complement artifact counts; only reconciling
+both against the seed tells you the true missing set (see `county-ingest-run` §6).
+
+## Wrap-up gate verification
+
+The `county-ingest-run` wrap-up gates are verified by `reconcile-county.mjs --strict`
+(exit 0) and the manifest it writes, not by logs. Publication progress for one group is
+the `PublishGroup` workflow state:
+
+```bash
+curl -s -X POST localhost:8080/PublishGroup/<county>-<group>-<jobId>/status
+```
+
+A `PublishGroup` in phase `awaiting-approval` is healthy, not stalled; it stops before the
+Atlas PR, which stays a `gh` step per `use-oracle`.
 
 ## ETA
 
@@ -146,7 +177,8 @@ to its stage default); to stop a track, pause its invocations
 
 ## Stall diagnosis (in order)
 
-1. Services process running? (`npm run dev` on :9080; check the terminal / process.)
+1. Services process running? (`npm run services` on :9080; check the terminal /
+   process.) After a restart, `npm run register` must report no `missing` services.
 2. Invocations paused at max attempts? (Web UI → invocations; journal shows the error.)
 3. A `CONCURRENCY_*` cap in `.env` set too low? (Check the services process env;
    empty/0/garbage values fall back to the stage default, so a missing cap shows up as
@@ -162,8 +194,8 @@ dead ones and subtract them from the achievable count.
 Duplicate-delivery errors (the old dead-token class) are structurally impossible at the
 Restate invocation-dispatch layer — exactly-once invocation keys removed that failure
 mode there. An interrupted `ctx.run` step can still re-execute its external side effect
-on retry, which is why file/DB/API writes must stay idempotent. Quantify data loss by
-reconciling counts (seed vs artifacts vs DB rows), never by counting error events —
+on retry, which is why file and API writes must stay idempotent. Quantify data loss by
+reconciling counts (seed vs ledger vs artifacts), never by counting error events —
 error counts over- and under-report in both directions.
 
 ## Reporting guidance

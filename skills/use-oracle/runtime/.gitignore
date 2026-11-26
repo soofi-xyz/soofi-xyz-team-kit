@@ -7,3 +7,4 @@ local-output/
 .env
 .env.*
 !.env.example
+/data/
