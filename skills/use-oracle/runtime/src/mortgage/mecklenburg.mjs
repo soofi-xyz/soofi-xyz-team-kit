@@ -165,6 +165,17 @@ export async function openMecklenburgSession(options) {
   }
 
   async function fetchWindow(from, to) {
+    try {
+      return await fetchWindowOnce(from, to);
+    } catch (error) {
+      // A detached frame or closed target leaves the page unusable: drop it so the
+      // shared runner's retry starts a fresh browser instead of failing every window.
+      page = null;
+      throw error;
+    }
+  }
+
+  async function fetchWindowOnce(from, to) {
     if (!browser?.connected || !page || page.isClosed()) await start();
     await page.goto(`${MECKLENBURG_BASE}/RealEstate/SearchEntry.aspx`, { waitUntil: "networkidle2" });
     if (!(await page.$('input[name$="dclDocType$53"]'))) {
