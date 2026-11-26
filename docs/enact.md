@@ -96,6 +96,7 @@ scripts/sync-enact-schema.sh [sync|check]   # refresh enact/schema from prismtea
 | Skill library (`library_skills`, `PUT/GET /skills/{name}`) | #27, in #30 | merged | `library_skills`; kecleon, mew and silvally fit within 1 MiB |
 | Agent assets (`assets`, `POST /agents/{name}/assets`) | [#33](https://github.com/prismteam-ai/enact/pull/33) | merged | ampharos's reference images; it leaves `stays_local` |
 | Sign-in (access tokens, per-agent grants) | [#28](https://github.com/prismteam-ai/enact/pull/28) | merged | Replacing the shared `x-api-key` in the editor setup above |
+| New repositories (`create_repositories`, `create_repository` tool) | [#44](https://github.com/prismteam-ai/enact/pull/44) | merged | `create_repositories` from an override's `manifest` (vivillon, from `prismteam-ai/configuration-bundle-template`); the appendix names the tool |
 
 All are on prismteam-ai/enact main; `enact/schema/` is copied from there
 (`enact/schema/SOURCE_REVISION`).

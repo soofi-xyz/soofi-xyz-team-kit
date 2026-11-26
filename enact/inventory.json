@@ -689,7 +689,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 777770,
+      "library_pinned_bytes": 778772,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3242,7 +3242,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 19438,
+      "bytes": 20159,
       "files": 1,
       "flag_counts": {
         "aws-profile": 1,
@@ -3253,7 +3253,7 @@
       "instruction_flags": {},
       "invalid_paths": [],
       "kit_model": null,
-      "library_pinned_bytes": 777770,
+      "library_pinned_bytes": 778772,
       "library_skills": [
         "apply-engineering-guidelines",
         "build-console-product",
@@ -3275,7 +3275,7 @@
       "own_skills": [],
       "readonly": false,
       "requires_mcp": [],
-      "requires_mcp_reason": "No mcp__ tool reference and no instruction that calls an MCP server.",
+      "requires_mcp_reason": "agents/vivillon.md works through Console's HTTP API and git; no MCP server. It creates each new app's repository from prismteam-ai/configuration-bundle-template with Enact's create_repository tool (docs/repositories.md, \"New repositories\").",
       "secret_env_mentions": [
         "MARKETPLACE_API_KEY"
       ],
@@ -4208,7 +4208,7 @@
       ]
     },
     "configure-console-product": {
-      "bytes": 71567,
+      "bytes": 72564,
       "files": 3,
       "flags": {},
       "omitted": [],
