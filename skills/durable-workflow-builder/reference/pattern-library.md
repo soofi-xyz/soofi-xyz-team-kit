@@ -11,13 +11,17 @@ once dumped 516k messages into a queue, exceeding retention and losing all flow 
 The shipped `CountyIngest`/`IngestChunk` pair IS the fix: `window` (25–100) bounds
 in-flight calls, per-chunk child workflows bound journal growth, and replay resumes
 mid-chunk. Crash/reboot resumes mid-county; no checkpoint files, no watchdog timers, no
-re-streaming a 282 MiB seed from row 1 on every wakeup.
+re-streaming a 282 MiB seed from row 1 on every wakeup. On Restate 1.7.9 with VQueues,
+pattern 16 supersedes it: Restate itself is the bounded queue. The feeder's
+await-the-whole-window barrier is its cost: at 18 captures running swung 1–25 and the
+rate was half of what scoped queues reached on the same site.
 
 **2. Layered concurrency.** Three layers: admission window (feeder) → per-stage/portal
-semaphores in the services process → in-process pools (browser contexts). The Restate
-server does NOT enforce per-service concurrency caps on this stack (server-side flow
-control is a 1.7 preview behind experimental flags — adopt it once stable); the enforced
-cap is an in-process gate with limits from env:
+semaphores in the services process → in-process pools (browser contexts). In chunk
+mode the enforced cap is an in-process gate with limits from env. On the enqueue path
+(pattern 16) the scope rule is the admission layer and the gate is only a backstop: keep
+it ABOVE the scope cap (`CONCURRENCY_PREPARE_<COUNTY>=24` for a ramp to 18), or the gate
+binds and the cap looks unused.
 
 ```ts
 // services/lib/limits.ts — one in-process semaphore per named stage/portal
@@ -147,6 +151,38 @@ own request, never a bare base URL shared by every parcel.
 (pilot of ~100 parcels; measure latency, failure rate, safe concurrency). If full
 acquisition exceeds 48h, stop and ask: download anyway / ingest-only / runtime retrieval
 from the owning app. See `county-permit-adapter` for the permit-portal variant.
+
+**16. Restate-scoped queues replace the chunked feeder.** On Restate 1.7.9 with VQueues
+(`experimental_enable_vqueues`), send one invocation per item one-way through the scoped
+ingress and let Restate queue and cap it:
+
+```bash
+POST <ingress>/restate/scope/<scope>/send/Parcel/process
+idempotency-key: <county>-<jobId>-<parcel_id>
+PUT <admin>/limits/rules  [{"pattern":"<scope>","limits":{"concurrency":6},"description":"…"}]
+```
+
+- **Scope = one source site.** Everything that hits the site draws from one budget; two
+  counties on one site share a scope. A scope is also part of identity: idempotency keys
+  and Virtual Object keys are per scope, so keep a job on one scope. Calls from inside a
+  handler without a scope (Parcel → `CountyLedger`) reach the unscoped object.
+- **Idempotent enqueue.** The key makes a re-run attach to the existing invocation
+  (`PreviouslyAccepted`). Raise `idempotencyRetention` in the service options (14 days
+  here; the default is 24 h after completion) and also skip items whose terminal marker
+  exists, so a re-run after retention never repeats finished work.
+- **Cap by request rate, then ramp.** Without a batch barrier each worker hits the source
+  about 3x as often as under a feeder with the same concurrency. Start low (6), raise one
+  level after two clean samples, step down and hold on degradation, and never exceed the
+  measured ceiling (18 on qPublic) without a benchmark. Restate 1.7 has concurrency limits
+  only, no rate limits.
+- **Observe in SQL.** `sys_vqueue_meta` (inbox, running, suspended, paused, finished per
+  scope), `sys_user_limits` (usage vs cap), `sys_rules` (`GET /limits/rules` is 405).
+- **Cost.** About 310 B on disk per queued invocation (232k ≈ 72 MB); Restate RSS rose to
+  about 1.8 GB with about 210k queued. One scope runs on one partition.
+- **Still use chunks** when the server has no VQueues (older Restate, or a volume you may
+  not migrate one-way), for a workflow that must hold a per-run aggregate in its own state,
+  or for a fan-out that must not start until a previous stage is completely finished
+  inside one invocation. Never run both fan-outs for the same job at once.
 
 ## Error taxonomy
 

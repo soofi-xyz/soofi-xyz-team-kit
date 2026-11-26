@@ -89,6 +89,11 @@ validated group directories.
   `skills/use-oracle/runtime` (exit 0 ok, 1 gate failed, 2 error); add
   `--assemble <group>` to build a group directory from verified ready parcels (the group
   plus its Seed root; `seed` itself is rejected).
+- Fan-out: a full run sends one scoped `Parcel.process` per parcel (`npm run enqueue`) on
+  Restate 1.7.9 with VQueues, ramps the source scope's cap 6 → 12 → 18 (`npm run ramp`;
+  never above 18 without a benchmark), and enqueues permits after the appraisal queue
+  drains (`npm run enqueue:permits`). `CountyIngest` chunk mode is the fallback
+  (`county-ingest-run` §3). Check progress with `npm run status`.
 
 ## Required pipeline
 
@@ -294,3 +299,11 @@ For ingestion or publication work, return:
 - global Atlas IPNS resolved index CID, MCP sync result, and v2 smoke-tool results;
 - CLI commit, lexicon manifest URL, blockers, next automated action, and required human
   action.
+
+Every status report and every hand-off also gives the person, as printed by
+`npm run status`: the Restate UI link `http://127.0.0.1:<RESTATE_ADMIN_PORT>/ui` (default
+9070); the SSH tunnel to open it from another machine
+(`ssh -N -L <port>:127.0.0.1:<port> <user>@<host>`); the parcels-left query
+(`sys_vqueue_meta`, `county-ingest-run` §3); and the Console Pipeline tab
+<https://soofi-safavi.account.prismteam.ai/console/app/?app=meet-backfill-progress&tab.data-mining-tabs=data-mining-pipeline-table#/data-mining>
+(shared view, refreshed hourly).

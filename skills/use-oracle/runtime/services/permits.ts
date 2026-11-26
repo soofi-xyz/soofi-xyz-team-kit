@@ -5,6 +5,10 @@
  * eligible index, then hands each `chunkSize` slice to a child pass of the
  * same workflow (key `<PermitFeed key>-c<N>`) so no journal grows unbounded.
  *
+ * PermitFeed is the chunk-mode fallback. On a server with VQueues the permit
+ * pass sends one scoped `PermitHarvest.harvestParcel` per eligible parcel
+ * instead (`bin/enqueue-permits.ts`, scope per permit source).
+ *
  * PermitHarvest (service) routes one parcel through the county permit profile
  * to the existing vendor adapters, writes artifacts plus
  * `status/<parcelKey>.json`, then records the link result in CountyLedger
@@ -17,6 +21,7 @@ import { RestatePromise, TerminalError } from "@restatedev/restate-sdk";
 
 import { countyLedger } from "./ledger.ts";
 import { envInt } from "./lib/config.ts";
+import { IDEMPOTENCY_RETENTION_MS } from "./lib/flow-control.ts";
 import {
   buildEligibleIndex,
   harvestOneParcel,
@@ -59,6 +64,8 @@ export const permitHarvest = restate.service({
     // Detail-heavy parcels can run for many minutes inside one adapter call.
     inactivityTimeout: envInt("PERMIT_INACTIVITY_TIMEOUT_MS", 20 * MINUTE),
     abortTimeout: envInt("PERMIT_ABORT_TIMEOUT_MS", 60 * MINUTE),
+    // Permit enqueue keys stay deduplicated for 14 days (see Parcel).
+    idempotencyRetention: IDEMPOTENCY_RETENTION_MS,
   },
   handlers: {
     harvestParcel: async (

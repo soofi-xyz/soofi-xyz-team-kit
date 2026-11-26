@@ -189,6 +189,15 @@ export async function readIngestSeedPath(options: {
   return null;
 }
 
+/** The seed an enqueue-path run used, from `runs/<county>/<jobId>/enqueue.json`. */
+export async function readEnqueueSeedPath(
+  county: string,
+  jobId: string,
+): Promise<{ path: string; source: "enqueue-record" } | null> {
+  const record = await readJsonIfExists<{ seed?: unknown }>(path.join(paths.run(county, jobId), "enqueue.json"));
+  return typeof record?.seed === "string" && record.seed ? { path: record.seed, source: "enqueue-record" } : null;
+}
+
 export async function loadLedger(options: {
   adminUrl: string;
   ingressUrl: string;
