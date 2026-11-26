@@ -38,6 +38,11 @@
     "dev": "node --env-file-if-exists=.env --watch services/app.ts",
     "register": "node --env-file-if-exists=.env scripts/register-services.mjs",
     "reconcile": "node --env-file-if-exists=.env bin/reconcile-county.mjs",
+    "enqueue": "node --env-file-if-exists=.env bin/enqueue-parcels.ts",
+    "enqueue:permits": "node --env-file-if-exists=.env bin/enqueue-permits.ts",
+    "status": "node --env-file-if-exists=.env bin/oracle-status.ts",
+    "ramp": "node --env-file-if-exists=.env bin/ramp-scope.ts",
+    "scope-cap": "node --env-file-if-exists=.env bin/scope-cap.ts",
     "stack:up": "docker compose up -d",
     "stack:down": "docker compose down",
     "services:typecheck": "tsc -p tsconfig.services.json"

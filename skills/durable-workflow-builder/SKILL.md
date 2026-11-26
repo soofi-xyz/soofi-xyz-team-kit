@@ -1,6 +1,6 @@
 ---
 name: durable-workflow-builder
-description: "Author durable pipeline workflows for the skills/use-oracle/runtime project with Restate's TypeScript SDK — service topology, a code map of the shipped services, and the full pattern library (backpressure feeder, layered concurrency, deterministic keys, idempotent side effects, single-writer ledger, approval gates) distilled from running the previous county pipeline at full scale. Use when building or modifying pipeline workflows, adding a service or handler, choosing between workflow vs service vs virtual object, wiring retries, concurrency caps, or approval gates, or debugging stuck or paused invocations."
+description: "Author durable pipeline workflows for the skills/use-oracle/runtime project with Restate's TypeScript SDK — service topology, a code map of the shipped services, and the full pattern library (Restate-scoped queues for per-parcel fan-out, backpressure feeder, layered concurrency, deterministic keys, idempotent side effects, single-writer ledger, approval gates) distilled from running the previous county pipeline at full scale. Use when building or modifying pipeline workflows, adding a service or handler, choosing between workflow vs service vs virtual object, wiring retries, concurrency caps, or approval gates, or debugging stuck or paused invocations."
 metadata: {"author":"elephant-xyz"}
 ---
 # Durable Workflow Builder
@@ -50,6 +50,14 @@ A redrive pass uses a new parent key `<county>-<jobId>-r<N>` with the SAME `jobI
 payload: children and `PermitFeed` derive their keys from the parent key, while the
 artifact paths and the `CountyLedger` key (`<county>-<jobId>`) stay the same, so
 skip-existing applies and the ledger keeps one status per parcel.
+
+**Fan-out.** The default full run sends each `Parcel.process` (and later each
+`PermitHarvest.harvestParcel`) one-way through Restate's scoped ingress with an
+idempotency key, and lets VQueues hold the backlog and a rule cap each source scope
+(pattern 16; `bin/enqueue-parcels.ts`, `bin/enqueue-permits.ts`). `CountyIngest`,
+`IngestChunk` and `PermitFeed` stay as the chunk-mode fallback for a server without
+VQueues. `Parcel` and `PermitHarvest` set `idempotencyRetention` to 14 days in their
+service options: a re-registration overwrites values set only through the admin API.
 
 Pick the kind by state and keying:
 
@@ -101,6 +109,9 @@ re-streaming, no watchdogs.
 | `services/publish.ts`, `services/lib/publish-flow.ts` | `PublishGroup` and its approval gate. |
 | `services/lib/reconcile.ts`, `bin/reconcile-county.mjs` | Completion gates, manifest, group assembly. |
 | `services/lib/limits.ts` | `countyGate(stage, county, fallback)` in-process semaphores (pattern 2). |
+| `services/lib/flow-control.ts` | Scopes (`<county>-appraisal`, `<county>-permits-<adapter>`, env overrides), caps (`SCOPE_CAP_<SCOPE>`, 18 ceiling), idempotency keys, scoped send with transient retry, admin client (`sys_rules`, `PUT /limits/rules`, `sys_vqueue_meta`, service PATCH), the ramp policy, rate/ETA and the hand-off links (pattern 16). |
+| `services/lib/enqueue.ts`, `bin/enqueue-parcels.ts`, `bin/enqueue-permits.ts` | The enqueue path: marker skip, scope rule, one send per parcel, `runs/<county>/<jobId>/enqueue*.json`. |
+| `services/lib/run-status.ts`, `bin/oracle-status.ts`, `bin/ramp-scope.ts`, `bin/scope-cap.ts` | `npm run status`, `ramp`, `scope-cap`. |
 | `services/lib/storage.ts`, `seed.ts`, `cli.ts`, `config.ts`, `county-config.ts` | `DATA_DIR` paths and safe keys, seed scan/range reads, CLI runner and identity, env and per-county resolution. |
 
 The window loop every feeder uses (from `IngestChunk`):

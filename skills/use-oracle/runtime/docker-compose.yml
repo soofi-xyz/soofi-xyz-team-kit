@@ -1,10 +1,18 @@
 # Local Oracle stack: Restate only. All data lives in files under DATA_DIR;
 # there is no database service. Run state (progress, retries, per-parcel
-# status) lives in Restate's `restate-data` volume.
+# status, the per-parcel queue) lives in Restate's `restate-data` volume.
 #
 #   docker compose up -d                 # from skills/use-oracle/runtime
 #   npm run services                     # services process on :9080
 #   npm run register                     # register it with Restate
+#   open http://127.0.0.1:${RESTATE_ADMIN_PORT:-9070}/ui   # Restate UI
+#
+# Restate 1.7.9 with VQueues (flow control) ON from the first start: the
+# default full run sends one scoped invocation per parcel and Restate caps
+# each source scope (county-ingest-run). A fresh volume starts with VQueues.
+# Turning VQueues on for an existing volume migrates it one way (1.7.3+):
+# stop the services process, back the volume up, then start with the flag
+# (bootstrap-oracle-infra). Never turn it off again on a migrated volume.
 #
 # Another stack on the default ports? Give this one its own project and
 # loopback ports, e.g. COMPOSE_PROJECT_NAME=oracle-cobb-local
@@ -12,7 +20,7 @@
 name: ${COMPOSE_PROJECT_NAME:-oracle-local}
 services:
   restate:
-    image: restatedev/restate:1.7.2
+    image: restatedev/restate:1.7.9
     ports:
       - "127.0.0.1:${RESTATE_INGRESS_PORT:-8080}:8080"
       - "127.0.0.1:${RESTATE_ADMIN_PORT:-9070}:9070"
@@ -25,6 +33,12 @@ services:
       # Keep the node name stable: a changed identity breaks restoring the volume.
       # Override only to adopt an existing volume created under another name.
       RESTATE_NODE_NAME: ${RESTATE_NODE_NAME:-restate-1}
+      # Flow control (scoped queues + concurrency rules). Same as
+      # `experimental_enable_vqueues = true` in restate.toml.
+      RESTATE_EXPERIMENTAL_ENABLE_VQUEUES: ${RESTATE_EXPERIMENTAL_ENABLE_VQUEUES:-true}
+      # 16 MiB worker stacks: Restate 1.7.2 aborted once with a worker-thread
+      # stack overflow on an admin SQL query; this stopped it (1.7.9 lists no fix).
+      RUST_MIN_STACK: ${RUST_MIN_STACK:-16777216}
     restart: unless-stopped
 volumes:
   restate-data:

@@ -1,6 +1,6 @@
 ---
 name: bootstrap-oracle-infra
-description: "Verify and bootstrap the local pipeline stack required for county ingestion: the Restate server, data directories, and the bundled runtime services process registered with Restate. Use when starting county onboarding, when a run or registration fails because the stack is down, or when setting up on a fresh machine."
+description: "Verify and bootstrap the local pipeline stack required for county ingestion: the Restate server (1.7.9 with VQueues flow control, or a one-way migration of an existing volume), data directories, and the bundled runtime services process registered with Restate. Use when starting county onboarding, when a run or registration fails because the stack is down, or when setting up on a fresh machine."
 metadata: {"author":"elephant-xyz"}
 ---
 
@@ -38,6 +38,7 @@ skills/use-oracle/runtime/
   services/README.md      # service table, run commands, file layout
   scripts/register-services.mjs
   bin/reconcile-county.mjs
+  bin/enqueue-parcels.ts  # default fan-out (npm run enqueue); enqueue-permits.ts, oracle-status.ts, ramp-scope.ts, scope-cap.ts
   counties/<county>/      # flow.json, transform-v2.zip or transforms/ (scripts)
   src/counties/<county>/  # optional capture.mjs for custom browser capture
   src/permits/adapters/   # permit vendor adapters used by PermitHarvest
@@ -58,11 +59,13 @@ data/artifacts/permits/<county>/<jobId>/{raw,extracted,status}/<jurisdiction>/<k
 data/artifacts/permits/<county>/<jobId>/status/<parcelKey>.json             # link status per parcel
 data/artifacts/permits/<county>/<jobId>/eligible/<PermitFeed key>/c<N>.json # eligible index
 data/runs/<county>/<jobId>/manifest.json                                    # written by reconcile
+data/runs/<county>/<jobId>/enqueue.json | enqueue-permits.json | ramp.jsonl  # enqueue path
 data/groups/<county>/<jobId>/<group>/<parcelKey>.zip (+ <group>.assembly.json beside it)
 data/publish/<county>/<jobId>/<group>/                                      # hashed/, hash.csv, CAR, tables/, upload json
 ```
 
-`docker-compose.yml` runs one service: `restatedev/restate:1.7.2` with ingress and
+`docker-compose.yml` runs one service: `restatedev/restate:1.7.9` with VQueues on
+(`RESTATE_EXPERIMENTAL_ENABLE_VQUEUES=true`) and `RUST_MIN_STACK=16777216`, ingress and
 admin/UI bound to loopback (`127.0.0.1:${RESTATE_INGRESS_PORT:-8080}` and
 `127.0.0.1:${RESTATE_ADMIN_PORT:-9070}`), the `restate-data` volume, `extra_hosts:
 ["host.docker.internal:host-gateway"]`, `RESTATE_NODE_NAME` (default `restate-1`,
@@ -86,7 +89,10 @@ scripts load it with `node --env-file-if-exists=.env`. Per-county names take the
 | `RESTATE_IDENTITY_KEYS` | Optional hardening: the `publickeyv1_…` key(s) Restate logs at startup when it has a request-identity private key; unsigned requests then get 401. |
 | `RESTATE_ADMIN_URL`, `RESTATE_INGRESS_URL` | Admin (9070) and ingress (8080) URLs for register and reconcile. |
 | `COMPOSE_PROJECT_NAME`, `RESTATE_INGRESS_PORT`, `RESTATE_ADMIN_PORT` | Compose overrides when another stack holds the default ports. |
-| `CONCURRENCY_PREPARE[_<COUNTY>]`, `CONCURRENCY_TRANSFORM[_<COUNTY>]`, `CONCURRENCY_PERMIT_<ADAPTER>` | In-process gates (`durable-workflow-builder` pattern 2); restart the services process to apply. |
+| `CONCURRENCY_PREPARE[_<COUNTY>]`, `CONCURRENCY_TRANSFORM[_<COUNTY>]`, `CONCURRENCY_PERMIT_<ADAPTER>` | In-process gates (`durable-workflow-builder` pattern 2); restart the services process to apply. On the enqueue path keep them above the scope cap (prepare 24 for a ramp to 18). |
+| `RESTATE_EXPERIMENTAL_ENABLE_VQUEUES`, `RUST_MIN_STACK` | Compose defaults `true` and `16777216`. See "Restate flow control" below before changing either. |
+| `APPRAISAL_SCOPE_<COUNTY>`, `PERMIT_SCOPE_<COUNTY>_<ADAPTER>`, `SCOPE_CAP_<SCOPE>` | Flow-control scope per source site (defaults `<county>-appraisal`, `<county>-permits-<adapter>`) and the cap a new scope rule starts at (6 appraisal, 2 permits). `npm run register` and `npm run enqueue` create missing rules and never change an existing one. |
+| `ORACLE_SSH_USER`, `ORACLE_SSH_HOST` | User and host `npm run status` prints in the SSH tunnel command (defaults: this user and hostname). |
 | `CAPTURE_MODULE_<COUNTY>`, `CAPTURE_TIMEOUT_MS[_<COUNTY>]`, `PREPARE_{URL_TEMPLATE,METHOD,JSON_TEMPLATE,BODY_TEMPLATE,CONTENT_TYPE}_<COUNTY>`, `PREPARE_{MULTI_REQUEST_FLOW,BROWSER_FLOW,BROWSER_FLOW_ZIP,USE_BROWSER,CONTINUE_BUTTON,IGNORE_CAPTCHA,PROXY}_<COUNTY>` | Capture route and source request; see `county-appraisal-onboarding`. |
 | `TRANSFORM_{ZIP,SCRIPTS_DIR,DATA_GROUP,SEED}_<COUNTY>`, `COUNTY_NAME_<COUNTY>` | Transform package, data-group label, Seed merge (`off` disables), display name. |
 | `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES[_<COUNTY>]` | Permit eligibility: CSV of usage types, `__ALL__`, or `__NONE__`. Unset means `__NONE__` (appraisal only); set it explicitly anyway. |
@@ -151,6 +157,38 @@ or per-service options) so failures pause on your intended schedule: the stock
 `restatedev/restate:1.7` default retries ~70 times then pauses
 (`on-max-attempts = "pause"`), which the inspect-paused → fix → resume procedure relies
 on. Do NOT unset the policy — unset means unlimited retries and nothing ever pauses.
+
+## Restate flow control (VQueues)
+
+The default full run (`county-ingest-run` §3) needs Restate 1.7.9 with VQueues. Check it
+after `npm run register`:
+
+```bash
+curl -s localhost:9070/version | grep -o '"vqueues":[a-z]*'    # "vqueues":true
+# npm run register also prints: {"event":"oracle_flow_control","vqueues":true,
+#   "retention":[{"service":"Parcel","idempotency_retention":"14d",…},…],"rules":[…]}
+```
+
+- **Fresh volume:** the compose defaults start it with VQueues. This is the normal case:
+  start every new county on a fresh volume (its own compose project if another county's
+  stack is running).
+- **Existing volume (one-way migration, Restate 1.7.3+):** stop the services process,
+  record the running work, stop Restate, copy the volume (or `RESTATE_BASE_DIR`) to a
+  dated backup and compare it, start 1.7.9 with `RESTATE_EXPERIMENTAL_ENABLE_VQUEUES=true`,
+  and wait for `[VQueues Migration Completed]` on every partition in the Restate log with
+  no ERROR, panic or overflow lines. It cannot be turned off again: rolling back means
+  restoring the backup and losing what finished since. A live `CountyIngest` run is
+  carried over; kill its feeder (`CountyIngest`, then `IngestChunk`) before enqueueing the
+  same job, never run both.
+- **Stack size:** `RUST_MIN_STACK=16777216` (16 MiB worker stacks). Restate 1.7.2 aborted
+  once with a worker-thread stack overflow on an admin SQL query; this stopped it, and
+  1.7.9 lists no fix. Set it for a native (non-Docker) Restate too.
+- **Stopping the services process:** it does not exit on SIGTERM. Supervise it with a short
+  stop timeout (`TimeoutStopSec=20` in the systemd unit) so a restart does not wait 90 s
+  for SIGKILL. In-flight parcels resume from their journals either way.
+- **Restate UI:** `http://127.0.0.1:<RESTATE_ADMIN_PORT>/ui`. From another machine:
+  `ssh -N -L <port>:127.0.0.1:<port> <user>@<host>`, then open the same URL. Give both, and
+  whether VQueues is on, in the bring-up report.
 
 ## Record the stack proof
 

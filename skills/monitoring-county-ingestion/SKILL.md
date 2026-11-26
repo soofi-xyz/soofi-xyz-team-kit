@@ -1,6 +1,6 @@
 ---
 name: monitoring-county-ingestion
-description: "Monitor a running county ingestion - workflow progress and ETA, in-flight and paused invocation counts, artifact file counts under data/, CountyLedger status counts and the run manifest, and stall diagnosis - for any county. Use when asked for ingestion status, ETA, backlog, permit harvest progress, appraisal progress, or why ingestion stalled."
+description: "Monitor a running county ingestion - Restate queue progress per source scope (npm run status) and ETA, workflow progress, in-flight and paused invocation counts, artifact file counts under data/, CountyLedger status counts and the run manifest, and stall diagnosis - for any county. Use when asked for ingestion status, ETA, backlog, permit harvest progress, appraisal progress, or why ingestion stalled."
 metadata: {"author":"elephant-xyz"}
 ---
 # Monitoring County Ingestion
@@ -37,7 +37,60 @@ node scripts/<county>/serve-dashboard.mjs --port=3888
 Run state lives in Restate and data lives under `data/` — inspect them directly. There is
 no SQL database. `reconcile-county.mjs` (below) is the only reconciliation helper.
 
-## Run progress
+## Enqueue-path progress (default full run)
+
+A run started with `npm run enqueue` (`county-ingest-run` §3) has no feeder workflow: the
+backlog is Restate's queue per scope. Start every check with the status command (from
+`skills/use-oracle/runtime`):
+
+```bash
+npm run status -- --county <county> --job <jobId>            # --minutes 15 (rate window), --json
+```
+
+It prints the queue per scope, the cap in use and its waiters, `backing-off`/`paused`
+Parcel and PermitHarvest counts, ready/dead/seed file counts, the rate over the last N
+minutes, the ETA, and the hand-off block. The same numbers by SQL (Restate UI → SQL, or
+`curl -s localhost:9070/query -H 'accept: application/json' --json '{"query":"…"}'`):
+
+```sql
+-- parcels left in the appraisal scope (paused and suspended are not done either)
+SELECT num_inbox AS queued, num_running AS running, num_suspended AS suspended,
+       num_paused AS paused, num_finished AS done,
+       num_inbox + num_running + num_suspended + num_paused AS parcels_left
+FROM sys_vqueue_meta WHERE service_name = 'Parcel' AND scope = '<scope>';
+-- permit scopes
+SELECT scope, num_inbox, num_running, num_paused, num_finished
+FROM sys_vqueue_meta WHERE service_name = 'PermitHarvest';
+-- cap and usage (GET /limits/rules answers 405; read the rule book here)
+SELECT * FROM sys_rules;
+SELECT scope, usage, concurrency_limit, available, num_waiters FROM sys_user_limits WHERE level = 'Scope';
+-- per job, through the idempotency key
+SELECT status, count(*) FROM sys_invocation
+WHERE target_service_name = 'Parcel' AND idempotency_key LIKE '<county>-<jobId>-%' GROUP BY status;
+```
+
+Use `sys_vqueue_meta.num_running` or `sys_user_limits.usage` for "running": under fast
+churn `sys_invocation` over-counts `invoked`. The ramp's samples are in
+`data/runs/<county>/<jobId>/ramp.jsonl` (cap, verdict, reasons, action). The rate and ETA
+come from `ready.json`/`dead.json` written in the window, so they ignore skipped parcels.
+
+Stall checks for this path, before the general list below: usage below the cap with
+queued work (services process down or not registered); `usage == cap` but nothing
+finishing (source slow or hanging: probe it unloaded); `num_paused > 0` (classify the
+journal, then resume); no rule on the scope (`npm run scope-cap -- --scope <scope>`); a
+capture gate at or below the cap (`CONCURRENCY_PREPARE_<COUNTY>`), which makes the cap
+look unused.
+
+**Hand-off block, required in every status report and every hand-off:**
+
+- Restate UI: `http://127.0.0.1:<RESTATE_ADMIN_PORT>/ui` (default 9070);
+- from another machine: `ssh -N -L <port>:127.0.0.1:<port> <user>@<host>`, then open the
+  same URL;
+- the parcels-left query above, with the run's scope;
+- the Console Pipeline tab (shared view, refreshed hourly):
+  <https://soofi-safavi.account.prismteam.ai/console/app/?app=meet-backfill-progress&tab.data-mining-tabs=data-mining-pipeline-table#/data-mining>.
+
+## Run progress (chunk mode)
 
 The `CountyIngest` workflow (key `<county>-<jobId>`) fans the seed into per-chunk
 `IngestChunk` child workflows (keys `<county>-<jobId>-c<N>`) and tracks `phase`

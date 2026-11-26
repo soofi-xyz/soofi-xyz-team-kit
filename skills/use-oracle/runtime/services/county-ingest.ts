@@ -6,6 +6,11 @@
  *
  * IngestChunk (workflow) dispatches `Parcel.process` in bounded windows: the
  * next window is admitted only when the previous one completes.
+ *
+ * Chunk mode is the fallback. The default full run sends one scoped
+ * `Parcel.process` per parcel (`bin/enqueue-parcels.ts`) and lets Restate's
+ * VQueues hold the backlog and cap it per source scope; use chunk mode only
+ * on a server without VQueues (see county-ingest-run).
  */
 import * as restate from "@restatedev/restate-sdk";
 import { RestatePromise, TerminalError } from "@restatedev/restate-sdk";
@@ -18,8 +23,11 @@ import {
   resolveSourceRequest,
   resolveTransformConfig,
 } from "./lib/county-config.ts";
+import { parcelPayload } from "./lib/enqueue.ts";
 import { FLOW_MECHANISMS } from "./lib/parcel-steps.ts";
 import { readSeedRange, scanSeed, type SeedRow } from "./lib/seed.ts";
+
+export { parcelPayload };
 import { assertCounty, assertJobId, resolveUnderData } from "./lib/storage.ts";
 
 const MINUTE = 60_000;
@@ -62,16 +70,6 @@ function checkIds(county: unknown, jobId: unknown): void {
   } catch (error) {
     throw new TerminalError((error as Error).message);
   }
-}
-
-/** Seed row → Parcel.process payload; canonical fields cannot be overridden by CSV columns. */
-function parcelPayload(row: SeedRow, county: string, jobId: string) {
-  const { parcel_id, source_identifier, situs_address, ...rest } = row;
-  const extra: Record<string, string> = {};
-  for (const [key, value] of Object.entries(rest)) {
-    if (typeof value === "string" && key !== "county" && key !== "jobId") extra[key] = value;
-  }
-  return { county, jobId, parcel_id, source_identifier, situs_address, extra };
 }
 
 async function assertCountyRunnable(county: string, header: string[]): Promise<void> {

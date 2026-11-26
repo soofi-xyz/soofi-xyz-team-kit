@@ -16,5 +16,6 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["services/**/*.ts", "tests/services-*.ts"]
+  "include": ["services/**/*.ts", "bin/*.ts", "tests/services-*.ts"],
+  "exclude": ["bin/enrichment-batch.ts"]
 }

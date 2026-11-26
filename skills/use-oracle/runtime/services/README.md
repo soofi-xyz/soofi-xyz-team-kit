@@ -20,7 +20,7 @@ database.
 cd skills/use-oracle/runtime
 cp .env.example .env            # set ELEPHANT_CLI and per-county settings
 npm ci
-docker compose up -d            # Restate only: ingress :8080, admin/UI :9070
+docker compose up -d            # Restate 1.7.9 + VQueues: ingress :8080, admin/UI :9070 (/ui)
 npm run services                # or `npm run dev` (restarts on change)
 npm run register                # admin API; --force after handler changes
 ```
@@ -45,17 +45,31 @@ in a compose override file). Restate logs the matching `publickeyv1_…` key at
 startup; set `RESTATE_IDENTITY_KEYS=<that key>` (comma list allowed) and
 restart the services process. Unsigned requests then get HTTP 401.
 
-Start a run, then reconcile it:
+Start a run (default: one scoped invocation per parcel, queued and capped by
+Restate's VQueues), watch it, then reconcile it:
+
+```bash
+npm run enqueue -- --county <county> --job <jobId> --seed seeds/<county>.csv
+npm run ramp -- --county <county> --job <jobId>     # cap 6 -> 12 -> 18 on clean samples
+npm run status -- --county <county> --job <jobId>   # queue, rate, ETA, Restate UI + tunnel
+npm run reconcile -- --county <county> --job <jobId> --strict --assemble county
+npm run enqueue:permits -- --county <county> --job <jobId>   # after the appraisal queue drains
+npm run scope-cap -- --scope <scope> [--cap <n>]             # read or set a scope's cap
+```
+
+Scopes, keys, caps and the ramp policy: `lib/flow-control.ts` and
+`county-ingest-run/reference/full-run-flow-control.md`. Chunk mode (fallback,
+for a server without VQueues):
 
 ```bash
 curl localhost:8080/CountyIngest/<county>-<jobId>/run/send \
   --json '{"county":"<county>","jobId":"<jobId>","seedPath":"seeds/<county>.csv"}'
-npm run reconcile -- --county <county> --job <jobId> --strict --assemble county
 ```
 
 Without `--seed`, reconcile uses the seed the run was started with (CountyIngest
-`<county>-<jobId>` state via the admin API, then its `status` handler), falling
-back to `seeds/<county>.csv`; the manifest records `seed.source`.
+`<county>-<jobId>` state via the admin API, then its `status` handler, then the
+enqueue record `runs/<county>/<jobId>/enqueue.json`), falling back to
+`seeds/<county>.csv`; the manifest records `seed.source`.
 `CountyIngest` awaits its `PermitFeed`, so its `status()` phase moves
 `appraisal` → `permits` → `done` (or `appraisal-done` with `startPermits:false`)
 and carries the permit counts.
