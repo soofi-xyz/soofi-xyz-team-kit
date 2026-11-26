@@ -134,6 +134,8 @@ export function browserDocumentFetcher(vendor, profile, options) {
   const pageConcurrency = options.pageConcurrency ?? 6;
   const pad = (n) => `page-${String(n).padStart(4, "0")}.png`;
 
+  const withClose = (fn) => Object.assign(fn, { close: async () => { if (session) await session.browser.close().catch(() => {}); } });
+
   if (vendor === "publicsearch") {
     // The site's own "fetch-a-document" answer carries signed URLs for every page.
     const docs = new Map();
@@ -152,7 +154,7 @@ export function browserDocumentFetcher(vendor, profile, options) {
       });
       await session.page.waitForFunction(() => Boolean(globalThis.socket));
     };
-    return async (record) => {
+    return withClose(async (record) => {
       if (!session || !session.browser.connected) await start();
       const docId = String(record.source?.docId);
       docs.delete(docId);
@@ -171,18 +173,18 @@ export function browserDocumentFetcher(vendor, profile, options) {
         }
       }));
       return { files, sourceUrl: `https://${profile.host}/doc/${docId}` };
-    };
+    });
   }
 
   if (vendor === "maricopa-recorder-api") {
     // Unofficial PDF from the legacy recorder site (same-origin, behind Cloudflare).
-    return async (record) => {
+    return withClose(async (record) => {
       if (!session || !session.browser.connected) session = await openBrowserPage(options.chromePath, "https://legacy.recorder.maricopa.gov/recdocdata/");
       const url = `https://legacy.recorder.maricopa.gov/recdocdata/unofficialpdfdocs.aspx?rec=${encodeURIComponent(record.instrumentNumber)}&suf=&pg=1&isAffidavit=false&cls=RecorderDocuments`;
       const bytes = await fetchInPage(session.page, url);
       if (!bytes || bytes.subarray(0, 5).toString() !== "%PDF-") throw new Error(`no PDF for ${record.instrumentNumber}`);
       return { files: [{ name: "document.pdf", bytes, contentType: "application/pdf" }], sourceUrl: url };
-    };
+    });
   }
 
   if (vendor === "aumentum-recorder") {
@@ -206,8 +208,26 @@ export function browserDocumentFetcher(vendor, profile, options) {
       for (const [k, v] of Object.entries({ PN: p, SRL: 0, SRT: 0, SRW: w, SRH: h, SIW: w, SIH: h })) u.searchParams.set(k, String(v));
       return u.toString();
     };
-    return async (record) => {
+    // The viewer only serves a document after a search ran in this session.
+    let searchedDay = null;
+    const searchDay = async (isoDay) => {
+      if (searchedDay === isoDay) return;
+      const p = session.page;
+      await p.goto(`${profile.baseUrl}/RealEstate/SearchEntry.aspx`, { waitUntil: "networkidle2" });
+      await p.evaluate((day) => {
+        const [y, m, d] = day.split("-").map(Number);
+        const date = new Date(y, m - 1, d);
+        ig_controls.cphNoMargin_f_ddcDateFiledFrom.set_value(date);
+        ig_controls.cphNoMargin_f_ddcDateFiledTo.set_value(date);
+        const box = document.querySelector('input[name$="dclDocType$53"]');
+        if (box) box.checked = true;
+      }, isoDay);
+      await Promise.all([p.waitForNavigation({ waitUntil: "networkidle2" }), p.click('input[name$="SearchButtons1$btnSearch"]')]);
+      searchedDay = isoDay;
+    };
+    return withClose(async (record) => {
       await ensure();
+      await searchDay(record.recordDate ?? "2026-11-02");
       const page = await session.browser.newPage();
       try {
         await page.goto(record.source.detailUrl, { waitUntil: "networkidle2" });
@@ -229,7 +249,7 @@ export function browserDocumentFetcher(vendor, profile, options) {
       } finally {
         await page.close().catch(() => {});
       }
-    };
+    });
   }
   throw new Error(`No browser document fetcher for vendor ${vendor}`);
 }
@@ -264,6 +284,15 @@ export async function storeDocuments(input) {
 
   async function worker() {
     const fetchDocument = makeFetcher();
+    try {
+      await drain(fetchDocument);
+    } finally {
+      // Browser-backed fetchers hold a Chrome; close it so the run can exit.
+      await fetchDocument.close?.().catch(() => {});
+    }
+  }
+
+  async function drain(fetchDocument) {
     let requested = 0;
     while (next < queue.length) {
       const record = queue[next];
