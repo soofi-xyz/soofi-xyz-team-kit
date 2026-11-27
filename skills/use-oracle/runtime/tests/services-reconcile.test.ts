@@ -15,6 +15,7 @@ import { computePermitLinks, PERMIT_STATUS_SCHEMA } from "../services/lib/permit
 import {
   type LedgerSnapshot,
   loadLedger,
+  loadLedgerWhenCaughtUp,
   readIngestSeedPath,
   reconcileCounty,
 } from "../services/lib/reconcile.ts";
@@ -439,5 +440,77 @@ describe("seed index", () => {
     expect(rows[0]!.situs_address).toBe("10 A St\nUnit 2");
     expect(rows[2]!.situs_address).toBe("30, C St");
     expect(safeKeyPart(rows[0]!.parcel_id)).toBe("1");
+  });
+});
+
+describe("reconcile ledger wait (RECONCILE_LEDGER_WAIT_MS)", () => {
+  let sandbox: Sandbox;
+  beforeEach(async () => {
+    sandbox = await createSandbox();
+  });
+  afterEach(async () => {
+    await sandbox.cleanup();
+  });
+
+  const json = (value: unknown) =>
+    new Response(JSON.stringify(value), { status: 200, headers: { "content-type": "application/json" } });
+  const row = (id: string, status: string) => ({
+    key: `p:${id}`,
+    value_utf8: JSON.stringify({ parcel_id: id, stage: "ready", status }),
+  });
+  /** Admin SQL that returns the next scripted ledger on each read (last one repeats). */
+  function scripted(reads: Array<Array<{ key: string; value_utf8: string }>>) {
+    let calls = 0;
+    const fetchImpl = (async () => json({ rows: reads[Math.min(calls++, reads.length - 1)] })) as unknown as typeof fetch;
+    return { fetchImpl, calls: () => calls };
+  }
+  function fakeTime() {
+    let t = 0;
+    const slept: number[] = [];
+    return {
+      clock: () => t,
+      sleep: async (ms: number) => {
+        slept.push(ms);
+        t += ms;
+      },
+      slept,
+    };
+  }
+  const base = { adminUrl: "http://admin:9070", ingressUrl: "http://ingress:8080", key: `${COUNTY}-${JOB}`, seedPath: `seeds/${COUNTY}.csv` };
+
+  it("defaults to today's behaviour: one read, no wait, nothing recorded", async () => {
+    await writeSeed(sandbox, ["A", "B"]);
+    const ledger = scripted([[row("A", "ready")]]);
+    const time = fakeTime();
+    const { ledger: snapshot, wait } = await loadLedgerWhenCaughtUp({ ...base, timeoutMs: 0, pollMs: 10, fetchImpl: ledger.fetchImpl, ...time });
+    expect(ledger.calls()).toBe(1);
+    expect(time.slept).toEqual([]);
+    expect(wait).toBeNull();
+    expect(snapshot.parcels.size).toBe(1);
+
+    const parsed = parseReconcileArguments(["--county", COUNTY, "--job", JOB], {});
+    expect(parsed.ledgerWaitMs).toBe(0);
+    expect(parseReconcileArguments(["--county", COUNTY, "--job", JOB], { RECONCILE_LEDGER_WAIT_MS: "60000" }).ledgerWaitMs).toBe(60000);
+  });
+
+  it("re-reads until every seed parcel is settled, then reconciles the caught-up ledger", async () => {
+    await writeSeed(sandbox, ["A", "B"]);
+    const ledger = scripted([[row("A", "ready")], [row("A", "ready"), row("B", "pending")], [row("A", "dead"), row("B", "invalid")]]);
+    const time = fakeTime();
+    const { ledger: snapshot, wait } = await loadLedgerWhenCaughtUp({ ...base, timeoutMs: 1000, pollMs: 100, fetchImpl: ledger.fetchImpl, ...time });
+    expect(ledger.calls()).toBe(3);
+    expect(wait).toMatchObject({ caughtUp: true, attempts: 3, waitedMs: 200, missing: 0, pending: 0 });
+    const { manifest } = await reconcileCounty({ county: COUNTY, jobId: JOB, ledger: snapshot, ledgerWait: wait });
+    expect(manifest.ledger.wait).toMatchObject({ caughtUp: true, attempts: 3 });
+    expect(gate(manifest, "seed_accounted")).toBe("pass");
+  });
+
+  it("stops at the timeout and hands back the last read with the lag recorded", async () => {
+    await writeSeed(sandbox, ["A", "B", "C"]);
+    const ledger = scripted([[row("A", "ready"), row("B", "pending")]]);
+    const time = fakeTime();
+    const { wait } = await loadLedgerWhenCaughtUp({ ...base, timeoutMs: 250, pollMs: 100, fetchImpl: ledger.fetchImpl, ...time });
+    expect(wait).toMatchObject({ caughtUp: false, attempts: 3, waitedMs: 200, missing: 1, pending: 1 });
+    expect(time.slept).toEqual([100, 100]);
   });
 });
