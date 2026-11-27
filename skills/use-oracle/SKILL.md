@@ -148,6 +148,14 @@ Run these stages in order:
    improve both coverage and NetSuite error before publishing through Atlas. Run
    BBB, places, AVM, and roof age as applicable.
 
+7. **Mortgages:** For the Mortgage data group (recorded mortgages, deeds of trust,
+   security deeds), follow [`../mortgage-index-harvest/SKILL.md`](../mortgage-index-harvest/SKILL.md):
+   audit the county's mortgage doc-type codes first, harvest its official records index
+   in resumable, count-checked date windows (`mortgage-index-harvest` for publicsearch.us
+   counties, `mortgage-window-harvest` for API and form portals), store source documents
+   in private S3 with `mortgage-documents`, and never automate past a CAPTCHA; route
+   those counties to a records request.
+
 Preserve these run contracts:
 
 - Key parcels by folio/request identifier, never a digits-only parcel normalization;

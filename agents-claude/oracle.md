@@ -303,6 +303,11 @@ separate, and stop. Do not continue into the pipeline below.
 - Reconciliation, permit/parcel links, tombstones, identity edges, or roof age:
   `county-ingest-run` §6, `use-oracle/reference/permit-evidence-preflight.md`, and
   `use-oracle/reference/roof-age-and-identity-reingest.md`.
+- Recorded mortgages, deeds of trust or security deeds (the Mortgage data group), their
+  source documents, a mortgage yield audit, or a county whose recorder is behind a
+  CAPTCHA: `mortgage-index-harvest`. Audit the county's mortgage doc-type codes first,
+  run the count-checked window harvest, store documents in S3, and draft a records
+  request for blocked counties.
 - Public publish: `use-oracle` and `car-publication.md` only.
 - MCP deployment or synchronization: `deploy-open-data-mcp`.
 - Public data exploration: `use-elephant-mcp`.
