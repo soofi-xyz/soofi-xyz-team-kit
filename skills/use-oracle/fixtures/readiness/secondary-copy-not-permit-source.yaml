@@ -1,0 +1,41 @@
+# Failure mode: a secondary copy of permits is not the permit source.
+# Distilled from a 2026 ingest that published an appraisal district's open-data copy
+# as a whole county's permits while minable city portals went unharvested. The copy
+# held only appraiser-relevant permits, no license numbers or fees, and a short window.
+# Apply to every county.
+county: Example
+state: TX
+slug: example-secondary-copy
+fips: "48000"
+snapshot_time: "2026-01-01T00:00:00Z"
+parcel:
+  canonical_source: tax_roll
+  gis_feature_count: 1000
+  assessed_parcel_count: 1000
+  discrepancy_threshold_pct: 2.0
+  identifier_proven: true
+permits:
+  expected_jurisdiction_count: 2
+  assumes_unified_countywide_history: false
+  jurisdictions:
+    - jurisdiction: Example City
+      status: supported
+      vendor: appraisal-district-open-data
+      portal_kind: appraisal-derived
+      source_role: secondary
+      historical_records: true
+      issuer_portal_minable: true
+    - jurisdiction: Other City
+      status: supported
+      vendor: appraisal-district-open-data
+      portal_kind: appraisal-derived
+      historical_records: false
+stack:
+  orchestrator: restate
+  restate_admin_url: http://localhost:9070
+  services_registered: true
+  verified_at: "2026-01-01T00:00:00Z"
+  publication:
+    in_scope: false
+    upload_node: null
+approved_exceptions: []

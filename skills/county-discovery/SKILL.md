@@ -173,6 +173,14 @@ jurisdiction's permit portal, **classify its vendor**, and **maintain a source c
 of the pointers — knowledge that survives people and scales to all of Florida, then the US.
 This is an **agent capability to build, not a county you hand-probe once.**
 
+An appraisal district's or assessor's permit list, a state open-data copy of it, or a
+vendor aggregate is a **secondary copy**, not a permit source. It holds only the permits
+the appraiser needed, usually without license numbers or fees and over a short window.
+Use it to find jurisdictions and cross-check counts, then find each issuing authority's
+own portal. Catalog the copy with `source_role: secondary` and, for each jurisdiction it
+covers, record whether the issuer's portal is minable (`issuer_portal_minable`), the
+issuer's earliest record date, and a sample count from the issuer.
+
 **Output a source catalog** alongside the findings doc:
 `skills/use-oracle/runtime/docs/<county>-sources.yaml` — one machine-readable registry:
 countywide appraisal/sunbiz/bbb/gis blocks plus a `permits:` list, one row per

@@ -41,6 +41,17 @@ CENTRAL_PORTAL_KINDS = {
     "application-intake",
     "onestop",
 }
+# Copies of permits held by someone other than the issuing authority. An appraisal
+# district or assessor keeps only the permits it needs to value improvements, usually
+# without license numbers or fees and over a short window. A secondary copy is never
+# historical permit records and never stands in for a minable issuing portal.
+SECONDARY_PORTAL_KINDS = {
+    "appraisal-derived",
+    "assessor-copy",
+    "open-data-mirror",
+    "vendor-aggregate",
+}
+SOURCE_ROLES = {"primary", "secondary"}
 DEFAULT_DISCREPANCY_THRESHOLD_PCT = 2.0
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "readiness"
 GATE_OWNERS = {
@@ -362,6 +373,9 @@ def evaluate(catalog: dict, probe: dict | None = None) -> dict:
     missing_history_flag = []
     central_as_history = []
     missing_request = []
+    invalid_role = []
+    secondary_as_history = []
+    secondary_over_minable = []
     if permits.get("assumes_unified_countywide_history") is True:
         permit_reasons.append(
             "assumes_unified_countywide_history is true; a county portal is not every municipality's historical permit source"
@@ -381,6 +395,20 @@ def evaluate(catalog: dict, probe: dict | None = None) -> dict:
             central_as_history.append(name)
         if status in REQUEST_REQUIRED_STATUSES and not _records_request_complete(row):
             missing_request.append(name)
+        role = row.get("source_role")
+        if role is not None and role not in SOURCE_ROLES:
+            invalid_role.append(name)
+        is_secondary = role == "secondary" or kind in SECONDARY_PORTAL_KINDS
+        if is_secondary and role == "primary":
+            invalid_role.append(name)
+        if is_secondary and row.get("historical_records") is True:
+            secondary_as_history.append(name)
+        if (
+            is_secondary
+            and status in {"supported", "delegated"}
+            and row.get("issuer_portal_minable") is not False
+        ):
+            secondary_over_minable.append(name)
     if expected is None:
         permit_reasons.append("expected_jurisdiction_count is missing")
     elif int(expected) != len(jurisdictions):
@@ -402,13 +430,28 @@ def evaluate(catalog: dict, probe: dict | None = None) -> dict:
         permit_reasons.append(
             "records_request missing or incomplete for: " + ", ".join(missing_request)
         )
+    if invalid_role:
+        permit_reasons.append(
+            "source_role must be primary or secondary, and appraisal-derived/assessor-copy/open-data-mirror/vendor-aggregate portals are secondary: "
+            + ", ".join(invalid_role)
+        )
+    if secondary_as_history:
+        permit_reasons.append(
+            "secondary permit copies treated as historical records: "
+            + ", ".join(secondary_as_history)
+        )
+    if secondary_over_minable:
+        permit_reasons.append(
+            "secondary permit copy planned as the source while the issuing portal is minable or unproven (set issuer_portal_minable: false with evidence, or harvest the issuer): "
+            + ", ".join(secondary_over_minable)
+        )
     if permit_reasons and permit_exception is None:
         gates.append(
             _gate(
                 "permit",
                 "BLOCKED",
                 "; ".join(permit_reasons),
-                "Enumerate every incorporated, unincorporated, delegated, and predecessor jurisdiction; classify each; catalog records_request for blocked/custodian/manual-only rows; do not treat a county one-stop or application portal as complete municipal history",
+                "Enumerate every incorporated, unincorporated, delegated, and predecessor jurisdiction; classify each; catalog records_request for blocked/custodian/manual-only rows; do not treat a county one-stop or application portal as complete municipal history; harvest each issuing authority instead of an appraisal-district, assessor, open-data, or vendor copy",
             )
         )
     elif permit_exception and permit_reasons:
@@ -678,6 +721,31 @@ def run_self_test() -> int:
                     errors,
                 ),
                 _expect(report["seed_allowed"] is False, "unified-portal trap must forbid seed", errors),
+            ),
+        ),
+        (
+            "secondary-copy-not-permit-source.yaml",
+            1,
+            lambda report: (
+                _expect(
+                    any(
+                        gate["gate"] == "permit" and gate["status"] == "BLOCKED"
+                        for gate in report["gates"]
+                    ),
+                    "secondary permit copy must BLOCK the permit gate",
+                    errors,
+                ),
+                _expect(
+                    any(
+                        "secondary permit copies treated as historical records" in gate["evidence"]
+                        and "issuing portal is minable or unproven" in gate["evidence"]
+                        for gate in report["gates"]
+                        if gate["gate"] == "permit"
+                    ),
+                    "permit evidence must name the secondary copy and the unharvested issuer",
+                    errors,
+                ),
+                _expect(report["seed_allowed"] is False, "secondary copy must forbid seed", errors),
             ),
         ),
         (

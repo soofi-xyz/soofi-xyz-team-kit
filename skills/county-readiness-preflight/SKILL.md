@@ -1,6 +1,6 @@
 ---
 name: county-readiness-preflight
-description: "Fail-closed county readiness validator. Use before county-seed-data, county-ingest-run, onboard-county, or any pilot or full ingest. At the start of every new county, validates skills/use-oracle/runtime/docs/<county>-sources.yaml for GIS vs tax-roll, permit-jurisdiction classification, the Restate stack proof, records-request recipients, and BBB advertised-count traps."
+description: "Fail-closed county readiness validator. Use before county-seed-data, county-ingest-run, onboard-county, or any pilot or full ingest. At the start of every new county, validates skills/use-oracle/runtime/docs/<county>-sources.yaml for GIS vs tax-roll, permit-jurisdiction classification, secondary permit copies, the Restate stack proof, records-request recipients, and BBB advertised-count traps."
 ---
 
 # County Readiness Preflight
@@ -65,7 +65,14 @@ failure modes, not a list of special counties:
    `records_request`.** Name the recipient office, portal or email, system/date scope,
    and `api-first` or `records-first`. “Request a bulk export” without a recipient is
    BLOCKED.
-6. **BBB advertised listing totals are not harvestable counts.** Do not set
+6. **A secondary copy is not the permit source.** An appraisal district, assessor, state
+   open-data mirror, or vendor aggregate holds only part of what each city issues, often
+   without license numbers or fees and over a short window. Mark it `source_role:
+   secondary` (or `portal_kind` `appraisal-derived` / `assessor-copy` /
+   `open-data-mirror` / `vendor-aggregate`). It cannot be `historical_records: true`. Plan
+   it as a jurisdiction's source only with `issuer_portal_minable: false` and evidence;
+   otherwise harvest the issuing portal.
+7. **BBB advertised listing totals are not harvestable counts.** Do not set
    `expected_count` equal to `advertised_listing_count` unless `listing_page_cap` and
    `cap_acknowledged` are both true.
 
@@ -120,6 +127,7 @@ Fixtures are named by **failure mode**. They must keep passing
 | `fixtures/readiness/material-gis-assessed-discrepancy.yaml` | Material GIS vs tax-roll gap blocks GIS-only seed |
 | `fixtures/readiness/unclassified-permit-jurisdiction.yaml` | Parcel can pass while an unclassified municipality blocks |
 | `fixtures/readiness/unified-portal-not-municipal-history.yaml` | County one-stop is not complete municipal permit history |
+| `fixtures/readiness/secondary-copy-not-permit-source.yaml` | Appraisal-district or other secondary copy is not the permit source |
 | `fixtures/readiness/ready-minimal.yaml` | PASS — seed and ingest allowed |
 | `fixtures/readiness/blocked-without-request-route.yaml` | Blocked/custodian/manual-only rows need a complete `records_request` |
 | `fixtures/readiness/advertised-listing-count-is-not-harvestable.yaml` | BBB advertised listing total is not `expected_count` without a page cap |
