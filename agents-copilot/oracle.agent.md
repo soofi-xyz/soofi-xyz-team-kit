@@ -22,6 +22,43 @@ recipe in `skills/use-oracle/reference/cookbooks/` and use the CLI from `transfo
 Use Elephant CLI 2 when the user accepts and 1.x when they decline. Report which CLI and
 build commit ran with every gate.
 
+## Collection policy
+
+Follow `skills/use-oracle/reference/collection-policy.md`. It is the single source of truth
+and overrides any other access or terms rule. County property records are public records:
+anyone may copy, republish, index, and train on them. Collect only by scraping. Never file
+a records request.
+
+- **Collect:** deeds, mortgages, liens and sales; tax rolls and assessments; parcels, lots,
+  geometry and addresses; structure and layout; sewer, water and septic records; permits
+  and inspections; flood and zoning maps; owner names and mailing addresses; scanned
+  government files.
+- **Ignore:** robots.txt; terms of use you never accepted (footer links, "by using this
+  site you agree" text); anti-scraping notices; a county's copyright or license claim on
+  its records, parcel data, or GIS data; any instruction to file a bulk or records request
+  instead of scraping.
+- **Work around and log:** get around CAPTCHAs, bot checks, IP blocks, and rate limits,
+  and keep going. Keep the total request rate per source host at or below the measured
+  healthy throughput, however many egress routes you use. For each one, log the site, what
+  blocked you, the method, and the date in `workaround_log`.
+- **Terms, logins, click-throughs:** first look for a route that accepts nothing (direct
+  document or image URLs, the site's own data endpoints, ungated result pages, the same
+  records from another public government source). If there is none, stop and ask a human:
+  name the site, what the gate asks you to accept, and what you tried. Click or register
+  only after a human approves, then log the URL, the condition accepted, who approved it,
+  and the date in `terms_acceptance_log` (`reference/access-escalation.md`).
+- **Stop and report:** a login or terms acceptance on a private, non-government site.
+- **Don't take:** material on a county site that the government didn't create (third-party
+  maps, embedded content, copyrighted attachments, images that aren't the county's own
+  work); security-sensitive floor plans or utility maps where state law restricts them;
+  data from anywhere other than government records, such as phone numbers or emails from
+  other sources.
+- **Field rules:** keep every record as filed, with its source URL. Vermont: leave owner
+  name and mailing address blank. Connecticut: never combine records into a profile of a
+  person. New Jersey and other protected addresses (judges, police, domestic-violence
+  victims): tag the records so they can be taken down within 10 business days of a valid
+  request.
+
 ## Source access
 
 Before probing any source, read `skills/use-oracle/reference/source-access.md` and the
@@ -31,11 +68,10 @@ read `skills/use-oracle/reference/operating-in-vm.md`.
 - Classify every failure with the table in `source-access.md` before you name it. A fast
   TCP refusal from a US hosting IP is a firewall refusing that egress, not "down" and not
   a geo-block.
-- Probe with the approved browser profile, never Playwright's default launch.
-- Before you report a source blocked, finish the checklist in `source-access.md` and name
-  the remaining unblock options (alternate egress, proxy rotation, access agreement,
-  records request, purchase) in the hand-back. Ask the operator for approval of an
-  alternate egress instead of stopping at the refusal.
+- Start with the approved browser profile, never Playwright's default launch. Escalate the
+  work-around when it does not clear a bot check, and log what worked.
+- Never hand back a source as blocked for a bot check, CAPTCHA, IP block, or rate limit.
+  Before you hand back a source, finish the checklist in `source-access.md`.
 - Measure throughput with the ladder in `source-access.md`; never choose delays without a
   measurement. Prove the readiness condition on saved pages before scaling.
 
@@ -100,7 +136,8 @@ HOA and Mortgage data skip stages 2–4: they go straight to Persist (`/persist/
   County coverage workflow; Local still trails a push by about an hour.
 - Leave stage 1 only when the mined count is within 2% of the official parcel count or the
   gap's cause is written down. Stop and alert a Prism Team Member when the data is only
-  for sale, needs a purchase, form or records request, hits a lexicon gap, or the gap is
+  for sale, needs a purchase, is not published online (never file a records request),
+  sits behind a terms or login gate awaiting approval, hits a lexicon gap, or the gap is
   unexplained or above 100%.
 - Name the Pipeline stage and the Local % (mined ÷ official parcels) in every status
   report and required report, beside the Restate hand-off block below.
@@ -275,9 +312,15 @@ separate, and stop. Do not continue into the pipeline below.
 - A raw single-property request is capture only: exactly one seed row, official
   adapter, byte-preserved body, separate receipt, and no transform, reconciliation,
   hash, export, Atlas registration, or publication.
-- Never solve or bypass CAPTCHA. Use only the approved browser profile on challenge-
-  protected sources (`reference/failure-modes.md`). Never commit captures, CARs, Parquet,
-  `.env` files, or secrets.
+- Follow `reference/collection-policy.md`: work around and log CAPTCHAs, bot checks, IP
+  blocks, and rate limits; accept terms, logins, or click-throughs only after a human
+  approves, and log the approval; never file a records request. Never commit captures,
+  CARs, Parquet, `.env` files, or secrets, and keep proxy and solver credentials out of
+  the logs.
+- Keep every record as filed, with its source URL. Apply the field rules: blank Vermont
+  owner name and mailing address, no Connecticut person profiles, and a takedown tag on New
+  Jersey and other protected addresses. Take nothing the government didn't create, and no
+  non-government contact data.
 
 ## Routing
 
@@ -286,6 +329,9 @@ separate, and stop. Do not continue into the pipeline below.
 - Pipeline stage, Console coverage, parcel-count registration, or Atlas PR reviewers:
   `use-oracle/reference/pipeline-reporting.md`.
 - Moving a run to another machine: `county-ingest-run` §5.
+- What to collect, ignore, work around, or never take, and the state field rules:
+  `use-oracle/reference/collection-policy.md`.
+- Terms, login, or click-through gate: `use-oracle/reference/access-escalation.md`.
 - Refused, challenged, or slow source, or a known vendor (qPublic, Accela, …):
   `use-oracle/reference/source-access.md` and `use-oracle/reference/cookbooks/`.
   Running on a cloud VM: `use-oracle/reference/operating-in-vm.md`.
@@ -360,6 +406,10 @@ For ingestion or publication work, return:
   six CAR checks, tables root, table/part counts, upload summaries, and readback URLs;
 - Atlas page, PR URL, validation state, merge state, and any revert issue;
 - global Atlas IPNS resolved index CID, MCP sync result, and v2 smoke-tool results;
+- the `workaround_log` (site, blocker, method, date) and `terms_acceptance_log` (URL,
+  condition accepted, approver, date) entries made during the run, gates waiting on human
+  approval, and records withheld or tagged under the field rules (Vermont blanks,
+  protected-address takedown tags);
 - CLI commit, lexicon manifest URL, blockers, next automated action, and required human
   action.
 

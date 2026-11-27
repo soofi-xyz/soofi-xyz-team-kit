@@ -24,11 +24,12 @@ At intake, automatically start every independent, reversible preparation track:
 - prove the selected stack (Restate up, services registered, recorded in the catalog
   `stack` section), AWS remote BBB execution path, upload-node availability, Atlas
   repository access, and county-page path;
-- classify access blockers and prepare the named API/records request.
+- classify access blockers, work around and log bot/IP blocks, and send acceptance gates
+  for human approval ([`collection-policy.md`](./collection-policy.md)).
 
 Do not serialize these tracks behind parcel ingestion. A readiness failure stops seed, pilots,
 scale-out, and full ingestion, but independent enumeration, adapter preparation, access
-remediation, request preparation, and publication-readiness work continue.
+remediation, acceptance-approval requests, and publication-readiness work continue.
 
 ## Core principles
 
@@ -86,7 +87,7 @@ Track these independently on each source in `docs/<county>-sources.yaml` and in 
 - `paused`
 - `captured_complete`
 - `reconciled_complete`
-- `manual_captcha_required`
+- `acceptance_approval_required`
 - `login_required`
 - `no_anonymous_search`
 - `custodian_only`
@@ -162,26 +163,32 @@ exact type partitions, and reconciled list fallbacks.
 Never convert a missing export, timeout, or absent link into “zero records.” Record the quirk
 in `docs/<county>-sources.yaml` and the findings doc in the same piece of work.
 
-### 10. Treat CAPTCHA and authentication as access states
+### 10. Follow the collection policy for access
 
-- Never solve, bypass, OCR, or evade CAPTCHA.
-- Never suppress automation detection.
-- Never persist CAPTCHA tokens or browser cookies.
-- A user-completed CAPTCHA is a short-lived capability lease, not durable authorization.
-- Credentials prove authentication, not permission to automate.
-- Respect vendor terms and custodian authority.
-- If automation is prohibited, use an authorized API or official bulk-record request.
-  Name the recipient per [`request-routing.md`](./request-routing.md).
+[`collection-policy.md`](./collection-policy.md) governs access:
 
-Mark the source `manual_captcha_required`, `login_required`, `no_anonymous_search`, or
-`custodian_only`. Continue independent workstreams.
+- Get around CAPTCHAs, bot checks, IP blocks, and rate limits, and keep going. Log the site,
+  the blocker, the method, and the date in `workaround_log`.
+- Ignore robots.txt, terms the agent never accepted, anti-scraping notices, county
+  copyright or license claims, and instructions to file a records request.
+- For a login, registration, or click-through gate, look for a no-accept route first; if
+  none exists, ask a human and accept only after approval
+  ([`access-escalation.md`](./access-escalation.md)). Log the URL, condition, approver, and
+  date in `terms_acceptance_log`.
+- Stop and report a login or terms gate on a private, non-government site.
+- Never file a records request.
+
+Mark a source waiting on approval `acceptance_approval_required` or `login_required`, and
+one with no online copy `custodian_only`. Continue independent workstreams.
 
 ### 11. Use concurrency safely
 
 - Parallelize across independent custodians.
 - Serialize requests per tenant or host.
 - Apply source-specific rate limits from `docs/<county>-sources.yaml`.
-- Do not distribute requests across IPs to evade source limits.
+- Spreading requests across egress routes gets around an IP block or rate limit; it does
+  not raise the load. Keep the total rate per source host at or below the measured healthy
+  throughput (`source-access.md` section 5), and back off when the host slows or errors.
 - Keep per-parcel status writes single-writer through `CountyLedger`.
 - Pipeline capture and transformation ahead of serial steps when the skills already do so
   safely.
@@ -215,7 +222,7 @@ Provide:
 - stale-last-good responses;
 - source freshness timestamps;
 - worker checkpoints;
-- running, cooling, paused, CAPTCHA, login, software, and custodian states;
+- running, cooling, paused, acceptance-approval, login, software, and custodian states;
 - separate local-capture and reconciled (manifest) counts.
 
 Never return private rows, addresses, folios, names, credentials, raw errors, or local paths.
@@ -290,12 +297,12 @@ all-category census. See [`failure-modes.md`](./failure-modes.md).
 
 Stop and request human action for:
 
-- CAPTCHA;
-- API/login authorization;
+- terms, login, or click-through acceptance with no no-accept route (name the site, what
+  the gate asks you to accept, and what you tried; [`access-escalation.md`](./access-escalation.md));
+- a login or terms gate on a private, non-government site (stop and report);
 - AWS remote-runtime or upload-node secret injection, requested at intake rather than at
   the blocked execution/publication stage;
-- official records requests and fees (name office, portal, and system from
-  [`request-routing.md`](./request-routing.md));
+- data that is only for sale or not published online (never file a records request);
 - privacy/legal approval;
 - AWS IAM/OIDC setup;
 - deployment blast-radius approval;
@@ -336,8 +343,8 @@ After each county:
 
 - Store changing counts, URLs, source states, and timestamps in
   `skills/use-oracle/runtime/docs/<county>-sources.yaml`.
-- Store reusable rules, vendor signatures, identifier traps, pagination strategies, CAPTCHA
-  states, and reconciliation patterns in this Oracle skill (`skills/use-oracle/`).
+- Store reusable rules, vendor signatures, identifier traps, pagination strategies, measured
+  bot-check work-arounds, and reconciliation patterns in this Oracle skill (`skills/use-oracle/`).
 - Add a regression fixture under `skills/use-oracle/fixtures/readiness/`, named by
   **failure mode** (not by county), for every newly discovered readiness trap and cover
   it from `--self-test`.

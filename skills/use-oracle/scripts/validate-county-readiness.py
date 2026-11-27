@@ -32,8 +32,6 @@ PERMIT_CLASSIFICATIONS = {
     "custodian-only",
 }
 UNCLASSIFIED = {"needs-review", None, "", "unclassified"}
-REQUEST_REQUIRED_STATUSES = {"blocked", "custodian-only", "manual-only"}
-VALID_REQUEST_ROUTES = {"api-first", "records-first"}
 GEOMETRY_NULL_POLICY = {"acknowledged", "none"}
 CENTRAL_PORTAL_KINDS = {
     "central-submission",
@@ -65,7 +63,7 @@ SAFE_PREPARATION_ACTIONS = [
     "Continue bounded source and jurisdiction enumeration",
     "Continue adapter fingerprinting, scaffolds, fixtures, and bounded tests",
     "Continue AWS BBB runtime, Restate stack, upload-node, and Atlas PR readiness",
-    "Prepare named API or records requests for blocked sources",
+    "Work around and log bot/IP blocks; escalate only terms/login/click-through gates for human approval (reference/collection-policy.md)",
 ]
 REQUIRED_SERVICES = [
     "Parcel",
@@ -221,18 +219,6 @@ def _approved(catalog: dict, gate: str) -> dict | None:
     return None
 
 
-def _records_request_complete(row: dict) -> bool:
-    req = row.get("records_request")
-    if not isinstance(req, dict):
-        return False
-    office = str(req.get("recipient_office") or "").strip()
-    scope = str(req.get("system_scope") or "").strip()
-    route = str(req.get("route") or "").strip()
-    portal = str(req.get("request_portal_url") or "").strip()
-    email = str(req.get("request_email") or "").strip()
-    return bool(office and scope and route in VALID_REQUEST_ROUTES and (portal or email))
-
-
 def _as_number(value) -> float | None:
     if value is None or value == "":
         return None
@@ -372,7 +358,6 @@ def evaluate(catalog: dict, probe: dict | None = None) -> dict:
     unclassified = []
     missing_history_flag = []
     central_as_history = []
-    missing_request = []
     invalid_role = []
     secondary_as_history = []
     secondary_over_minable = []
@@ -393,8 +378,6 @@ def evaluate(catalog: dict, probe: dict | None = None) -> dict:
         kind = str(row.get("portal_kind") or "").strip().lower()
         if kind in CENTRAL_PORTAL_KINDS and row.get("historical_records") is True:
             central_as_history.append(name)
-        if status in REQUEST_REQUIRED_STATUSES and not _records_request_complete(row):
-            missing_request.append(name)
         role = row.get("source_role")
         if role is not None and role not in SOURCE_ROLES:
             invalid_role.append(name)
@@ -426,10 +409,6 @@ def evaluate(catalog: dict, probe: dict | None = None) -> dict:
             "central-submission/onestop/supplemental portals treated as historical records: "
             + ", ".join(central_as_history)
         )
-    if missing_request:
-        permit_reasons.append(
-            "records_request missing or incomplete for: " + ", ".join(missing_request)
-        )
     if invalid_role:
         permit_reasons.append(
             "source_role must be primary or secondary, and appraisal-derived/assessor-copy/open-data-mirror/vendor-aggregate portals are secondary: "
@@ -451,7 +430,7 @@ def evaluate(catalog: dict, probe: dict | None = None) -> dict:
                 "permit",
                 "BLOCKED",
                 "; ".join(permit_reasons),
-                "Enumerate every incorporated, unincorporated, delegated, and predecessor jurisdiction; classify each; catalog records_request for blocked/custodian/manual-only rows; do not treat a county one-stop or application portal as complete municipal history; harvest each issuing authority instead of an appraisal-district, assessor, open-data, or vendor copy",
+                "Enumerate every incorporated, unincorporated, delegated, and predecessor jurisdiction; classify each; work around and log bot/IP blocks on blocked sources (reference/collection-policy.md); do not treat a county one-stop or application portal as complete municipal history; harvest each issuing authority instead of an appraisal-district, assessor, open-data, or vendor copy",
             )
         )
     elif permit_exception and permit_reasons:
@@ -706,6 +685,30 @@ def run_self_test() -> int:
                     errors,
                 ),
                 _expect(report["seed_allowed"] is False, "unclassified permit must forbid seed", errors),
+                _expect(
+                    report["preparation_allowed"] is True,
+                    "readiness block must allow independent preparation",
+                    errors,
+                ),
+                _expect(
+                    report["execution_allowed"] is False,
+                    "readiness block must forbid execution",
+                    errors,
+                ),
+                _expect(
+                    report["next_automated_actions"] == SAFE_PREPARATION_ACTIONS,
+                    "readiness block must return all safe continuation actions",
+                    errors,
+                ),
+                _expect(
+                    any(
+                        item["gate"] == "permit"
+                        and item["owner"] == "county-discovery / county-permit-adapter"
+                        for item in report["required_blocker_actions"]
+                    ),
+                    "blocked permit gate must name its owner",
+                    errors,
+                ),
             ),
         ),
         (
@@ -773,51 +776,31 @@ def run_self_test() -> int:
             ),
         ),
         (
-            "blocked-without-request-route.yaml",
-            1,
+            "blocked-jurisdiction-no-request-needed.yaml",
+            0,
             lambda report: (
                 _expect(
+                    report["overall"] == "PASS",
+                    "a classified blocked jurisdiction needs no records request and must PASS",
+                    errors,
+                ),
+                _expect(
                     any(
-                        gate["gate"] == "permit" and gate["status"] == "BLOCKED"
+                        gate["gate"] == "permit" and gate["status"] == "PASS"
                         for gate in report["gates"]
                     ),
-                    "blocked jurisdiction without records_request must BLOCK permit",
+                    "a blocked jurisdiction that is worked around must PASS the permit gate",
                     errors,
                 ),
                 _expect(
-                    any(
-                        "records_request missing or incomplete" in gate["evidence"]
+                    all(
+                        "records_request" not in gate["evidence"]
                         for gate in report["gates"]
-                        if gate["gate"] == "permit"
                     ),
-                    "permit evidence must name incomplete records_request",
+                    "no gate may demand a records_request",
                     errors,
                 ),
-                _expect(report["seed_allowed"] is False, "missing records_request must forbid seed", errors),
-                _expect(
-                    report["preparation_allowed"] is True,
-                    "readiness block must allow independent preparation",
-                    errors,
-                ),
-                _expect(
-                    report["execution_allowed"] is False,
-                    "readiness block must forbid execution",
-                    errors,
-                ),
-                _expect(
-                    report["next_automated_actions"] == SAFE_PREPARATION_ACTIONS,
-                    "readiness block must return all safe continuation actions",
-                    errors,
-                ),
-                _expect(
-                    any(
-                        item["gate"] == "permit"
-                        and item["owner"] == "county-discovery / county-permit-adapter"
-                        for item in report["required_blocker_actions"]
-                    ),
-                    "blocked permit gate must name its owner",
-                    errors,
-                ),
+                _expect(report["seed_allowed"] is True, "a worked-around block must allow seed", errors),
             ),
         ),
         (

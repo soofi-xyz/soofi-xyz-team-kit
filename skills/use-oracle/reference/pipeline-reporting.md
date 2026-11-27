@@ -49,8 +49,9 @@ stage 3.
 
 Leave stage 1 only when the mined count is within 2% of the official parcel count, or the
 cause of the gap is written down in the county findings. Stop and alert a Prism Team Member
-when the data is only for sale, needs a purchase, form or records request, hits a lexicon
-gap, or the count gap is unexplained or above 100% of the official count.
+when the data is only for sale, needs a purchase, is not published online (we never file a
+records request), sits behind a terms or login gate awaiting approval, hits a lexicon gap,
+or the count gap is unexplained or above 100% of the official count.
 
 ## How the Console sees progress
 

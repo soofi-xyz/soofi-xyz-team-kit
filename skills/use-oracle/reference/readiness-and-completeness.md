@@ -39,7 +39,9 @@ Record the following in `docs/<county>-sources.yaml`:
   assessor, state open-data, or vendor copy) and, for a secondary row,
   `issuer_portal_minable` with evidence
 - Record-search / `historical_records` versus application-submission capability
-- Anonymous, authenticated, CAPTCHA, manual, or custodian-only access state
+- Anonymous, worked-around (with its `workaround_log` entry), acceptance-approved (with its
+  `terms_acceptance_log` entry), or custodian-only access state
+  ([`collection-policy.md`](./collection-policy.md))
 - Earliest accessible record date and known exclusions
 - Adapter family, reuse decision, implementation status, fixture, and test evidence
 - Reported count, enumeration strategy, and enumeration status
@@ -66,7 +68,8 @@ any gate is `BLOCKED`. This applies when `onboard-county` is invoked directly.
 
 At intake, automatically begin bounded source/jurisdiction enumeration, adapter
 fingerprinting and implementation scaffolds, AWS remote BBB execution setup, stack
-proof, upload-node and Atlas-PR readiness checks, and named records-request preparation. These
+proof, upload-node and Atlas-PR readiness checks, bot/IP work-arounds, and acceptance-approval
+requests for terms/login gates. These
 independent preparation tracks continue while a readiness gate is blocked; bulk traversal
 and pilots do not.
 
@@ -147,9 +150,10 @@ not a roster of special counties:
 - Determine result caps, pagination behavior, date boundaries, record-type partitions, session
   requirements, and anonymous-access limits before scaling.
 - Blocked or unavailable jurisdictions must remain visible in coverage.
-- For `blocked`, `custodian-only`, and `manual-only` rows, catalog `records_request` with
-  `recipient_office`, `system_scope`, `route` (`api-first` or `records-first`), and a
-  portal URL or email (`reference/request-routing.md`).
+- Never file a records request. For a `blocked` row, work around the bot or IP block and log
+  it in `workaround_log`. For a row behind a terms, login, or click-through gate, record the
+  human-approved acceptance in `terms_acceptance` (`reference/access-escalation.md`). A
+  `custodian-only` row has no online copy and stays visible as a coverage gap.
 
 ### Stack readiness gate
 
@@ -217,7 +221,6 @@ The validator fails (`exit 1`) when:
 - The `stack` section is missing, `orchestrator` is not `restate`, `services_registered` is
   not true, or `verified_at` is missing
 - `stack.publication.in_scope` is true without `stack.publication.upload_node`
-- A blocked / custodian-only / manual-only jurisdiction lacks `records_request`
 - A secondary permit copy is marked `historical_records: true`, or is planned as a
   jurisdiction's source while that jurisdiction's issuing portal is minable or unproven
 - BBB `expected_count` copies an advertised listing total without a page-cap acknowledgment
@@ -347,7 +350,7 @@ evidence for the county being ingested.
 | `fixtures/readiness/unified-portal-not-municipal-history.yaml` | County one-stop is not municipal permit history |
 | `fixtures/readiness/secondary-copy-not-permit-source.yaml` | An appraisal-district or other secondary copy is not the permit source while issuer portals are minable |
 | `fixtures/readiness/ready-minimal.yaml` | PASS |
-| `fixtures/readiness/blocked-without-request-route.yaml` | Blocked/custodian/manual-only rows need `records_request` |
+| `fixtures/readiness/blocked-jurisdiction-no-request-needed.yaml` | PASS — a classified blocked jurisdiction needs no records request; work around and log it |
 | `fixtures/readiness/advertised-listing-count-is-not-harvestable.yaml` | Advertised BBB listings are not `expected_count` without a page-cap acknowledgment |
 | `fixtures/readiness/stack-ready-publication-in-scope.yaml` | PASS — Restate stack proven, publication in scope with an upload node |
 | `fixtures/readiness/stack-missing.yaml` | No `stack` section; BLOCKED |

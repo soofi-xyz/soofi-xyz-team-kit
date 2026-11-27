@@ -22,14 +22,20 @@ Ask once, then execute approved stages without repeated confirmation:
    relationship extract before reading those permits.
 4. Local Restate or bundled AWS execution. Verify selected AWS identity and region when
    AWS is chosen; fall back to local only with operator agreement.
-5. US egress and any login, CAPTCHA, records-request, or custodian constraints.
-6. Restate stack: compose project and ports (`COMPOSE_PROJECT_NAME`,
+5. US egress, and any login, terms, or click-through gate that needs human approval, or
+   custodian-only data with no online copy. Bot checks and IP blocks are worked around and
+   logged, and we never file a records request
+   ([`collection-policy.md`](../use-oracle/reference/collection-policy.md)).
+6. The state's field rules: Vermont leaves owner name and mailing address blank,
+   Connecticut never combines records into a person profile, and New Jersey and other
+   protected addresses are tagged for takedown.
+7. Restate stack: compose project and ports (`COMPOSE_PROJECT_NAME`,
    `RESTATE_INGRESS_PORT`, `RESTATE_ADMIN_PORT`) and admin URL, or an existing stack to
    reuse.
-7. Permit eligibility for `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_<COUNTY>` (usage-type
+8. Permit eligibility for `PROPERTY_FIRST_PERMIT_ELIGIBLE_USAGE_TYPES_<COUNTY>` (usage-type
    CSV, `__ALL__`, or `__NONE__`); unset means appraisal only.
-8. Existing flows, transforms, findings, and reusable adapters.
-9. Whether public publication is in scope. If yes, confirm an upload node that will
+9. Existing flows, transforms, findings, and reusable adapters.
+10. Whether public publication is in scope. If yes, confirm an upload node that will
    remain publicly reachable through Atlas merge and authenticated Atlas PR access.
 
 Restate the source boundary, stages, job ID, execution mode, Restate stack, and
@@ -152,8 +158,11 @@ working artifacts.
 - Do not persist a contractor company, person, or license copied from a permit.
   Permit fields are DBPR search keys only. No DBPR match means write no contractor,
   person, or license.
-- Keep each source bounded, rate-limited, retryable, and resumable.
-- Never bypass CAPTCHA or automation restrictions.
+- Keep each source bounded, retryable, and resumable, with its total request rate at or
+  below the measured healthy throughput.
+- Follow [`collection-policy.md`](../use-oracle/reference/collection-policy.md): work around
+  and log CAPTCHAs, bot checks, IP blocks, and rate limits; get human approval before
+  accepting any terms, login, or click-through; never file a records request.
 - Preserve source payloads and lexicon gaps.
 - Track dead tails from source-empty evidence, not from failed transforms.
 - Record every PR and immutable artifact digest in the findings.

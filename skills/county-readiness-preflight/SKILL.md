@@ -1,6 +1,6 @@
 ---
 name: county-readiness-preflight
-description: "Fail-closed county readiness validator. Use before county-seed-data, county-ingest-run, onboard-county, or any pilot or full ingest. At the start of every new county, validates skills/use-oracle/runtime/docs/<county>-sources.yaml for GIS vs tax-roll, permit-jurisdiction classification, secondary permit copies, the Restate stack proof, records-request recipients, and BBB advertised-count traps."
+description: "Fail-closed county readiness validator. Use before county-seed-data, county-ingest-run, onboard-county, or any pilot or full ingest. At the start of every new county, validates skills/use-oracle/runtime/docs/<county>-sources.yaml for GIS vs tax-roll, permit-jurisdiction classification, secondary permit copies, the Restate stack proof, and BBB advertised-count traps."
 ---
 
 # County Readiness Preflight
@@ -61,10 +61,12 @@ failure modes, not a list of special counties:
    `<restate_admin_url>/services` and BLOCKS unless all seven services (`CountyIngest`,
    `IngestChunk`, `Parcel`, `CountyLedger`, `PermitFeed`, `PermitHarvest`,
    `PublishGroup`) are registered.
-5. **Blocked, custodian-only, and manual-only permit rows need a complete
-   `records_request`.** Name the recipient office, portal or email, system/date scope,
-   and `api-first` or `records-first`. “Request a bulk export” without a recipient is
-   BLOCKED.
+5. **A blocked permit row needs no records request.** We never file one
+   ([`collection-policy.md`](../use-oracle/reference/collection-policy.md)). A classified
+   `blocked`, `custodian-only`, or `manual-only` row passes the gate. Work around and log
+   bot and IP blocks (`workaround_log`), and send terms, login, or click-through gates to a
+   human for approval
+   ([`access-escalation.md`](../use-oracle/reference/access-escalation.md)).
 6. **A secondary copy is not the permit source.** An appraisal district, assessor, state
    open-data mirror, or vendor aggregate holds only part of what each city issues, often
    without license numbers or fees and over a short window. Mark it `source_role:
@@ -129,7 +131,7 @@ Fixtures are named by **failure mode**. They must keep passing
 | `fixtures/readiness/unified-portal-not-municipal-history.yaml` | County one-stop is not complete municipal permit history |
 | `fixtures/readiness/secondary-copy-not-permit-source.yaml` | Appraisal-district or other secondary copy is not the permit source |
 | `fixtures/readiness/ready-minimal.yaml` | PASS — seed and ingest allowed |
-| `fixtures/readiness/blocked-without-request-route.yaml` | Blocked/custodian/manual-only rows need a complete `records_request` |
+| `fixtures/readiness/blocked-jurisdiction-no-request-needed.yaml` | PASS — a classified blocked jurisdiction needs no records request |
 | `fixtures/readiness/advertised-listing-count-is-not-harvestable.yaml` | BBB advertised listing total is not `expected_count` without a page cap |
 | `fixtures/readiness/stack-ready-publication-in-scope.yaml` | PASS — Restate stack proven, publication in scope with an upload node |
 | `fixtures/readiness/stack-missing.yaml` | Missing `stack` section blocks |
@@ -144,9 +146,9 @@ permissible automated action.
 
 Separate "the official source is unreachable from this egress" from "no official source
 exists". For the first, the next action is the checklist in
-[`source-access.md`](../use-oracle/reference/source-access.md#6-before-you-report-a-source-blocked)
-(classify, follow redirects, approved browser profile, alternate egress with operator
-approval), not a records request. File a records request only when the data is not
-published or every route is exhausted. Automatically continue source enumeration, bounded adapter
-work, access remediation, request preparation, and publication-readiness checks from
+[`source-access.md`](../use-oracle/reference/source-access.md#6-before-you-hand-back-a-source-as-not-harvested)
+(classify, follow redirects, approved browser profile, escalated work-arounds, alternate
+egress, each logged). Never file a records request. When the data is not published online,
+stop and alert a Prism Team Member. Automatically continue source enumeration, bounded adapter
+work, access remediation, acceptance-approval requests, and publication-readiness checks from
 `next_automated_actions`; do not wait for another user message.

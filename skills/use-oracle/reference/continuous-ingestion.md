@@ -28,7 +28,8 @@ A stage success, status report, pilot completion, capture completion, reconcilia
 agent-session boundary is not a terminal condition. Stop advancing only when:
 
 - the requested scope is `COMPLETE`;
-- a policy, privacy, payment, CAPTCHA, or credential action genuinely requires a human,
+- a policy, privacy, payment, terms/login acceptance, or credential action genuinely
+  requires a human (`collection-policy.md`; CAPTCHAs and bot checks never do),
   while every independent safe track has been advanced as far as possible; or
 - bounded retries are exhausted and the failure is durably classified with an owner and
   exact recovery action.
@@ -131,8 +132,8 @@ recovery action, and continue independent workstreams.
   assembles group directories from ready parcels, and enqueues the CAR/table/Atlas-PR
   preparation sequence (`PublishGroup`).
 - A readiness block prevents seed, pilots, adapter scale-out, and full ingestion, but keeps
-  bounded enumeration, adapter implementation/fixtures, access remediation, records-request
-  preparation, and publication readiness active.
+  bounded enumeration, adapter implementation/fixtures, access remediation, acceptance-approval
+  requests, and publication readiness active.
 - Public publication requires the authorized Atlas scope and any required privacy approval.
   Once authorized, continue through CLI upload/readback, Atlas PR, merge wait, global IPNS,
   and MCP sync without inventing a second publisher.

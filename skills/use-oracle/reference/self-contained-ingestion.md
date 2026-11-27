@@ -62,8 +62,9 @@ node skills/use-oracle/runtime/bin/elephant-county.mjs ingest \
   --output "$run_dir"
 ```
 
-Record scope, source, run manifest, and blockers. Never weaken readiness, CAPTCHA, terms,
-or rate gates to make a pilot pass.
+Record scope, source, run manifest, blockers, and the work-around and acceptance logs. Never
+weaken readiness gates, skip a required human approval, or exceed the measured healthy
+request rate to make a pilot pass.
 
 ## Internal reconciliation export
 
