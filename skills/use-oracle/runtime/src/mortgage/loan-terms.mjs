@@ -84,16 +84,21 @@ export function extractLoanTerms(rawText) {
 
   // Principal amount.
   let loanAmount = null;
+  // OCR splits numbers ("$784, 000.00", "$232, 000. 00"), so the amount allows spaces after
+  // a comma or the decimal point; they are removed before parsing.
+  const AMT = String.raw`(\d{1,3}(?:,\s?\d{3})+\.\s?\d{2}|\d{4,}\.\s?\d{2})`;
   for (const re of [
-    /U\.?\s*S\.?\s*\$\s*([\d,]+\.\d{2})/i,
-    /principal (?:sum|amount) of[^$]{0,120}\$\s*([\d,]+\.\d{2})/i,
-    /Dollars\s*\(\s*\$\s*([\d,]+\.\d{2})/i,
+    new RegExp(String.raw`U\.?\s*S\.?\s*\$\s*${AMT}`, "i"),
+    new RegExp(String.raw`principal (?:sum|amount) of[^$]{0,120}\$\s*${AMT}`, "i"),
+    new RegExp(String.raw`Dollars(?: and \w+ cents| and no\/100)?\s*\(\s*\$\s*${AMT}`, "i"),
     // Revolving credit (HELOC) deeds of trust state a maximum instead of a principal.
-    /(?:shall not exceed|maximum (?:principal )?amount[^$]{0,60}?|credit limit[^$]{0,40}?)\s*\(?\s*\$\s*([\d,]+\.\d{2})/i,
+    new RegExp(String.raw`(?:shall not exceed|maximum (?:principal )?amount[^$]{0,60}?|credit limit[^$]{0,40}?)\s*\(?\s*\$\s*${AMT}`, "i"),
+    new RegExp(String.raw`shall not exceed[^$()]{0,120}?Dollars(?: and \w+ cents)?\s*\(?\s*\$?\s*${AMT}`, "i"),
+    new RegExp(String.raw`in the (?:principal )?sum of \$\s*${AMT}`, "i"),
   ]) {
     const m = re.exec(text);
     if (m) {
-      const value = Number(m[1].replace(/,/g, ""));
+      const value = Number(m[1].replace(/[,\s]/g, ""));
       if (value >= 1000) {
         loanAmount = value;
         evidence.loanAmount = quote(text, m);
@@ -126,7 +131,11 @@ export function extractLoanTerms(rawText) {
   if (loanNo) evidence.loanNumber = quote(text, loanNo);
   // Lender as the instrument defines it: '"Lender" is <NAME>.'
   const lenderMatch = /"?Lender"?\s+is\s+([A-Z0-9][^.]{2,120}?)(?:\.\s|,\s*(?:a|an)\s)/.exec(text);
-  const lenderName = lenderMatch ? lenderMatch[1].trim() : null;
+  // A page break can splice the form footer ("TEXAS - Single Family - Fannie Mae/Freddie Mac
+  // UNIFORM INSTRUMENT ...") into the name; cut it there.
+  const lenderName = lenderMatch
+    ? lenderMatch[1].split(/\s+(?:[A-Z]{4,}\s+-\s+Single Family|Single Family\s+-|Fannie Mae|Form\s+3\d{3}|Page\s+\d+\s+of)/)[0].replace(/[\s,;-]+$/, "").trim() || null
+    : null;
   if (lenderMatch) evidence.lenderName = quote(text, lenderMatch);
   const borrowerMatch = /"?Borrower"?\s+is\s+([A-Z][^.]{2,160}?)(?:\.\s|,\s*(?:whose|as|husband|wife|a single|an unmarried|married))/.exec(text);
   const borrowerText = borrowerMatch ? borrowerMatch[1].trim() : null;

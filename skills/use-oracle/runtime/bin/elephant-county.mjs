@@ -980,11 +980,14 @@ async function runMortgageIndexHarvestCommand(argv) {
   const delayMs =
     typeof flags["delay-ms"] === "string" ? Number(flags["delay-ms"]) : 1500;
   if (!Number.isInteger(delayMs) || delayMs < 0) throw new Error("--delay-ms must be a non-negative integer");
-  const session = await openPublicsearchSession({
-    host: profile.host,
-    chromePath,
-    headless: Boolean(flags.headless),
-  });
+  let session;
+  try {
+    session = await openPublicsearchSession({ host: profile.host, chromePath, headless: Boolean(flags.headless) });
+  } catch (error) {
+    if (error?.code !== "INTERACTIVE_CHALLENGE") throw error;
+    console.log(JSON.stringify({ event: "publicsearch_interactive_challenge", county: profile.county, error: error.message }));
+    process.exit(3);
+  }
   try {
     const result = await harvestPublicsearchMortgages({
       profile,
@@ -998,6 +1001,12 @@ async function runMortgageIndexHarvestCommand(argv) {
       onProgress: (event) => console.log(JSON.stringify(event)),
     });
     console.log(JSON.stringify({ event: "mortgage_index_harvest_complete", ...result }));
+  } catch (error) {
+    if (error?.code !== "INTERACTIVE_CHALLENGE") throw error;
+    // Exit code 3 tells the supervisor not to restart: a person must decide what to do.
+    console.log(JSON.stringify({ event: "publicsearch_interactive_challenge", county: profile.county, error: error.message }));
+    await session.close();
+    process.exit(3);
   } finally {
     await session.close();
   }
@@ -1062,6 +1071,17 @@ async function runMortgageWindowHarvestCommand(argv) {
  * @param {readonly string[]} argv - Flags after the subcommand.
  * @returns {Promise<void>} Resolves when the batch finishes.
  */
+/**
+ * @param {string} key - Instrument number.
+ * @param {number} n - Shard count.
+ * @returns {number} Stable shard index in [0, n).
+ */
+export function shardOf(key, n) {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i += 1) h = Math.imul(h ^ key.charCodeAt(i), 16777619) >>> 0;
+  return h % n;
+}
+
 async function runMortgageDocumentsCommand(argv) {
   const flags = parseFlags(argv);
   const profile = requireMortgageProfile(requireStringFlag(flags, "county"));
@@ -1071,10 +1091,15 @@ async function runMortgageDocumentsCommand(argv) {
   // --year YYYY targets one recording year (same as --from YYYY-01-01 --to YYYY-12-31).
   const year = typeof flags.year === "string" ? flags.year : null;
   if (year && !/^\d{4}$/.test(year)) throw new Error("--year must be YYYY");
-  const records = await readIndexRecords(requireStringFlag(flags, "index-dir"), {
+  const allRecords = await readIndexRecords(requireStringFlag(flags, "index-dir"), {
     from: year ? `${year}-01-01` : typeof flags.from === "string" ? flags.from : undefined,
     to: year ? `${year}-12-31` : typeof flags.to === "string" ? flags.to : undefined,
   });
+  // --shard i/N keeps the records whose instrument hashes to slice i of N, so N machines can
+  // split one county-year without overlap.
+  const shard = typeof flags.shard === "string" ? /^(\d+)\/(\d+)$/.exec(flags.shard) : null;
+  if (flags.shard !== undefined && (!shard || Number(shard[1]) >= Number(shard[2]))) throw new Error("--shard must be i/N with 0 <= i < N");
+  const records = shard ? allRecords.filter((r) => shardOf(String(r.instrumentNumber), Number(shard[2])) === Number(shard[1])) : allRecords;
   const { S3Client, PutObjectCommand, GetObjectCommand } = await import("@aws-sdk/client-s3");
   const s3 = new S3Client({ region: typeof flags.region === "string" ? flags.region : "us-east-2" });
   const result = await storeDocuments({
@@ -1084,6 +1109,7 @@ async function runMortgageDocumentsCommand(argv) {
         ? browserDocumentFetcher(profile.vendor, profile, {
             chromePath: typeof flags.chrome === "string" ? flags.chrome : process.env.CHROME_EXECUTABLE_PATH?.trim(),
             pageConcurrency: optionalPositiveInteger(flags["page-concurrency"], "page-concurrency", 6),
+            pageDelayMs: optionalNonNegativeInteger(flags["page-delay-ms"], "page-delay-ms", 0),
           })
         : documentFetcher(profile.vendor, profile),
     concurrency: optionalPositiveInteger(flags.concurrency, "concurrency", 1),
@@ -1094,6 +1120,10 @@ async function runMortgageDocumentsCommand(argv) {
     delayMs,
     onProgress: (event) => console.log(JSON.stringify(event)),
   });
+  if (result.challenge) {
+    console.log(JSON.stringify({ event: "mortgage_documents_challenge", county: profile.county, ...result }));
+    process.exit(3);
+  }
   console.log(JSON.stringify({ event: "mortgage_documents_complete", county: profile.county, candidates: records.length, ...result }));
 }
 
@@ -1171,7 +1201,7 @@ async function main() {
       "  mortgage-harvest --county <mortgage-profile-key> --job-id <id> --instruments <csv> --limit N --output <dir> [--delay-ms N] [--pin]\n" +
       "  mortgage-index-harvest --county <bexar|collin|dallas|denton|tarrant> --job-id <id> --from <YYYYMMDD> --to <YYYYMMDD> --output <dir> [--chrome <path>] [--headless] [--page-size N] [--delay-ms N] [--doc-types A,B | --extra-doc-types]\n" +
       "  mortgage-window-harvest --county <duval|hillsborough|maricopa|harris|mecklenburg> --job-id <id> --to <YYYYMMDD> --output <dir> [--from <YYYYMMDD>] [--window day|month|year] [--delay-ms N] [--with-names] [--chrome <path>]\n" +
-      "  mortgage-documents --county <key> --index-dir <harvest windows dir> --bucket <s3 bucket> --limit N [--year YYYY | --from YYYY-MM-DD --to YYYY-MM-DD] [--delay-ms N] [--concurrency N] [--page-concurrency N] [--chrome <path>] [--region us-east-2]",
+      "  mortgage-documents --county <key> --index-dir <harvest windows dir> --bucket <s3 bucket> --limit N [--year YYYY | --from YYYY-MM-DD --to YYYY-MM-DD] [--shard i/N] [--delay-ms N] [--concurrency N] [--page-concurrency N] [--chrome <path>] [--region us-east-2]",
   );
   process.exitCode = 1;
 }

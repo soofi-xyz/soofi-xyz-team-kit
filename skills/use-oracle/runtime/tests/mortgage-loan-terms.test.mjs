@@ -43,4 +43,17 @@ describe("extractLoanTerms", () => {
     const heloc = extractLoanTerms(`REVOLVING CREDIT DEED OF TRUST THIS Deed of Trust is made on 10/27/2026 ... shall not exceed ($208,400.00 ).`);
     expect(heloc).toMatchObject({ loanAmount: 208400, noteDate: "2026-10-27", prepaymentPenalty: null });
   });
+
+  it("reads amounts that OCR split with spaces or wrote in other wordings", () => {
+    const amount = (t) => extractLoanTerms(t).loanAmount;
+    expect(amount("THIRTY-TWO THOUSAND AND 00/100 Dollars (U.S. $232, 000. 00) plus interest.")).toBe(232000);
+    expect(amount("Two Hundred Eight Thousand Four Hundred Dollars and zero cents\n($ 208,400.00")).toBe(208400);
+    expect(amount("shall not exceed Fifty Thousand Dollars and zero cents 50,000.00 ). That sum")).toBe(50000);
+    expect(amount("to secure payment in the sum of $175,000.00 as evidenced by a Promissory Note")).toBe(175000);
+  });
+
+  it("cuts a form footer spliced into the lender name", () => {
+    const t = extractLoanTerms(`"Lender" is First Horizon Bank TEXAS - Single Family - Fannie Mae/Freddie Mac UNIFORM INSTRUMENT (MERS) Form 3044. Lender is a bank`);
+    expect(t.lenderName).toBe("First Horizon Bank");
+  });
 });

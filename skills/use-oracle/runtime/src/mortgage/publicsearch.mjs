@@ -295,6 +295,22 @@ export function parseRequestFrame(frame) {
   return { correlationId: message.correlationId, query: message.payload?.query ?? {} };
 }
 
+/** Text of Cloudflare's interactive ("click to verify") challenge page. */
+export const INTERACTIVE_CHALLENGE_TEXT = /Verify you are human|Performing security verification|needs to review the security of your connection/i;
+
+/**
+ * Thrown when the portal shows an interactive human check. The check is never clicked or
+ * solved: the run stops (fail closed) and the operator decides what to do.
+ */
+export class InteractiveChallengeError extends Error {
+  /** @param {string} host - Portal host. */
+  constructor(host) {
+    super(`Interactive human check on ${host}; stopped without retrying`);
+    this.name = "InteractiveChallengeError";
+    this.code = "INTERACTIVE_CHALLENGE";
+  }
+}
+
 /**
  * Open a county portal in Chrome and return a function that runs one results page.
  *
@@ -320,6 +336,12 @@ export async function openPublicsearchSession(options) {
 
   let page = null;
   let cdp = null;
+  /** @returns {Promise<boolean>} True when the page is an interactive human check. */
+  const challenged = async () => {
+    if (!page) return false;
+    const text = await page.evaluate(() => document.body?.innerText ?? "").catch(() => "");
+    return INTERACTIVE_CHALLENGE_TEXT.test(text);
+  };
   /**
    * Open (or reopen) the portal page and wire the WebSocket listeners. Called on start
    * and whenever the page reloaded itself (Cloudflare re-check) or a search hung.
@@ -343,16 +365,22 @@ export async function openPublicsearchSession(options) {
     cdp.on("Network.webSocketFrameReceived", (event) => {
       for (const listener of [...listeners]) listener(event.response.payloadData);
     });
-    await page.goto(`https://${options.host}/`, { waitUntil: "networkidle2" });
-    await page.waitForFunction(() => Boolean(globalThis.socket), { timeout: timeoutMs });
+    await page.goto(`https://${options.host}/`, { waitUntil: "networkidle2" }).catch(() => {});
+    try {
+      await page.waitForFunction(() => Boolean(globalThis.socket), { timeout: timeoutMs });
+    } catch (error) {
+      if (await challenged()) throw new InteractiveChallengeError(options.host);
+      throw error;
+    }
   }
   await reset();
 
   async function runQuery(pathWithQuery, expect) {
     const result = new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
         listeners.splice(listeners.indexOf(listener), 1);
-        reject(new Error(`No search response for ${pathWithQuery} within ${timeoutMs} ms`));
+        if (await challenged()) reject(new InteractiveChallengeError(options.host));
+        else reject(new Error(`No search response for ${pathWithQuery} within ${timeoutMs} ms`));
       }, timeoutMs);
       const matches = (correlationId) => {
         const query = requests.get(correlationId ?? "");
@@ -455,8 +483,9 @@ export async function harvestPublicsearchMortgages(input) {
       } catch (error) {
         lastError = error;
         const message = error instanceof Error ? error.message : String(error);
-        // A rejected query (e.g. past the offset cap) will not succeed on retry.
-        if (/Portal rejected/.test(message)) throw error;
+        // A rejected query (e.g. past the offset cap) will not succeed on retry, and an
+        // interactive human check must not be retried at all.
+        if (/Portal rejected/.test(message) || error?.code === "INTERACTIVE_CHALLENGE") throw error;
         input.onProgress?.({ event: "publicsearch_retry", window: `${from}-${to}`, offset, attempt, error: message });
         if (attempt < attempts && input.session.reset) {
           await input.session.reset().catch((resetError) =>
@@ -551,6 +580,7 @@ export async function harvestPublicsearchMortgages(input) {
       records += rows.size;
       input.onProgress?.({ event: "publicsearch_window_ready", county: profile.county, window: key, rows: rows.size, records });
     } catch (error) {
+      if (error?.code === "INTERACTIVE_CHALLENGE") throw error;
       windows += 1;
       failedWindows += 1;
       const message = error instanceof Error ? error.message : String(error);

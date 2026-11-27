@@ -158,6 +158,31 @@ describe("maricopa", () => {
     expect(urls[0]).toContain("documentCode=DT&beginDate=2026-11-02&endDate=2026-11-02&pageNumber=1&pageSize=2");
     expect(urls.filter((u) => u.includes("/documents/2026"))).toHaveLength(3);
   });
+
+  it("re-reads a page that answers HTTP 500 one record at a time and skips only the bad record", async () => {
+    // Five records; record 4 breaks any page that holds it.
+    const all = Array.from({ length: 5 }, (_, i) => ({
+      recordingNumber: 20260630100 + i, recordingSuffix: "", recordingDate: "11-02-2026",
+      documentCode: "DEED TRST", docketBook: "", pageMap: "", names: "",
+    }));
+    const fetchImpl = async (url) => {
+      const u = new URL(url);
+      const size = Number(u.searchParams.get("pageSize"));
+      const start = (Number(u.searchParams.get("pageNumber")) - 1) * size;
+      if (start <= 3 && 3 < start + size) return { ok: false, status: 500, json: async () => ({}) };
+      return { ok: true, status: 200, json: async () => ({ searchResults: all.slice(start, start + size) }) };
+    };
+    const errors = [];
+    const original = console.error;
+    console.error = (line) => errors.push(line);
+    try {
+      const result = await maricopaFetcher({ fetchImpl, pageSize: 2, pageDelayMs: 0 })("20261102", "20261102");
+      expect(result.records.map((r) => r.instrumentNumber)).toEqual(["20260630100", "20260630101", "20260630102", "20260630104"]);
+    } finally {
+      console.error = original;
+    }
+    expect(errors.map((e) => JSON.parse(e))).toEqual([expect.objectContaining({ event: "maricopa_record_skipped", position: 4 })]);
+  });
 });
 
 describe("harris", () => {

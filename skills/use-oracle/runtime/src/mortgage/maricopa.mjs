@@ -4,7 +4,7 @@
  * Verified 2026-11-26 (no auth, no terms):
  *   GET https://publicapi.recorder.maricopa.gov/documents/search
  *       ?documentCode=DT&beginDate=YYYY-MM-DD&endDate=YYYY-MM-DD&pageNumber=N&pageSize=200
- * pageSize is at most 200, pageNumber is 1-based, there is no offset cap; page until
+ * pageSize is at most 200, but 2026 dates answer HTTP 500 above 50 (checked 2026-11-27), so the default is 50; pageNumber is 1-based, there is no offset cap; page until
  * `searchResults` is empty. `totalResults` is unreliable above 500. Names are empty in
  * search rows; GET /documents/{recordingNumber} returns them (one flat list, no roles).
  * There is no APN, legal description or amount.
@@ -69,7 +69,7 @@ export function normalizeMaricopaRow(row, names, capturedAt) {
  */
 export function maricopaFetcher(options = {}) {
   const fetchImpl = options.fetchImpl ?? fetch;
-  const pageSize = Math.min(options.pageSize ?? 200, 200);
+  const pageSize = Math.min(options.pageSize ?? 50, 200);
   const pageDelayMs = options.pageDelayMs ?? 500;
   const now = options.now ?? (() => new Date());
   const get = async (url) => {
@@ -77,8 +77,28 @@ export function maricopaFetcher(options = {}) {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(options.timeoutMs ?? 60_000),
     });
-    if (!response.ok) throw new Error(`Maricopa ${url} returned HTTP ${response.status}`);
+    if (!response.ok) throw Object.assign(new Error(`Maricopa ${url} returned HTTP ${response.status}`), { status: response.status });
     return response.json();
+  };
+  const singleRecords = async (from, to, offset, count) => {
+    const out = [];
+    let skipped = 0;
+    for (let k = offset + 1; k <= offset + count; k += 1) {
+      if (pageDelayMs > 0) await new Promise((r) => setTimeout(r, pageDelayMs));
+      const params = new URLSearchParams({ documentCode: "DT", beginDate: iso(from), endDate: iso(to), pageNumber: String(k), pageSize: "1" });
+      try {
+        const body = await get(`${MARICOPA_API}/documents/search?${params}`);
+        const one = Array.isArray(body.searchResults) ? body.searchResults : [];
+        if (one.length === 0) break;
+        out.push(...one);
+      } catch (error) {
+        if (error.status !== 500) throw error;
+        skipped += 1;
+        console.error(JSON.stringify({ event: "maricopa_record_skipped", from, to, position: k, error: error.message }));
+      }
+    }
+    // Keep the page full-length when records were skipped so paging continues past them.
+    return out.concat(Array(skipped).fill(null));
   };
   return async (from, to) => {
     const rows = [];
@@ -91,14 +111,23 @@ export function maricopaFetcher(options = {}) {
         pageNumber: String(pageNumber),
         pageSize: String(pageSize),
       });
-      const body = await get(`${MARICOPA_API}/documents/search?${params}`);
-      const page = Array.isArray(body.searchResults) ? body.searchResults : [];
+      let page;
+      try {
+        const body = await get(`${MARICOPA_API}/documents/search?${params}`);
+        page = Array.isArray(body.searchResults) ? body.searchResults : [];
+      } catch (error) {
+        // One bad record makes every page that holds it answer HTTP 500. Re-read this page one
+        // record at a time and skip only the record that still fails, logging it as a gap.
+        if (error.status !== 500) throw error;
+        page = await singleRecords(from, to, (pageNumber - 1) * pageSize, pageSize);
+      }
       rows.push(...page);
       if (page.length < pageSize) break;
     }
     const capturedAt = now().toISOString();
     const records = [];
     for (const row of rows) {
+      if (row === null) continue; // a skipped bad record
       let names = null;
       if (options.withNames) {
         if (pageDelayMs > 0) await new Promise((r) => setTimeout(r, pageDelayMs));

@@ -15,6 +15,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { createAcclaimSession } from "./acclaim.mjs";
+import { INTERACTIVE_CHALLENGE_TEXT, InteractiveChallengeError } from "./publicsearch.mjs";
 
 export const HILLSBOROUGH_DOCUMENT_URL =
   "https://publicaccess.hillsclerk.com/Public/ORIUtilities/OverlayWatermark/api/Watermark/";
@@ -88,8 +89,15 @@ export function documentFetcher(vendor, profile, options = {}) {
 }
 
 /**
- * Launch a Chrome page for browser-served portals (shared helper).
- *
+ * @param {any} page - Puppeteer page.
+ * @returns {Promise<boolean>} True when the page shows an interactive human check.
+ */
+async function isChallenge(page) {
+  const text = await page.evaluate(() => document.body?.innerText ?? "").catch(() => "");
+  return INTERACTIVE_CHALLENGE_TEXT.test(text);
+}
+
+/**
  * @param {string} chromePath - Chrome executable.
  * @param {string} url - Page to open.
  * @returns {Promise<{ browser: any, page: any }>} Browser and page.
@@ -134,6 +142,7 @@ async function fetchInPage(page, url) {
 export function browserDocumentFetcher(vendor, profile, options) {
   let session = null;
   const pageConcurrency = options.pageConcurrency ?? 6;
+  const pageDelayMs = options.pageDelayMs ?? 0;
   const pad = (n) => `page-${String(n).padStart(4, "0")}.png`;
 
   const withClose = (fn) => Object.assign(fn, { close: async () => { if (session) await session.browser.close().catch(() => {}); } });
@@ -154,43 +163,84 @@ export function browserDocumentFetcher(vendor, profile, options) {
           if (message.type === "document" && Array.isArray(message.payload?.urls)) docs.set(String(message.payload.id), message.payload.urls);
         } catch {}
       });
-      await session.page.waitForFunction(() => Boolean(globalThis.socket));
+      await session.page.waitForFunction(() => Boolean(globalThis.socket)).catch(async (error) => {
+        if (await isChallenge(session.page)) throw new InteractiveChallengeError(profile.host);
+        throw error;
+      });
     };
-    return withClose(async (record) => {
-      if (!session || !session.browser.connected) await start();
-      const docId = String(record.source?.docId);
+    // Re-open the document to get a fresh set of signed page URLs (they expire quickly, so
+    // the later pages of a long document need re-signing part way through).
+    const freshUrls = async (docId) => {
       docs.delete(docId);
       await session.page.evaluate((id) => { history.pushState({}, "", `/doc/${id}`); dispatchEvent(new PopStateEvent("popstate")); }, docId);
       let urls = null;
       for (let i = 0; i < 60 && !urls; i += 1) { urls = docs.get(docId) ?? null; if (!urls) await new Promise((r) => setTimeout(r, 250)); }
-      if (!urls) { await start(); throw new Error(`no page list for doc ${docId}`); }
+      return urls;
+    };
+    return withClose(async (record) => {
+      if (!session || !session.browser.connected) await start();
+      const docId = String(record.source?.docId);
+      let urls = await freshUrls(docId);
+      if (!urls) {
+        if (await isChallenge(session.page)) throw new InteractiveChallengeError(profile.host);
+        await start();
+        throw new Error(`no page list for doc ${docId}`);
+      }
       const files = new Array(urls.length);
-      let next = 0;
-      await Promise.all(Array.from({ length: Math.min(pageConcurrency, urls.length) }, async () => {
-        while (next < urls.length) {
-          const i = next; next += 1;
-          // The portal throttles bursts of page requests: retry each page with back-off.
-          let bytes = null;
-          for (let attempt = 1; attempt <= 5 && !bytes; attempt += 1) {
-            bytes = await fetchInPage(session.page, urls[i]);
-            if (!bytes) await new Promise((r) => setTimeout(r, 1500 * attempt));
-          }
-          if (!bytes) throw new Error(`page ${i + 1} of doc ${docId} failed`);
-          files[i] = { name: pad(i + 1), bytes, contentType: "image/png" };
+      // Signed URLs expire, so fetch in rounds: each round re-signs and retries only the
+      // pages still missing, newest URLs first. Give up after a few rounds.
+      for (let round = 0; round < 6; round += 1) {
+        const missing = [];
+        for (let i = 0; i < files.length; i += 1) if (!files[i]) missing.push(i);
+        if (missing.length === 0) break;
+        if (round > 0) {
+          const fresh = await freshUrls(docId);
+          if (fresh && fresh.length === urls.length) urls = fresh;
         }
-      }));
+        let m = 0;
+        await Promise.all(Array.from({ length: Math.min(pageConcurrency, missing.length) }, async () => {
+          while (m < missing.length) {
+            const i = missing[m]; m += 1;
+            let bytes = null;
+            for (let attempt = 1; attempt <= 3 && !bytes; attempt += 1) {
+              bytes = await fetchInPage(session.page, urls[i]);
+              if (!bytes) await new Promise((r) => setTimeout(r, 500 * attempt));
+            }
+            if (bytes) files[i] = { name: pad(i + 1), bytes, contentType: "image/png" };
+            if (pageDelayMs > 0) await new Promise((r) => setTimeout(r, pageDelayMs));
+          }
+        }));
+      }
+      const firstMissing = files.findIndex((f) => !f);
+      if (firstMissing !== -1) {
+        if (await isChallenge(session.page)) throw new InteractiveChallengeError(profile.host);
+        throw new Error(`page ${firstMissing + 1} of doc ${docId} failed`);
+      }
       return { files, sourceUrl: `https://${profile.host}/doc/${docId}` };
     });
   }
 
   if (vendor === "maricopa-recorder-api") {
-    // Unofficial PDF from the legacy recorder site (same-origin, behind Cloudflare).
+    // Unofficial PDF from the legacy recorder site (same-origin, behind Cloudflare). The
+    // endpoint throttles under load, returning a redirect instead of the PDF, so a failed
+    // fetch is usually transient: retry with back-off and a fresh page before giving up.
+    const open = async () => { session = await openBrowserPage(options.chromePath, "https://legacy.recorder.maricopa.gov/recdocdata/"); };
     return withClose(async (record) => {
-      if (!session || !session.browser.connected) session = await openBrowserPage(options.chromePath, "https://legacy.recorder.maricopa.gov/recdocdata/");
+      if (!session || !session.browser.connected) await open();
       const url = `https://legacy.recorder.maricopa.gov/recdocdata/unofficialpdfdocs.aspx?rec=${encodeURIComponent(record.instrumentNumber)}&suf=&pg=1&isAffidavit=false&cls=RecorderDocuments`;
-      const bytes = await fetchInPage(session.page, url);
-      if (!bytes || bytes.subarray(0, 5).toString() !== "%PDF-") throw new Error(`no PDF for ${record.instrumentNumber}`);
-      return { files: [{ name: "document.pdf", bytes, contentType: "application/pdf" }], sourceUrl: url };
+      for (let attempt = 1; attempt <= 5; attempt += 1) {
+        const bytes = await fetchInPage(session.page, url).catch(() => null);
+        if (bytes && bytes.subarray(0, 5).toString() === "%PDF-") {
+          return { files: [{ name: "document.pdf", bytes, contentType: "application/pdf" }], sourceUrl: url };
+        }
+        // Throttled or redirected: wait, re-open the page (fresh session), and try again.
+        if (attempt < 5) {
+          await new Promise((r) => setTimeout(r, 1500 * attempt));
+          await session.browser.close().catch(() => {});
+          await open();
+        }
+      }
+      throw new Error(`no PDF for ${record.instrumentNumber}`);
     });
   }
 
@@ -236,8 +286,10 @@ export function browserDocumentFetcher(vendor, profile, options) {
       await ensure();
       await searchDay(record.recordDate ?? "2026-11-02");
       const page = await session.browser.newPage();
+      page.setDefaultTimeout(90_000);
       try {
-        await page.goto(record.source.detailUrl, { waitUntil: "networkidle2" });
+        // The viewer keeps loading tiles, so wait for the document, not for network idle.
+        await page.goto(record.source.detailUrl, { waitUntil: "domcontentloaded" });
         let tile = null;
         for (let i = 0; i < 40 && !tile; i += 1) {
           const t = await tileUrl(page);
@@ -301,7 +353,7 @@ export async function storeDocuments(input) {
 
   async function drain(fetchDocument) {
     let requested = 0;
-    while (next < queue.length) {
+    while (next < queue.length && !counts.challenge) {
       const record = queue[next];
       next += 1;
       const prefix = documentPrefix(record);
@@ -367,6 +419,12 @@ export async function storeDocuments(input) {
         counts.bytes += totalBytes;
         input.onProgress?.({ event: "document_stored", instrument: record.instrumentNumber, recordDate: record.recordDate, bytes: index.bytes, seconds: index.fetchSeconds, stored: counts.stored });
       } catch (error) {
+        if (error?.code === "INTERACTIVE_CHALLENGE") {
+          // Stop every worker: the site wants a human check, which is never clicked or solved.
+          counts.challenge = String(error.message);
+          input.onProgress?.({ event: "document_challenge_stop", instrument: record.instrumentNumber, error: counts.challenge });
+          break;
+        }
         counts.failed += 1;
         input.onProgress?.({ event: "document_failed", instrument: record.instrumentNumber, error: String(error?.message ?? error) });
       }
