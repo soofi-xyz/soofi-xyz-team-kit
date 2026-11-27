@@ -51,34 +51,61 @@ caps, Collin, Harris, and Wake/Clark/Cobb/Fulton/Gwinnett). Never solve or evade
 
 ---
 
-## 3. Stage 2 — Field extraction (text → structured fields)
+## 3. Stage 2 — Field extraction — **DECIDED: multimodal `gpt-6.1-terra`, no OCR**
 
-**Use the deterministic extractor `src/mortgage/loan-terms.mjs` → `extractLoanTerms(text)`.**
-It returns, each with an evidence quote: `program` (FHA/VA/USDA/GSE), `loanAmount`,
-`noteDate`, `maturityDate`, `termMonths`, `min` (18-digit MERS MIN), `loanNumber`,
-`lenderName`, `initialRatePercent`, `adjustableRate`, `prepaymentPenalty`, `riders`.
-On the pilot it read loan amount in 25/27, note date 21/27, MERS 15/27 (the rest have no
-MERS), etc. It is exact, free, and auditable.
+This was tested head-to-head on **1,000 Bexar documents** with **document-derived ground
+truth** (Textract OCR + `extractLoanTerms`, independent of the index) and **hand-verified**.
+Code: `aws/extract-run.mjs` (runner) + `src/mortgage/extract.mjs` (validation/normalize).
 
-Borrower and lender **names come clean from the county index** — don't re-derive them.
+**Send the page images (pages 1–3) straight to `gpt-6.1-terra`** — no OCR, no regex-as-primary,
+no Comprehend. Per-field exact accuracy vs ground truth (terra vs gpt-6-luna):
 
-### Comprehend was tested and is NOT recommended as the primary extractor
-We ran **AWS Comprehend DetectEntities** on sample OCR text and compared to the extractor:
-- ✅ Comprehend *does* find the borrower and lender names — but **buried in noise**: it also
-  tags Fannie Mae / Freddie Mac as PERSON, plus MERS, the form vendor (ICE Mortgage
-  Technology), notaries, witnesses, law firms and the clerk. Picking the real lender needs
-  disambiguation rules.
-- ❌ On **money it is wrong**: it returned "FOUR HUNDRED" (partial) for one doc and
-  **the $137.50 recording fee** as an amount for another. The extractor got $409,900 and
-  $216,997 exactly.
-- ❌ It does not surface the **MERS MIN**, the **program**, or tell **note vs maturity** date.
-- 💲 ~$0.015/doc (3 pages) → $15k–90k per million docs.
+| field | gpt-6-luna | **terra** |
+|---|---|---|
+| loan_amount | 74% | **95%** |
+| note_date | 88% | **96%** |
+| maturity_date | 56% | **96%** |
+| program | 82% | **91%** |
+| lender | 94% | **98%** |
+| MERS (exact 18 digits) | 27% | **60%** (→ fixed by the MERS pass) |
 
-**Verdict:** Comprehend is a noisy name-finder, not a field extractor. Use the regex
-extractor for structured fields and the index for names. Keep Comprehend only as an
-*optional* fallback name-finder (with a drop-list for Fannie/Freddie/MERS/vendors/
-notaries/clerk/law-firms). If a specific field needs strengthening, **Textract Queries**
-("What is the loan amount?") beats Comprehend for these standardized forms.
+**Hand-verified:** on loan-amount disagreements, terra matched the document **every time**;
+luna had digit-level errors (transposed/dropped/added digits). So **luna is not adequate for
+the loan amount** (the key field) — **use terra.** Cost: terra ~$3.9/1k live, **~$2/1k batch**
+(~10× under Comprehend). Config: low reasoning (`additionalModelRequestFields
+{"reasoning":{"effort":"low"}}`), `maxTokens` 2500, pages 1–3 at ~1000px, `MAIN_PROMPT` from
+`extract.mjs`. terra is a reasoning model — give it room in `maxTokens` or it emits no JSON.
+
+### The MERS pass (critical — MERS is the universal, stable loan ID)
+MERS is the one weak field (60% exact) because an 18-digit number loses a digit when the page
+is downscaled. The pipeline fixes it:
+1. **Validate every MIN with its Luhn check digit** (`luhnValidMin` — verified against real
+   recorded MINs; the 18th digit is a mod-10 checksum). A MIN that passes is almost certainly
+   read right; one that fails was misread.
+2. When a MIN is missing or fails the checksum, **re-read it from a high-resolution page 1**
+   (`MERS_PROMPT`, ~2200px) and keep it only if the checksum then passes.
+3. A MIN that still fails is dropped and the record is flagged `needs_review`.
+
+### Post-processing & validation — `normalizeExtraction(raw, ctx?)`
+Maps the model output to a loadable `loan` record and makes it trustworthy:
+program→`mortgage_type` (FHA→Fha, VA→Va, USDA→UsdaRuralDevelopment, GSE→Conventional);
+program→prepayment rule; note+maturity→`term_months`; keeps a MERS **only if Luhn-valid**;
+sets `needs_review` when the amount is missing or a MIN failed its checksum; carries a
+`confidence` block. Names: it uses the county index names if you pass `ctx.index`, else the
+model's (terra lender ~98%).
+
+### Comprehend — tested, rejected
+Comprehend DetectEntities was wrong on money (returned the **$137.50 recording fee** as an
+amount), buried the lender among Fannie/Freddie/MERS/vendors/notaries, and missed MERS and
+program. ~$15/1k. **Do not use it.**
+
+### Run modes
+- **Testing / moderate volume / per-shard on an EC2 worker:** `aws/extract-run.mjs`
+  (env `COUNTY`,`STATE`,`YEAR`,`LIMIT`,`CONC`). Writes `extracted/<ST>/<county>/<year>/<inst>.json`
+  (validated record + `confidence` + `needs_review`). Resumable (skips docs already extracted).
+- **Production (millions of docs):** build a **Bedrock batch manifest** from the same prompts
+  (one request per doc) — ~50% cheaper, high throughput, no rate juggling. Run the **MERS pass
+  as a second batch** over only the `needs_review` records. This is the recommended path at scale.
 
 ---
 

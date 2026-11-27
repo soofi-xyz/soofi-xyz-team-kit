@@ -66,6 +66,12 @@ extra codes, earliest date, default window). Code is in `src/mortgage/`.
 - **Browser runners.** Texas and Mecklenburg drive a real Chrome the runner starts.
   Never `pkill` Chrome by profile pattern: that kills other runners' browsers. Stop a
   runner by its own PID.
+- **Challenge evidence.** Pass `--challenge-evidence-dir <private-dir>` to either Texas
+  command when diagnosing access. If an interactive challenge appears, save a screenshot,
+  HTML, URL/title/body sample, and sanitized top-level response metadata there, then stop
+  with exit code 3. Never publish the evidence; never capture cookies, request headers,
+  `Set-Cookie`, or query strings in recorded metadata URLs. Treat the raw HTML as private
+  because it may contain ephemeral provider challenge markup.
 - **Data.** Output stays under the runtime's git-ignored `data/`. Never commit it.
 
 ## 3. Covered counties
@@ -100,6 +106,29 @@ images need a County Clerk login. Full history is tens of millions of documents 
 tens of terabytes: agree the scope (covered properties, recent years, first pages) before
 a large run.
 
+## 3b. Field extraction (documents → loan records)
+
+Decided and measured on 1,000 documents with document-derived ground truth, hand-verified
+(details: `skills/use-oracle/runtime/HANDOVER-POST-DOWNLOAD.md`). Extract with a **multimodal
+model reading the page images directly — no OCR, no regex-as-primary, no Comprehend.** Use
+**`gpt-6.1-terra`** on Bedrock (low reasoning, pages 1–3): it reads loan amount 95%, note/
+maturity dates 96%, lender 98%, program 91% exactly. `gpt-6-luna` is ~6× cheaper but only
+74% on the loan amount with digit-level errors — **not adequate for the key field.** terra is
+~$2/1k in a Bedrock batch. Comprehend was tested and rejected (it returned the recording fee
+as the loan amount).
+
+- **MERS pass (the MIN is the universal loan ID):** an 18-digit number loses a digit when the
+  page is downscaled, so validate every MIN with its **Luhn check digit** (`luhnValidMin`,
+  verified against real MINs); when it fails or is missing, re-read it from a high-resolution
+  page 1 and keep it only if the checksum passes; else flag `needs_review`.
+- **Code:** `src/mortgage/extract.mjs` (`normalizeExtraction`, `luhnValidMin`, `MAIN_PROMPT`,
+  `MERS_PROMPT`) and `aws/extract-run.mjs` (runner → `extracted/<ST>/<county>/<year>/<inst>.json`).
+- **Post-process deterministically:** program→`mortgage_type`, program→prepayment rule,
+  note+maturity→`term_months`. Names come from the index (grantors = borrowers, grantees =
+  lender + MERS), not the document.
+- **At scale:** a **Bedrock batch job** with the same prompts (~50% cheaper, high throughput);
+  run the MERS pass as a second batch over only the `needs_review` records.
+
 ## 4. Known traps
 
 - **Texas offset cap.** publicsearch.us rejects any offset at or beyond 10,000
@@ -113,6 +142,13 @@ a large run.
 - **Duval stale grid.** Too wide a range returns "exceeded the maximum limit" and the
   grid then serves the previous search. The fetcher treats that message, or any row
   outside the window, as truncated. Never trust a grid without checking row dates.
+- **Acclaim grid HTTP 500 on a single day (Duval).** Some days the combined multi-doc-type
+  query crashes `/Search/GridResults` with HTTP 500 and the whole day is lost (seen
+  2026-07-02, 2024-09-09). It is not transient and not a bad record — querying **each
+  doc-type id separately** recovers every record (`acclaimDocTypeFetcher({docTypeIds:[id]})`
+  per id, then dedup). Weekend days also 500 (they are empty — not a gap). **Audit every
+  county's manifest for `*.failed.json` before calling it complete**, and classify each as a
+  weekend/holiday (empty) vs. a real business day to recover by doc-type split.
 - **Mecklenburg conversion codes.** Early-1990s deeds of trust are indexed as `PRE D/T`
   and `PRE COR D/T` (1991-06-20: 72 records, 0 under DEED OF TRUST). The search form
   depends on Infragistics client state, so it runs in Chrome; the record count is in the
