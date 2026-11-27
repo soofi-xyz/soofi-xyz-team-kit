@@ -157,7 +157,9 @@ separate, and stop. Do not continue into the pipeline below.
    of `search.sunbiz.org` calculated from the document number
    (`sunbiz:<documentNumber>:company`). The quarterly bulk download page is the
    archive source, not the company `source_http_request`.
-4. Run `county-permit-adapter` and `county-ingest-run`. Preserve raw contacts,
+4. Run `county-permit-adapter` and `county-ingest-run` against each issuing authority
+   readiness catalogued. Do not substitute an appraisal-district, assessor, open-data,
+   or vendor copy for a jurisdiction whose issuing portal is minable. Preserve raw contacts,
    unmatched permits, folio identity, source provenance, and tombstones. When a
    permit prints a license number, use that license number, the person name, and
    the company name only as search keys for the official DBPR license-detail
@@ -233,6 +235,17 @@ separate, and stop. Do not continue into the pipeline below.
   single status writer per county/job; ready markers carry the validated output hash;
   tombstoned parcels never enter a group directory; unresolved identity stays unlinked.
 - Write official identity edges and roof age as lexicon output files, never SQL rows.
+- Mine permits from the issuing authority. An appraisal district, assessor, state
+  open-data mirror, or vendor aggregate is a secondary copy: it holds only the permits
+  the appraiser needed, usually without license numbers or fees and over a short
+  window. Use it for discovery and cross-checks, or as the source only for a
+  jurisdiction readiness records as `issuer_portal_minable: false`. Never publish it as
+  the whole county's permits.
+- Readiness sets what you publish. If readiness lists minable issuing portals, the
+  permit group covers only the jurisdictions harvested from their issuers, and permit
+  availability stays `supported_partial` until every minable issuer is harvested or
+  has a named blocker. Flag a jurisdiction more than 50% below its issuer sample or peer
+  median per 1,000 parcels, or whose history starts after the issuer's earliest record.
 - Resolve permit companies from official license/corporate evidence with temporal
   validity. Name, phone, BBB, and address matches are candidates, not legal identity.
 - Stamp each Sunbiz company from `search.sunbiz.org` by document number. Do not
@@ -322,6 +335,9 @@ For ingestion or publication work, return:
 - Pipeline stage (1–6), Local % (mined ÷ official parcels), the Asana story, and whether
   the Console matches the run;
 - county, jurisdictions, source boundary, pilot/full scope, and seed count;
+- permit coverage per jurisdiction: issuer, source role (primary/secondary), history
+  start, row count, permits per 1,000 parcels, license/fee presence, flags, minable
+  issuers not yet harvested, and `supported_partial` vs `supported_full`;
 - capture, transform, validation, dead/invalid/retryable counts, and readiness result;
 - official identity snapshots, freshness, adequacy, and whether they preceded permits;
 - license numbers, person names, and company names taken from permits only as DBPR

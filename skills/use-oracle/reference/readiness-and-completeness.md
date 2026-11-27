@@ -35,6 +35,9 @@ Record the following in `docs/<county>-sources.yaml`:
 - One permit entry per jurisdiction or delegated authority
 - `permits.assumes_unified_countywide_history` (must not be true)
 - Official custodian, portal, vendor, tenant/agency identifier, and `portal_kind`
+- `source_role` (`primary` = the issuing authority; `secondary` = an appraisal-district,
+  assessor, state open-data, or vendor copy) and, for a secondary row,
+  `issuer_portal_minable` with evidence
 - Record-search / `historical_records` versus application-submission capability
 - Anonymous, authenticated, CAPTCHA, manual, or custodian-only access state
 - Earliest accessible record date and known exclusions
@@ -98,6 +101,13 @@ not a roster of special counties:
 - Never treat a county one-stop, application-intake, or supplemental-approval portal as
   unified historical municipal permits (`assumes_unified_countywide_history` must not be
   true; `portal_kind` in that family cannot have `historical_records: true`).
+- Never treat a secondary copy as the permit source. An appraisal district or assessor
+  copies only the permits it needs to value improvements, usually without license numbers
+  or fees and over a short window (`portal_kind` `appraisal-derived`, `assessor-copy`,
+  `open-data-mirror`, `vendor-aggregate`; `source_role: secondary`). It cannot have
+  `historical_records: true`, and it can be a jurisdiction's planned source only when
+  `issuer_portal_minable: false` is recorded with evidence. Use it otherwise for discovery
+  and cross-checks.
 
 ### Parcel readiness gate
 
@@ -126,7 +136,10 @@ not a roster of special counties:
 - No jurisdiction may remain `needs-review` before full ingestion.
 - Prove whether each portal exposes historical permit records, not merely application
   submission or supplemental county approval.
-- Identify one authoritative source boundary per jurisdiction and historical period.
+- Identify one authoritative source boundary per jurisdiction and historical period. The
+  authoritative source is the issuing authority, not a secondary copy of its permits.
+- Record each issuer's earliest record date and a sample count from its own portal so the
+  publish gate can compare harvested volume and history against it.
 - Every required vendor must have a reusable adapter, test fixture, throughput measurement, or
   explicit implementation plan (`county-permit-adapter` / Accela template / generic path).
 - Determine this during initial discovery and start missing adapter scaffolds, fixtures, and
@@ -205,6 +218,8 @@ The validator fails (`exit 1`) when:
   not true, or `verified_at` is missing
 - `stack.publication.in_scope` is true without `stack.publication.upload_node`
 - A blocked / custodian-only / manual-only jurisdiction lacks `records_request`
+- A secondary permit copy is marked `historical_records: true`, or is planned as a
+  jurisdiction's source while that jurisdiction's issuing portal is minable or unproven
 - BBB `expected_count` copies an advertised listing total without a page-cap acknowledgment
 - Publication targets or approvals are missing when publication is in scope
 - Existing checkpoints do not match the current source, registry, configuration, or schema
@@ -292,6 +307,13 @@ Before publication:
   reconciliation;
 - assemble group directories from ready parcels only (`--assemble <group>`);
 - validate every lexicon group;
+- pass the permit-coverage gate: every jurisdiction whose issuing portal is minable has
+  issuer-sourced rows or a named blocker; no secondary copy is published as a
+  jurisdiction's or the county's permits; per-jurisdiction history start and row count are
+  compared with the issuer's own portal, and a jurisdiction more than 50% below its issuer
+  sample or peer median per 1,000 parcels, or starting after the issuer's earliest record,
+  is flagged. Until every minable issuer is harvested, publish permit availability as
+  `supported_partial`, never `supported_full`;
 - build and validate one CAR per county/data group;
 - derive normalized tables only with `elephant-cli export-tables`;
 - upload archive and tables roots and perform remote CID readback;
@@ -323,6 +345,7 @@ evidence for the county being ingested.
 | `fixtures/readiness/material-gis-assessed-discrepancy.yaml` | Material GIS vs tax-roll gap; GIS-only seed BLOCKED |
 | `fixtures/readiness/unclassified-permit-jurisdiction.yaml` | Parcel PASS; unclassified municipality BLOCKED |
 | `fixtures/readiness/unified-portal-not-municipal-history.yaml` | County one-stop is not municipal permit history |
+| `fixtures/readiness/secondary-copy-not-permit-source.yaml` | An appraisal-district or other secondary copy is not the permit source while issuer portals are minable |
 | `fixtures/readiness/ready-minimal.yaml` | PASS |
 | `fixtures/readiness/blocked-without-request-route.yaml` | Blocked/custodian/manual-only rows need `records_request` |
 | `fixtures/readiness/advertised-listing-count-is-not-harvestable.yaml` | Advertised BBB listings are not `expected_count` without a page-cap acknowledgment |
@@ -334,5 +357,7 @@ evidence for the county being ingested.
 
 Provenance: these modes were learned during 2026 Florida ingests (large GIS-under-tax-roll
 gaps with condo/geometry-null units; close GIS/tax-roll match that still required separate
-municipal permit sources; central e-permits portals that were not historical coverage).
+municipal permit sources; central e-permits portals that were not historical coverage) and a 2026 Texas ingest
+(an appraisal district's open-data permit copy published as the whole county while city
+portals went unharvested).
 Keep the rules; do not hard-code those county names into runtime behavior.
