@@ -524,16 +524,16 @@ def self_test() -> int:
         packed.write_text(canonical_json({"manifest": base_manifest, "files": {**base_files, "skills/a/x.md": "Use {{parameter:projectGid}}."}}), encoding="utf-8")
         expect("packed file names the file inside", check_refused_text(packed), "sample.json skills/a/x.md: holds the placeholder {{parameter:projectGid}}")
 
-    # The real donphan package reads Atlas through the allow-listed persist MCP
+    # The real donphan package reads Atlas through the allow-listed elephant MCP
     # (enact/overrides/donphan.json) and must pass; the "remote MCP" case above
     # covers a server outside the allow-list.
     inventory = load_json(ENACT / "inventory.json")
     donphan = inventory["agents"].get("donphan")
     live_allow = sorted(set(allow) | set(config.get("mcp_allow_list", [])))
-    if donphan is None or donphan.get("requires_mcp") != ["persist"]:
-        failures.append("donphan: inventory must declare requires_mcp persist (enact/overrides/donphan.json)")
-    elif "persist" not in config.get("mcp_allow_list", []):
-        failures.append("donphan: persist must be on enact/config.json mcp_allow_list")
+    if donphan is None or donphan.get("requires_mcp") != ["elephant"]:
+        failures.append("donphan: inventory must declare requires_mcp elephant (enact/overrides/donphan.json)")
+    elif "elephant" not in config.get("mcp_allow_list", []):
+        failures.append("donphan: elephant must be on enact/config.json mcp_allow_list")
     elif not (ENACT / "donphan" / "agent.json").is_file():
         failures.append("donphan: package missing; run node scripts/sync-enact-agents.mjs sync")
     else:
@@ -546,7 +546,7 @@ def self_test() -> int:
         for f in failures:
             print(f"FAIL {f}", file=sys.stderr)
         return 1
-    print("test-enact-packaging self-test passed (donphan passes on requires_mcp persist)")
+    print("test-enact-packaging self-test passed (donphan passes on requires_mcp elephant)")
     return 0
 
 

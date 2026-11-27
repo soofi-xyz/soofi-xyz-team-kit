@@ -4,6 +4,18 @@
     "oracle"
   ],
   "waves": {
+    "4": [
+      "ash",
+      "donphan",
+      "eevee",
+      "hypno",
+      "kirlia",
+      "lucario",
+      "magnezone",
+      "pelipper",
+      "rotom",
+      "watchog"
+    ],
     "1a": [
       "abra",
       "machamp",
@@ -17,18 +29,6 @@
       "arceus",
       "mew",
       "slowbro"
-    ],
-    "4": [
-      "ash",
-      "donphan",
-      "eevee",
-      "hypno",
-      "kirlia",
-      "lucario",
-      "magnezone",
-      "pelipper",
-      "rotom",
-      "watchog"
     ]
   },
   "wave_rules": {
@@ -66,6 +66,7 @@
   ],
   "$mcp_allow_list": "Remote MCP servers on the target environment's list (GET /enact/mcp-servers), on top of mcp_builtin. T1 --allow-list-from reads a live list.",
   "mcp_allow_list": [
+    "elephant",
     "persist"
   ],
   "limits": {
