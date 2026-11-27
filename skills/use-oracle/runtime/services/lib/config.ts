@@ -48,7 +48,7 @@ export function envFlag(value: string | undefined): boolean {
   return /^(1|true|yes|on)$/i.test(value ?? "");
 }
 
-export function envInt(name: string, fallback: number): number {
-  const parsed = Number(process.env[name]);
+export function envInt(name: string, fallback: number, env: NodeJS.ProcessEnv = process.env): number {
+  const parsed = Number(env[name]);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }

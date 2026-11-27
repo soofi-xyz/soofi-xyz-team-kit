@@ -17,11 +17,22 @@
  * ingress (`--ingress`, default RESTATE_INGRESS_URL or :8080). `--strict`
  * exits non-zero when a gate fails; `--assemble <group>` stages
  * `data/groups/<county>/<jobId>/<group>/` from verified ready parcels only.
+ *
+ * RECONCILE_LEDGER_WAIT_MS (default unset = no wait, one ledger read) makes
+ * reconcile re-read the ledger every RECONCILE_LEDGER_POLL_MS (default 5000)
+ * until every seed parcel has a settled entry, or the wait runs out. The wait
+ * is recorded under `ledger.wait` in the manifest.
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadLedger, readEnqueueSeedPath, readIngestSeedPath, reconcileCounty } from "../services/lib/reconcile.ts";
+import { envInt } from "../services/lib/config.ts";
+import {
+  loadLedgerWhenCaughtUp,
+  readEnqueueSeedPath,
+  readIngestSeedPath,
+  reconcileCounty,
+} from "../services/lib/reconcile.ts";
 import { assertCounty, assertJobId, assertPublishableGroup } from "../services/lib/storage.ts";
 
 const USAGE =
@@ -37,6 +48,8 @@ export function parseReconcileArguments(argv, env = process.env) {
     strict: false,
     assemble: null,
     rehash: true,
+    ledgerWaitMs: envInt("RECONCILE_LEDGER_WAIT_MS", 0, env),
+    ledgerPollMs: envInt("RECONCILE_LEDGER_POLL_MS", 5000, env),
   };
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
@@ -66,25 +79,28 @@ export function parseReconcileArguments(argv, env = process.env) {
 
 async function main() {
   const options = parseReconcileArguments(process.argv.slice(2));
-  const ledger = await loadLedger({
-    adminUrl: options.adminUrl,
-    ingressUrl: options.ingressUrl,
-    key: `${options.county}-${options.jobId}`,
-  });
+  const key = `${options.county}-${options.jobId}`;
   // Without --seed, use the seed the run itself was started with: the
   // CountyIngest state (chunk mode), else the enqueue record (enqueue path).
   const fromRun = options.seedPath
     ? null
-    : ((await readIngestSeedPath({
-        adminUrl: options.adminUrl,
-        ingressUrl: options.ingressUrl,
-        key: `${options.county}-${options.jobId}`,
-      })) ?? (await readEnqueueSeedPath(options.county, options.jobId)));
+    : ((await readIngestSeedPath({ adminUrl: options.adminUrl, ingressUrl: options.ingressUrl, key })) ??
+      (await readEnqueueSeedPath(options.county, options.jobId)));
+  const seedPath = options.seedPath ?? fromRun?.path;
+  const { ledger, wait } = await loadLedgerWhenCaughtUp({
+    adminUrl: options.adminUrl,
+    ingressUrl: options.ingressUrl,
+    key,
+    seedPath: seedPath ?? path.join("seeds", `${options.county}.csv`),
+    timeoutMs: options.ledgerWaitMs,
+    pollMs: options.ledgerPollMs,
+  });
   const { manifest, manifestPath, exitCode } = await reconcileCounty({
     county: options.county,
     jobId: options.jobId,
     ledger,
-    seedPath: options.seedPath ?? fromRun?.path,
+    ledgerWait: wait,
+    seedPath,
     seedSource: options.seedPath ? "argument" : (fromRun?.source ?? "default"),
     strict: options.strict,
     assemble: options.assemble,
@@ -96,6 +112,7 @@ async function main() {
       county: manifest.county,
       jobId: manifest.jobId,
       ledgerSource: manifest.ledger.source,
+      ledgerWait: manifest.ledger.wait,
       seed: { path: manifest.seed.path, source: manifest.seed.source, rows: manifest.seed.rows },
       counts: manifest.counts,
       gates: manifest.gates,

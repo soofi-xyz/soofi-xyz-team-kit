@@ -225,6 +225,77 @@ export async function loadLedger(options: {
   };
 }
 
+/** How long reconcile waited for the ledger to catch up with the seed. */
+export type LedgerWait = {
+  timeoutMs: number;
+  pollMs: number;
+  waitedMs: number;
+  attempts: number;
+  caughtUp: boolean;
+  /** Seed parcels with no ledger entry at the last read. */
+  missing: number;
+  /** Seed parcels whose ledger entry was still pending at the last read. */
+  pending: number;
+};
+
+/** Seed parcels the ledger has not settled yet (no entry, or still pending). */
+export function ledgerLag(ledger: LedgerSnapshot, seedIds: Iterable<string>): { missing: number; pending: number } {
+  let missing = 0;
+  let pending = 0;
+  for (const id of seedIds) {
+    const entry = ledger.parcels.get(id);
+    if (!entry) missing += 1;
+    else if (entry.status === "pending") pending += 1;
+  }
+  return { missing, pending };
+}
+
+/**
+ * loadLedger, then (when `timeoutMs` > 0) keep re-reading it every `pollMs`
+ * until every seed parcel has a settled entry or the timeout runs out. With
+ * `timeoutMs` 0 (the default) this is exactly one loadLedger, as before.
+ * A timeout is not an error: reconcile then runs on the last read and its
+ * gates report what is still missing.
+ */
+export async function loadLedgerWhenCaughtUp(options: {
+  adminUrl: string;
+  ingressUrl: string;
+  key: string;
+  /** DATA_DIR-relative seed csv. */
+  seedPath: string;
+  timeoutMs: number;
+  pollMs: number;
+  fetchImpl?: FetchLike;
+  sleep?: (ms: number) => Promise<void>;
+  clock?: () => number;
+}): Promise<{ ledger: LedgerSnapshot; wait: LedgerWait | null }> {
+  const read = () =>
+    loadLedger({ adminUrl: options.adminUrl, ingressUrl: options.ingressUrl, key: options.key, fetchImpl: options.fetchImpl });
+  const seedAbsolute = resolveUnderData(options.seedPath);
+  if (options.timeoutMs <= 0 || !(await exists(seedAbsolute))) return { ledger: await read(), wait: null };
+
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const clock = options.clock ?? Date.now;
+  const pollMs = Math.max(1, options.pollMs);
+  const seedIds = [...new Set(await readSeedIds(seedAbsolute))];
+  const started = clock();
+  let attempts = 0;
+  for (;;) {
+    const ledger = await read();
+    attempts += 1;
+    const lag = ledgerLag(ledger, seedIds);
+    const waitedMs = clock() - started;
+    const caughtUp = ledger.source !== "none" && lag.missing === 0 && lag.pending === 0;
+    if (caughtUp || waitedMs + pollMs > options.timeoutMs) {
+      return {
+        ledger,
+        wait: { timeoutMs: options.timeoutMs, pollMs, waitedMs, attempts, caughtUp, ...lag },
+      };
+    }
+    await sleep(pollMs);
+  }
+}
+
 type FileParcel = {
   key: string;
   parcelId: string | null;
@@ -325,6 +396,8 @@ export type ReconcileOptions = {
   strict?: boolean;
   assemble?: string | null;
   rehash?: boolean;
+  /** Set when reconcile waited for the ledger (RECONCILE_LEDGER_WAIT_MS). */
+  ledgerWait?: LedgerWait | null;
   now?: () => Date;
 };
 
@@ -599,6 +672,7 @@ export async function reconcileCounty(options: ReconcileOptions) {
       error: ledger.error,
       entries: ledger.parcels.size,
       summary: ledger.summary,
+      wait: options.ledgerWait ?? null,
     },
     seed: {
       path: seedRelative,
