@@ -175,8 +175,9 @@ an expected total (see `county-permit-adapter` for the split-tree semantics).
 
 `CountyLedger` (virtual object keyed `<county>-<jobId>`) is the single writer of
 per-parcel status (`pending`, `ready`, `dead`, `invalid`, `failed`; permit link results
-under `stage: "permits"`, where `blocked` is a blocked source — captcha, login,
-custodian-only — counted apart from `dead`). Read its shared handlers through ingress:
+under `stage: "permits"`, where `blocked` is a source not yet harvested — a login or
+terms gate awaiting approval, or custodian-only — counted apart from `dead`; bot checks and
+IP blocks are worked around, not left `blocked`). Read its shared handlers through ingress:
 
 ```bash
 curl -s -X POST localhost:8080/CountyLedger/<county>-<jobId>/summary   # counts, tombstones, permits

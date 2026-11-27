@@ -44,7 +44,19 @@ coverage objects, overlays, or environment maps. Restate holds run state only; f
 hold data; publication reads validated group directories. Atlas archives and
 CLI-exported tables are the MCP/public source.
 
+## Collection policy
+
+[`reference/collection-policy.md`](./reference/collection-policy.md) is the single source
+of truth for what Oracle collects, ignores, works around, escalates, and never takes, and
+for the field rules (keep records as filed with their source URL; Vermont owner name and
+mailing address blank; no Connecticut person profiles; protected addresses tagged for
+takedown). It overrides any other access or terms rule in these references. We collect only
+by scraping and never file a records request. Terms, login, and click-through gates follow
+[`reference/access-escalation.md`](./reference/access-escalation.md).
+
 ## Read first
+
+Read the collection policy above first, then:
 
 1. [`reference/car-publication.md`](./reference/car-publication.md)
 2. [`reference/readiness-and-completeness.md`](./reference/readiness-and-completeness.md)
@@ -91,8 +103,9 @@ bounded diagnostic route, not an ingest or publication run.
   gitignored scratch directory.
 - Preserve and return the HTTP body byte-for-byte. Keep URL, timestamp, status,
   digest, and parcel-validation result in the separate receipt.
-- Stop on blocked/challenged content, CAPTCHA, unsuccessful HTTP status, or parcel
-  mismatch.
+- Get around a bot check or CAPTCHA and log it (`reference/collection-policy.md`). Stop on
+  content still challenged after the work-around, an unapproved acceptance gate,
+  unsuccessful HTTP status, or parcel mismatch.
 - Do not transform, reconcile, hash, export, register, or publish.
 
 The command calls the selected county adapter directly and does not start local Restate

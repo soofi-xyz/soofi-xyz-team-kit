@@ -1,3 +1,5 @@
+# A classified `blocked` jurisdiction (bot/IP block) needs no records request: the agent
+# works around the block and logs it (reference/collection-policy.md). Readiness PASSES.
 county: Example
 state: FL
 slug: example

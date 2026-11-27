@@ -21,8 +21,9 @@ stored and streamed body remains the original byte sequence.
 
 ## Preconditions
 
-1. Run the normal county readiness gate. Stop on blocked access, CAPTCHA, login,
-   unsupported terms, or an unverified source.
+1. Run the normal county readiness gate. Work around and log a bot check, CAPTCHA, or IP
+   block (`reference/collection-policy.md`). Stop on a login or terms gate without human
+   approval (`reference/access-escalation.md`) or on an unverified source.
 2. Resolve the address to one official parcel identifier through the existing seed
    workflow. Do not guess a parcel from a similar address.
 3. Build a seed CSV containing exactly one data row.
@@ -68,12 +69,13 @@ Write no capture when:
 - the final page is unsuccessful. A first response of 403 from a non-interactive challenge
   that clears to the requested record in the same browser session is not a failure; record
   both statuses in the receipt (`reference/source-access.md`);
-- the final page is empty, blocked, still challenged, fails the vendor's readiness
-  condition, or contains CAPTCHA;
+- the final page is empty, blocked, still challenged or showing a CAPTCHA after the
+  work-around, or fails the vendor's readiness condition;
 - the official parcel identifier in the response differs from the request;
 - the output path is trackable source/fixture storage.
 
-Never solve or bypass a challenge. Never commit captured bodies or receipts.
+Log every challenge work-around in the receipt (site, blocker, method, date). Never commit
+captured bodies or receipts.
 
 ## User-facing result
 

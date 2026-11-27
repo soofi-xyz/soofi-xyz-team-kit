@@ -46,13 +46,15 @@ identical command with no reset. Never use `--start-row` on a hash-backed pipeli
 work becomes `FAILED_EXHAUSTED` with an owner and exact recovery action while independent
 tracks continue.
 
-**Vendor terms.** Login or a “public user” role is authentication, not permission to
-automate. If terms prohibit harvesting, stop and file a records request
-(`reference/request-routing.md`).
+**Vendor terms.** Terms the agent never accepted (footer links, "by using this site you
+agree", anti-scraping notices) and county copyright or license claims are ignored
+(`reference/collection-policy.md`). A login, registration, or click-through gate is
+different: look for a no-accept route first, and if none exists ask a human to approve
+before accepting (`reference/access-escalation.md`). Never file a records request.
 
-**CAPTCHA is a lease.** Never solve, OCR, or bypass CAPTCHA. Never persist cookies or
-tokens. A human-completed challenge authorizes only that browser session. Reloading often
-clears pager state; resume needs the original result session, not a fresh checkbox.
+**CAPTCHA is a work-around, not a stop.** Get around it and log the site, the blocker, the
+method, and the date in `workaround_log`. Reloading often clears pager state; resume needs
+the original result session, not a fresh checkbox.
 
 ## Enrichment (BBB and similar directories)
 
@@ -66,14 +68,14 @@ or container, or an approved cloud VM — see `reference/operating-in-vm.md`); n
 drive the browser on the operator's own machine. A site scrape is not an official API and
 not a completeness proof.
 
-**Approved browser profile only.** For a public page behind a non-interactive challenge,
-use the Elephant CLI browser profile in `reference/source-access.md` (headless-shell
-Chromium, Chrome user agent, `navigator.webdriver` unset, heavy resources blocked) — the
-profile `elephant-cli prepare` itself launches — and let the challenge clear in that
-session. Start a fresh session when the source re-challenges. Add nothing beyond that
-profile: no CAPTCHA or Turnstile solving, no solver services, no fingerprint-spoofing
-browsers, no residential-proxy rotation without written operator approval. Stop if the
-challenge needs interaction or never clears.
+**Approved browser profile first.** For a public page behind a challenge, start with the
+Elephant CLI browser profile in `reference/source-access.md` (headless-shell Chromium,
+Chrome user agent, `navigator.webdriver` unset, heavy resources blocked) — the profile
+`elephant-cli prepare` itself launches — and let the challenge clear in that session. Start
+a fresh session when the source re-challenges. When the profile does not clear it, escalate
+the work-around (`source-access.md` section 3) and log it. The collection policy governs
+government records; BBB and other private directories are not government sites, so a login
+or terms gate there means stop and report (`reference/collection-policy.md`).
 
 **Category office ≠ county.** A Fort Lauderdale (or other bureau) category mixes in-county
 and out-of-county addresses. Report in-county vs other separately. Do not set county
@@ -198,7 +200,7 @@ geometry. Do not use the easiest geometry feed as the canonical census.
 ## Status vocabulary
 
 Keep these distinct: `pilot`, `enumerating`, `running`, `cooling_down`, `paused`,
-`source_cap`, `source_missing`, `checkpoint_stale`, `manual_captcha_required`,
+`source_cap`, `source_missing`, `checkpoint_stale`, `acceptance_approval_required`,
 `login_required`, `no_anonymous_search`, `custodian_only`, `software_transport`,
 `captured_complete`, `reconciled_complete`, `supported_partial`, `supported_full`.
 
