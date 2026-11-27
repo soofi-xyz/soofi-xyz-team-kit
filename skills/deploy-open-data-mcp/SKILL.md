@@ -19,7 +19,8 @@ and unrelated to MCP serving. Do not point MCP at it or expose it as a public so
 |---|---|
 | `ATLAS_IPNS` | Global `elephant-atlas` IPNS name |
 | `ATLAS_GATEWAYS` | Comma-separated gateway origins in retry order |
-| `MCP_HTTP_AUTH_TOKEN` | Optional bearer token for hosted MCP routes |
+| `MCP_HTTP_AUTH_TOKEN` | Optional primary opaque bearer token for hosted MCP routes |
+| `MCP_HTTP_AUTH_TOKENS` | Optional additional comma-separated bearer tokens for hosted MCP routes (add per-client tokens without replacing an existing sensitive `MCP_HTTP_AUTH_TOKEN`; redeploy on Vercel after changing) |
 | embedding credentials | Optional; only for verified-script search |
 
 Defaults:
@@ -84,8 +85,25 @@ npx -y @elephant-xyz/mcp@2 sync        # scheduled job
 npx -y @elephant-xyz/mcp@2 mcp-http    # request process
 ```
 
-Expose `POST /mcp` and `GET /health`. Protect `/mcp` with `MCP_HTTP_AUTH_TOKEN`. Do not
-resolve the index or load archives inside an HTTP request.
+Expose `POST /mcp` and `GET /health`. Protect `/mcp` with `MCP_HTTP_AUTH_TOKEN` and/or
+`MCP_HTTP_AUTH_TOKENS` (comma-separated). When adding a new hosted caller such as Enact to
+an existing deployment whose `MCP_HTTP_AUTH_TOKEN` is stored as a write-only sensitive
+variable, add a dedicated token in `MCP_HTTP_AUTH_TOKENS` instead of replacing the existing
+token so existing callers keep working. Do not resolve the index or load archives inside an
+HTTP request.
+
+### Attaching the hosted endpoint to Enact
+
+Enact agents (`donphan`, `watchog`) call the hosted endpoint as remote MCP server `elephant`
+(`mcp__elephant__*`), while local editors keep using the local stdio server unchanged:
+
+1. Merge `"elephant": "Bearer <enact-token>"` into the `Enact` CloudFormation stack's
+   `McpServerSecretArn` JSON secret (preserving existing keys such as `persist`).
+2. Read the current list with `GET /enact/mcp-servers`, append
+   `{ "name": "elephant", "url": "https://<host>/mcp", "auth": { "header": "Authorization", "secret": "elephant" } }`,
+   and `PUT /enact/mcp-servers` with the merged list.
+3. Never log the token or place it in agent manifests, prompts, or Persist traces; Enact's
+   sandbox relay injects the header on loopback requests.
 
 ## MCP 2.0 tools
 

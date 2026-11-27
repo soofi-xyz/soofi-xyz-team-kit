@@ -1,9 +1,9 @@
 {
   "requires_mcp": [
-    "persist"
+    "elephant"
   ],
-  "requires_mcp_reason": "agents/watchog.md:18-19 reads published Atlas data to design and check facts; on Enact the hosted `persist` MCP serves the same Atlas index (elephant_atlas). The Watchog-owned HTTP MCP deployment it builds is unaffected.",
+  "requires_mcp_reason": "agents/watchog.md reads published Atlas data to design and check facts; on Enact the hosted `elephant` MCP server serves the Atlas and lexicon tools directly. The Watchog-owned HTTP MCP deployment it builds is unaffected.",
   "appendix": [
-    "**Atlas data on Enact.** The `elephant` MCP server is not available here. Read published Atlas county data through the `persist` MCP server's registered IPFS index `elephant_atlas`, a checked copy of the same global Atlas index: `mcp__persist__list_indexes` (index CID and activation time) for `listAtlasCounties`/freshness, `mcp__persist__describe_index` with `name: \"elephant_atlas\"` (scopes `STATE/county/data_group` with tables, rows and bytes; with `table`, its columns) for `getAtlasDatasetInfo` and `getAtlasSchema`, and `mcp__persist__query_index` (one read-only SELECT over a scope) for `queryAtlas`. There is no `getAtlasProperty`: assemble a property with joins over its scope's tables. For lexicon definitions use `mcp__persist__describe_schema`. Cite the index CID that `list_indexes` reports as the source, and say when a question needs an Elephant MCP tool that has no equivalent here."
+    "**Atlas data on Enact.** Call the hosted `elephant` MCP server directly (`mcp__elephant__listAtlasCounties`, `mcp__elephant__getAtlasDatasetInfo`, `mcp__elephant__getAtlasSchema`, `mcp__elephant__queryAtlas`, `mcp__elephant__listAtlasProperties`, `mcp__elephant__getAtlasProperty`, and the lexicon tools) after loading them with ToolSearch. Do not route Atlas questions through Persist's `elephant_atlas` index where an Elephant tool exists."
   ]
 }

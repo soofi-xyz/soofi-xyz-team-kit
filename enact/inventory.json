@@ -994,7 +994,7 @@
     "donphan": {
       "assumptions": [],
       "blocked_by": [],
-      "bytes": 7482,
+      "bytes": 7026,
       "files": 1,
       "flag_counts": {},
       "instruction_flags": {},
@@ -1005,7 +1005,7 @@
         "use-elephant-mcp"
       ],
       "mcp_servers": [
-        "persist"
+        "elephant"
       ],
       "model": "opus",
       "needs_secrets": [],
@@ -1014,9 +1014,9 @@
       "own_skills": [],
       "readonly": false,
       "requires_mcp": [
-        "persist"
+        "elephant"
       ],
-      "requires_mcp_reason": "agents/donphan.md:7-8 answers only from Elephant MCP tools; on Enact the hosted `persist` MCP serves the same Atlas index (registered IPFS index elephant_atlas), since no hosted Elephant MCP exists.",
+      "requires_mcp_reason": "agents/donphan.md answers only from Elephant MCP tools; on Enact the hosted `elephant` MCP server serves the Atlas and lexicon tools directly.",
       "secret_env_mentions": [],
       "skills": [
         "use-elephant-mcp"
@@ -3300,7 +3300,7 @@
         "python3"
       ],
       "blocked_by": [],
-      "bytes": 51997,
+      "bytes": 52873,
       "files": 9,
       "flag_counts": {
         "aws-profile": 1,
@@ -3319,7 +3319,7 @@
         "use-elephant-mcp"
       ],
       "mcp_servers": [
-        "persist"
+        "elephant"
       ],
       "model": "opus",
       "needs_secrets": [],
@@ -3331,9 +3331,9 @@
       ],
       "readonly": false,
       "requires_mcp": [
-        "persist"
+        "elephant"
       ],
-      "requires_mcp_reason": "agents/watchog.md:18-19 reads published Atlas data to design and check facts; on Enact the hosted `persist` MCP serves the same Atlas index (elephant_atlas). The Watchog-owned HTTP MCP deployment it builds is unaffected.",
+      "requires_mcp_reason": "agents/watchog.md reads published Atlas data to design and check facts; on Enact the hosted `elephant` MCP server serves the Atlas and lexicon tools directly. The Watchog-owned HTTP MCP deployment it builds is unaffected.",
       "secret_env_mentions": [
         "GITHUB_TOKEN",
         "LANGSMITH_API_KEY",
@@ -3700,11 +3700,12 @@
       "wave_reason": "role: build"
     }
   },
-  "enact_version": "1.203.0",
-  "kit_version": "0.203.0",
+  "enact_version": "1.204.0",
+  "kit_version": "0.204.0",
   "mcp_allow_list": [
     "enact",
     "browser",
+    "elephant",
     "persist"
   ],
   "skills": {
@@ -4420,7 +4421,7 @@
       ]
     },
     "deploy-open-data-mcp": {
-      "bytes": 5036,
+      "bytes": 6368,
       "files": 1,
       "flags": {},
       "omitted": [],

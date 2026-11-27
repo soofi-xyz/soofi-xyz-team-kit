@@ -31,7 +31,7 @@
     "max_turns": 100
   },
   "mcp_servers": [
-    "persist"
+    "elephant"
   ],
   "model": "opus",
   "name": "watchog",
@@ -43,5 +43,5 @@
       "pull_requests": "write"
     }
   },
-  "version": "1.203.0"
+  "version": "1.204.0"
 }
